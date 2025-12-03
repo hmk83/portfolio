@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drum Beat Composer v3.6 (Pro)</title>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/abcjs/6.2.2/abcjs-basic-min.js"></script>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            overflow-y: hidden;
+        }
+
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        #paper svg {
+            width: 100%;
+        }
+
+        /* 악보 가독성 향상 */
+        #paper {
+            color: #000;
+        }
+
+        .abcjs-cursor {
+            stroke: #ef4444;
+            stroke-width: 2px;
+        }
+
+        .abcjs-note_selected {
+            fill: #3b82f6 !important;
+            stroke: #3b82f6 !important;
+            transition: all 0.1s ease;
+        }
+
+        .abcjs-note,
+        .abcjs-rest {
+            cursor: pointer;
+        }
+
+        .abcjs-note:hover,
+        .abcjs-rest:hover {
+            opacity: 0.7;
+        }
+
+        .resizer {
+            background-color: #334155;
+            height: 8px;
+            cursor: row-resize;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        .resizer:hover {
+            background-color: #3b82f6;
+        }
+
+        .resizer-handle {
+            width: 40px;
+            height: 4px;
+            background-color: #94a3b8;
+            border-radius: 2px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            margin-top: -5px;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #475569;
+            border-radius: 2px;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 50px;
+            z-index: 50;
+        }
+
+        .modal-content {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            width: 90%;
+            max-width: 600px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        /* Intro Modal Specific Animation */
+        .intro-modal-wrapper {
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transform-origin: bottom right;
+        }
+        
+        .intro-modal-hidden {
+            opacity: 0;
+            transform: scale(0.1) translate(100%, 100%);
+            pointer-events: none;
+        }
+
+        .intro-modal-visible {
+            opacity: 1;
+            transform: scale(1) translate(0, 0);
+            pointer-events: auto;
+        }
+
+        /* Floating Button Animation */
+        .fab-wrapper {
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .fab-hidden {
+            opacity: 0;
+            transform: scale(0) rotate(-90deg);
+            pointer-events: none;
+        }
+
+        .fab-visible {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+            pointer-events: auto;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #10b981;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 9999px;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+            top: 40px;
+        }
+
+        .toast.error {
+            background: #ef4444;
+        }
+    </style>
+</head>
+
+<body class="h-screen flex flex-col">
+    <div id="root" class="h-full flex flex-col"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo, useCallback } = React;
+        const STORAGE_FILENAME = "drum_storage.json";
+
+        // --- Default Song Data (Exciting Funk Rock) ---
+        const DEFAULT_TITLE = "Exciting Funk Rock";
+        const DEFAULT_BPM = 128;
+        const DEFAULT_ABC = `
+% --- Structure: Intro -> Verse -> Chorus -> Bridge -> Outro ---
+%
+P:Intro (Build Up)
+[F2^g2] [c2^g2] [F2^g2] [c2^g2] | [F2^g2] [c2^g2] [F2^g2] [c2^g2] | [F2^g2] [c2^g2] [F2^g2] [c2^g2] | cccc dddd |
+%
+P:Verse 1 (Driving Beat)
+[F2^g2] [^g2] [c2^g2] [^g2] | [F2^g2] [^g2] [c2^g2] [^g2] | [F2^g2] [^g2] [c2^g2] [^g2] | [F2^g2] [^g2] cccc |
+[F2^g2] [^g2] [c2^g2] [^g2] | [F2^g2] [^g2] [c2^g2] [^g2] | [F2^g2] [^g2] [c2^g2] [^g2] | c2c2 A4 ||
+%
+P:Chorus (Power Beat)
+[F2a2] [c2^g2] [F2^g2] [c2^g2] | [F2^g2] [c2^g2] [F2^g2] [c2^g2] | [F2a2] [c2^g2] [F2^g2] [c2^g2] | [F2^g2] [c2^g2] cccc |
+[F2a2] [c2^g2] [F2^g2] [c2^g2] | [F2^g2] [c2^g2] [F2^g2] [c2^g2] | [F2a2] [c2^g2] [F2^g2] [c2^g2] | c2 c2 a4 ||
+%
+P:Bridge (Tom Groove)
+[F2A2] [c2A2] [F2A2] [c2A2] | [F2d2] [c2d2] [F2d2] [c2d2] | [F2A2] [c2A2] [F2A2] [c2A2] | cccc dddd |
+%
+P:Chorus 2 (Final)
+[F2a2] [c2^g2] [F2^g2] [c2^g2] | [F2^g2] [c2^g2] [F2^g2] [c2^g2] | [F2a2] [c2^g2] [F2^g2] [c2^g2] | cccc A4 |
+[F2a2] [c2^g2] [F2^g2] [c2^g2] | [F2^g2] [c2^g2] [F2^g2] [c2^g2] | [F2a2] [c2^g2] [F2^g2] [c2^g2] | cccc cccc ||
+%
+P:Outro
+[F2a2] [c2^g2] [F2^g2] [c2^g2] | [F2^g2] [c2^g2] cccc | A8 |]`;
+
+        const IconWrapper = ({ name, className }) => {
+            const [svgHtml, setSvgHtml] = useState('');
+            useEffect(() => {
+                if (!window.lucide || !window.lucide.createElement) return;
+                const iconKey = name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+                const iconDef = window.lucide.icons[iconKey];
+                if (iconDef) {
+                    try {
+                        const el = window.lucide.createElement(iconDef);
+                        if (className) el.setAttribute('class', `${el.getAttribute('class') || ''} ${className}`.trim());
+                        setSvgHtml(el.outerHTML);
+                    } catch (e) { console.error(e); }
+                }
+            }, [name, className]);
+            return <span className="inline-flex items-center justify-center" dangerouslySetInnerHTML={{ __html: svgHtml }} />;
+        };
+
+        const Icons = {
+            Music: p => <IconWrapper name="music" {...p} />,
+            PenTool: p => <IconWrapper name="pen-tool" {...p} />,
+            Eye: p => <IconWrapper name="eye" {...p} />,
+            Play: p => <IconWrapper name="play" {...p} />,
+            Square: p => <IconWrapper name="square" {...p} />,
+            Code: p => <IconWrapper name="code" {...p} />,
+            Copy: p => <IconWrapper name="copy" {...p} />,
+            Trash2: p => <IconWrapper name="trash-2" {...p} />,
+            ArrowLeft: p => <IconWrapper name="arrow-left" {...p} />,
+            RotateCcw: p => <IconWrapper name="rotate-ccw" {...p} />,
+            Volume2: p => <IconWrapper name="volume-2" {...p} />,
+            Download: p => <IconWrapper name="download" {...p} />,
+            Settings: p => <IconWrapper name="settings" {...p} />,
+            ExternalLink: p => <IconWrapper name="external-link" {...p} />,
+            GripHorizontal: p => <IconWrapper name="grip-horizontal" {...p} />,
+            Type: p => <IconWrapper name="type" {...p} />,
+            ListMusic: p => <IconWrapper name="list-music" {...p} />,
+            Sliders: p => <IconWrapper name="sliders" {...p} />,
+            ZoomIn: p => <IconWrapper name="zoom-in" {...p} />,
+            ZoomOut: p => <IconWrapper name="zoom-out" {...p} />,
+            Save: p => <IconWrapper name="save" {...p} />,
+            FolderOpen: p => <IconWrapper name="folder-open" {...p} />,
+            X: p => <IconWrapper name="x" {...p} />,
+            FileText: p => <IconWrapper name="file-text" {...p} />,
+            Info: p => <IconWrapper name="info" {...p} />,
+            Lightbulb: p => <IconWrapper name="lightbulb" {...p} />,
+            Cpu: p => <IconWrapper name="cpu" {...p} />,
+            Zap: p => <IconWrapper name="zap" {...p} />
+        };
+
+        const DRUM_PADS = [
+            { id: 'kick', name: 'Kick', code: 'F', color: 'bg-teal-600 hover:bg-teal-500 shadow-teal-900/20' },
+            { id: 'snare', name: 'Snare', code: 'c', color: 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20' },
+            { id: 'hihat_closed', name: 'H.H (Cl)', code: '^g', color: 'bg-pink-600 hover:bg-pink-500 shadow-pink-900/20' },
+            { id: 'hihat_open', name: 'H.H (Op)', code: '_g', color: 'bg-pink-500 hover:bg-pink-400 shadow-pink-900/20' },
+            { id: 'tom_high', name: 'Tom 1', code: 'e', color: 'bg-orange-500 hover:bg-orange-400 shadow-orange-900/20' },
+            { id: 'tom_mid', name: 'Tom 2', code: 'd', color: 'bg-yellow-500 hover:bg-yellow-400 shadow-yellow-900/20' },
+            { id: 'tom_low', name: 'Floor Tom', code: 'A', color: 'bg-purple-600 hover:bg-purple-500 shadow-purple-900/20' },
+            { id: 'crash', name: 'Crash', code: "a", color: 'bg-red-600 hover:bg-red-500 shadow-red-900/20' },
+            { id: 'ride', name: 'Ride', code: "f", color: 'bg-green-600 hover:bg-green-500 shadow-green-900/20' },
+        ];
+
+        const UTILITY_PADS = [
+            { id: 'rest', name: '쉼표 (z)', code: 'z', color: 'bg-slate-600 hover:bg-slate-500' },
+            { id: 'bar', name: 'Bar (|)', code: '|', color: 'bg-slate-700 hover:bg-slate-600' },
+            { id: 'group_start', name: '[', code: '[', color: 'bg-slate-700 hover:bg-slate-600' },
+            { id: 'group_end', name: ']', code: ']', color: 'bg-slate-700 hover:bg-slate-600' },
+            { id: 'repeat', name: '도돌이표 (:)', code: ':', color: 'bg-slate-700 hover:bg-slate-600' },
+        ];
+
+        function App() {
+            // Data States
+            const [abcContent, setAbcContent] = useState(DEFAULT_ABC.trim());
+            const [bpm, setBpm] = useState(DEFAULT_BPM);
+            const [staffSep, setStaffSep] = useState(70);
+            const [timeSig, setTimeSig] = useState("4/4");
+            const [lyricsSize, setLyricsSize] = useState(13);
+            const [lyricsY, setLyricsY] = useState(0);
+
+            const [songTitle, setSongTitle] = useState(DEFAULT_TITLE);
+            const [currentSongId, setCurrentSongId] = useState(null);
+
+            // Safety Check State
+            const [isDirty, setIsDirty] = useState(false);
+
+            // UI States
+            const [zoom, setZoom] = useState(1.0);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [libLoaded, setLibLoaded] = useState(false);
+            const [previewHeight, setPreviewHeight] = useState(350);
+            const [isDragging, setIsDragging] = useState(false);
+            const [popupWindow, setPopupWindow] = useState(null);
+            
+            // ** Intro Modal State **
+            const [isIntroOpen, setIsIntroOpen] = useState(true);
+
+            // Modal & Storage States
+            const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+            const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
+            const [savedSongs, setSavedSongs] = useState([]);
+            const [toast, setToast] = useState({ show: false, msg: '', type: 'success' });
+
+            const editorRef = useRef(null);
+            const synthRef = useRef(null);
+            const paperRef = useRef(null);
+            const visualObjRef = useRef(null);
+            const timingRef = useRef(null);
+            const lastNoteElementsRef = useRef(null);
+            const containerRef = useRef(null);
+
+            // 초기 로드
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    if (window.ABCJS && window.lucide) {
+                        setLibLoaded(true);
+                        clearInterval(interval);
+                    }
+                }, 100);
+                return () => clearInterval(interval);
+            }, []);
+
+            // 저장 안 하고 나갈 때 경고
+            useEffect(() => {
+                const handleBeforeUnload = (e) => {
+                    if (isDirty) {
+                        e.preventDefault();
+                        e.returnValue = '';
+                    }
+                };
+                window.addEventListener('beforeunload', handleBeforeUnload);
+                return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+            }, [isDirty]);
+
+            // Toast Helper
+            const showToast = (msg, type = 'success') => {
+                setToast({ show: true, msg, type });
+                setTimeout(() => setToast({ ...toast, show: false }), 3000);
+            };
+
+            // ---- Storage Logic (Using PHP) ----
+            const fetchStorage = async () => {
+                try {
+                    const res = await fetch(`load.php?filename=${STORAGE_FILENAME}`);
+                    const json = await res.json();
+                    if (json.success) {
+                        setSavedSongs(Array.isArray(json.data) ? json.data : []);
+                    } else {
+                        setSavedSongs([]);
+                    }
+                } catch (e) {
+                    console.error("Load failed:", e);
+                    setSavedSongs([]);
+                }
+            };
+
+            const saveStorage = async (newData) => {
+                try {
+                    const res = await fetch('save.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            filename: STORAGE_FILENAME,
+                            content: newData
+                        })
+                    });
+                    const json = await res.json();
+                    if (!json.success) throw new Error(json.message);
+                    return true;
+                } catch (e) {
+                    console.error("Save failed:", e);
+                    showToast("저장 실패: " + e.message, 'error');
+                    return false;
+                }
+            };
+
+            // ---- Handlers ----
+            const handleAbcChange = (e) => {
+                setAbcContent(e.target.value);
+                setIsDirty(true);
+            };
+
+            const handleTitleChange = (e) => {
+                setSongTitle(e.target.value);
+                setIsDirty(true);
+            };
+
+            const handleSaveClick = () => {
+                setIsSaveModalOpen(true);
+            };
+
+            const confirmSave = async (asNew = false) => {
+                if (!songTitle.trim()) {
+                    showToast("곡 제목을 입력해주세요.", 'error');
+                    return;
+                }
+
+                await fetchStorage();
+
+                const now = new Date();
+                const dateStr = now.toLocaleDateString() + " " + now.toLocaleTimeString();
+
+                const newSongData = {
+                    id: (asNew || !currentSongId) ? crypto.randomUUID() : currentSongId,
+                    title: songTitle,
+                    updatedAt: dateStr,
+                    data: {
+                        abcContent, bpm, staffSep, timeSig, lyricsSize, lyricsY
+                    }
+                };
+
+                let newSongsList = [...savedSongs];
+
+                if (asNew || !currentSongId) {
+                    newSongsList.unshift(newSongData);
+                } else {
+                    const idx = newSongsList.findIndex(s => s.id === currentSongId);
+                    if (idx >= 0) {
+                        newSongsList[idx] = newSongData;
+                    } else {
+                        newSongsList.unshift(newSongData);
+                    }
+                }
+
+                const success = await saveStorage(newSongsList);
+                if (success) {
+                    setSavedSongs(newSongsList);
+                    setCurrentSongId(newSongData.id);
+                    setIsDirty(false); 
+                    setIsSaveModalOpen(false);
+                    showToast("저장되었습니다.");
+                }
+            };
+
+            const handleLoadClick = async () => {
+                await fetchStorage();
+                setIsLoadModalOpen(true);
+            };
+
+            const selectSong = (song) => {
+                if (isDirty) {
+                    if (!confirm("저장하지 않은 변경사항이 있습니다. 무시하고 불러오시겠습니까?")) return;
+                }
+                setAbcContent(song.data.abcContent);
+                setBpm(song.data.bpm);
+                setStaffSep(song.data.staffSep);
+                setTimeSig(song.data.timeSig);
+                setLyricsSize(song.data.lyricsSize || 13);
+                setLyricsY(song.data.lyricsY || 0);
+
+                setSongTitle(song.title);
+                setCurrentSongId(song.id);
+                setIsDirty(false); 
+
+                setIsLoadModalOpen(false);
+                showToast(`'${song.title}' 불러오기 완료`);
+            };
+
+            const deleteSong = async (e, id) => {
+                e.stopPropagation();
+                if (!confirm("정말로 이 곡을 삭제하시겠습니까?")) return;
+
+                const newSongsList = savedSongs.filter(s => s.id !== id);
+                const success = await saveStorage(newSongsList);
+                if (success) {
+                    setSavedSongs(newSongsList);
+                    if (currentSongId === id) {
+                        setCurrentSongId(null);
+                        setSongTitle("");
+                    }
+                    showToast("삭제되었습니다.");
+                }
+            };
+
+
+            // ---- ABCJS Rendering & Audio Logic ----
+            const fullAbcForPreview = useMemo(() => {
+                const header = `X:1
+M:${timeSig}
+L:1/4
+Q:1/4=${bpm}
+K:C clef=perc
+%%MIDI channel 10
+%%staffsep ${staffSep}
+%%vocalfont NotoSansKR-Regular ${lyricsSize}
+%%percmap D  pedal-hi-hat x
+%%percmap F  bass-drum-1
+%%percmap A  high-floor-tom
+%%percmap c  acoustic-snare
+%%percmap ^c side-stick x
+%%percmap d  low-tom
+%%percmap e  hi-mid-tom
+%%percmap ^f ride-cymbal-1 x
+%%percmap =f ride-bell harmonic
+%%percmap g  closed-hi-hat x
+%%percmap ^g open-hi-hat x
+%%percmap =g  closed-hi-hat x
+%%percmap a  crash-cymbal-1  x
+%%percmap ^a open-triangle     triangle
+`;
+                return `${header}${abcContent}`;
+            }, [bpm, staffSep, timeSig, lyricsSize, abcContent]);
+
+            const getRenderOptions = () => ({
+                add_classes: true,
+                staffwidth: 800,
+                scale: zoom,
+                clickListener: (abcelem) => {
+                    const textarea = editorRef.current;
+                    if (!textarea || abcelem.startChar === undefined) return;
+                    textarea.focus();
+                }
+            });
+
+            useEffect(() => {
+                if (!libLoaded || !window.ABCJS) return;
+                const visualObj = window.ABCJS.renderAbc(paperRef.current, fullAbcForPreview, getRenderOptions())[0];
+                visualObjRef.current = visualObj;
+                if (window.ABCJS.synth.supportsAudio()) {
+                    if (!synthRef.current) synthRef.current = new window.ABCJS.synth.CreateSynth();
+                }
+            }, [fullAbcForPreview, libLoaded, zoom]);
+
+            const handlePlayToggle = async () => {
+                if (!synthRef.current) return;
+                if (isPlaying) {
+                    stopPlayback();
+                } else {
+                    startPlayback();
+                }
+            };
+
+            const stopPlayback = () => {
+                if (synthRef.current && synthRef.current.stop) synthRef.current.stop();
+                if (timingRef.current) timingRef.current.stop();
+                clearHighlights();
+                setIsPlaying(false);
+            };
+
+            const startPlayback = async () => {
+                if (!visualObjRef.current) return;
+                try {
+                    await synthRef.current.init({
+                        visualObj: visualObjRef.current,
+                        options: { soundFontUrl: "https://paulrosen.github.io/midi-js-soundfonts/FluidR3_GM/" }
+                    });
+                    await synthRef.current.prime();
+                    if (timingRef.current) timingRef.current.stop();
+                    timingRef.current = new window.ABCJS.TimingCallbacks(visualObjRef.current, {
+                        eventCallback: (ev) => {
+                            clearHighlights();
+                            if (ev && ev.elements) {
+                                const domElements = ev.elements.filter(el => el && el.classList);
+                                domElements.forEach(el => el.classList.add("abcjs-note_selected"));
+                                lastNoteElementsRef.current = domElements;
+                            }
+                        }
+                    });
+                    timingRef.current.start();
+                    const audioPromise = synthRef.current.start();
+                    setIsPlaying(true);
+                    if (audioPromise && typeof audioPromise.then === 'function') {
+                        audioPromise.then(() => stopPlayback());
+                    }
+                } catch (e) {
+                    console.warn(e);
+                    stopPlayback();
+                }
+            };
+
+            const clearHighlights = () => {
+                if (lastNoteElementsRef.current) {
+                    lastNoteElementsRef.current.forEach(el => {
+                        if (el && el.classList) el.classList.remove("abcjs-note_selected");
+                    });
+                }
+                lastNoteElementsRef.current = null;
+            };
+
+            const handleDrumClick = (code) => {
+                const textarea = editorRef.current;
+                if (!textarea) return;
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const newVal = textarea.value.substring(0, start) + " " + code + " " + textarea.value.substring(end);
+                setAbcContent(newVal);
+                setIsDirty(true);
+                setTimeout(() => {
+                    textarea.focus();
+                    const newPos = start + code.length + 1;
+                    textarea.setSelectionRange(newPos, newPos);
+                }, 0);
+            };
+
+            const insertLyrics = () => {
+                const textarea = editorRef.current;
+                if (!textarea) return;
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const textToInsert = "\nw: 가 사 입 력 ";
+                const newVal = textarea.value.substring(0, start) + textToInsert + textarea.value.substring(end);
+                setAbcContent(newVal);
+                setIsDirty(true);
+                setTimeout(() => {
+                    textarea.focus();
+                    const insertStart = start + 4;
+                    const insertEnd = start + textToInsert.length - 1;
+                    textarea.setSelectionRange(insertStart, insertEnd);
+                }, 0);
+            };
+
+            const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.4));
+            const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 3.0));
+
+            const openPopup = () => {
+                const popup = window.open("", "DrumScorePreview", "width=900,height=600");
+                if (!popup) return alert("팝업 차단을 해제해주세요.");
+                popup.document.write(`<!DOCTYPE html><html><head><title>Drum Score - ${songTitle}</title><script src="https://cdnjs.cloudflare.com/ajax/libs/abcjs/6.2.2/abcjs-basic-min.js"><\/script><style>body{margin:0;padding:20px;font-family:sans-serif;background:#fff;color:#000}#paper svg{width:100%}</style></head><body><h2 style="text-align:center;font-size:18px;margin-bottom:10px;">${songTitle}</h2><div id="paper">Loading...</div></body></html>`);
+                setPopupWindow(popup);
+                const timer = setInterval(() => { if (popup.closed) { setPopupWindow(null); clearInterval(timer); } }, 1000);
+            };
+
+            useEffect(() => {
+                if (popupWindow && !popupWindow.closed && libLoaded) {
+                    const popupRender = () => {
+                        if (popupWindow.ABCJS) {
+                            popupWindow.ABCJS.renderAbc("paper", fullAbcForPreview, { add_classes: true, staffwidth: 800, scale: zoom });
+                        } else setTimeout(popupRender, 100);
+                    };
+                    popupRender();
+                }
+            }, [fullAbcForPreview, popupWindow, libLoaded, zoom]);
+
+            const handleMouseMove = useCallback((e) => {
+                if (!isDragging || !containerRef.current) return;
+                const containerRect = containerRef.current.getBoundingClientRect();
+                const newHeight = e.clientY - containerRect.top;
+                if (newHeight > 100 && newHeight < containerRect.height - 100) setPreviewHeight(newHeight);
+            }, [isDragging]);
+
+            useEffect(() => {
+                if (isDragging) {
+                    window.addEventListener('mousemove', handleMouseMove);
+                    window.addEventListener('mouseup', () => setIsDragging(false));
+                } else {
+                    window.removeEventListener('mousemove', handleMouseMove);
+                }
+                return () => window.removeEventListener('mousemove', handleMouseMove);
+            }, [isDragging, handleMouseMove]);
+
+
+            if (!libLoaded) return <div className="h-screen flex items-center justify-center text-white">Loading Engine...</div>;
+
+            return (
+                <div className="flex flex-col h-full overflow-hidden relative">
+                    <style>{`#paper .abcjs-lyric { transform: translateY(${lyricsY}px) !important; }`}</style>
+
+                    {/* Toast */}
+                    <div className={`toast ${toast.show ? 'show' : ''} ${toast.type === 'error' ? 'error' : ''}`}>
+                        {toast.msg}
+                    </div>
+
+                    <header className="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between flex-shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-gradient-to-br from-blue-600 to-purple-600 p-2 rounded-lg text-white">
+                                <Icons.Music className="w-5 h-5" />
+                            </div>
+                            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                                Drum Composer v3.6
+                            </h1>
+                            {isDirty && <span className="text-[10px] text-orange-400 border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 rounded ml-2">● 수정됨 (저장필요)</span>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button onClick={handleLoadClick} className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-md transition-colors border border-slate-700">
+                                <Icons.FolderOpen className="w-3.5 h-3.5" /> 불러오기
+                            </button>
+                            <button onClick={handleSaveClick} className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-md transition-colors">
+                                <Icons.Save className="w-3.5 h-3.5" /> 저장
+                            </button>
+                            <div className="w-px h-4 bg-slate-700 mx-1"></div>
+                            <button onClick={openPopup} className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${popupWindow && !popupWindow.closed ? 'bg-green-600/20 text-green-400 border border-green-600/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>
+                                <Icons.ExternalLink className="w-3.5 h-3.5" />
+                                {popupWindow && !popupWindow.closed ? '새 창 열림' : '새 창 띄우기'}
+                            </button>
+                        </div>
+                    </header>
+
+                    <main className="flex-grow flex flex-col lg:flex-row overflow-hidden">
+                        {/* Sidebar */}
+                        <div className="w-full lg:w-80 bg-slate-800 border-r border-slate-700 flex flex-col flex-shrink-0 overflow-y-auto">
+                            <div className="p-4 space-y-6">
+
+                                {/* New Title Input in Sidebar */}
+                                <div className="bg-slate-700/50 p-3 rounded-lg border border-slate-700">
+                                    <h2 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-2"><Icons.FileText className="w-3.5 h-3.5" /> Song Title</h2>
+                                    <input
+                                        type="text"
+                                        value={songTitle}
+                                        onChange={handleTitleChange}
+                                        className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white text-sm focus:border-blue-500 outline-none placeholder-slate-500"
+                                        placeholder="곡 제목을 입력하세요"
+                                    />
+                                </div>
+
+                                <div>
+                                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2"><Icons.Volume2 className="w-4 h-4" /> Instruments</h2>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {DRUM_PADS.map(pad => (
+                                            <button key={pad.id} onClick={() => handleDrumClick(pad.code)} className={`${pad.color} h-16 rounded-lg shadow-lg flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform group`}>
+                                                <span className="text-[10px] font-mono opacity-50 uppercase text-white">{pad.code}</span>
+                                                <span className="text-xs font-bold text-white leading-tight px-1 text-center">{pad.name.split('(')[0]}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2"><Icons.PenTool className="w-4 h-4" /> Tools</h2>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {UTILITY_PADS.map(util => (
+                                            <button key={util.id} onClick={() => handleDrumClick(util.code)} className={`${util.color} h-10 rounded-lg shadow text-white text-xs font-medium active:scale-95 transition-transform`}>
+                                                {util.name.split(' ')[0]}
+                                            </button>
+                                        ))}
+                                        <button onClick={insertLyrics} className="bg-indigo-600 hover:bg-indigo-500 h-10 rounded-lg shadow text-white text-xs font-medium active:scale-95 transition-transform flex items-center justify-center gap-1"><Icons.Type className="w-3.5 h-3.5" /> 가사</button>
+                                        <button onClick={() => { setAbcContent(prev => prev.slice(0, -1)); editorRef.current.focus(); }} className="bg-red-500/20 text-red-400 border border-red-500/30 h-10 rounded-lg flex items-center justify-center gap-1 active:scale-95 transition-transform"><Icons.ArrowLeft className="w-3.5 h-3.5" /> Back</button>
+                                    </div>
+                                </div>
+                                <div className="bg-slate-700/50 p-3 rounded-lg border border-slate-700">
+                                    <h2 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2"><Icons.Sliders className="w-4 h-4" /> Settings</h2>
+                                    <div className="space-y-3">
+                                        <div><div className="flex justify-between text-[10px] text-slate-400 mb-1"><span>BPM</span><span className="text-white">{bpm}</span></div><input type="range" min="40" max="240" value={bpm} onChange={(e) => { setBpm(e.target.value); setIsDirty(true); }} /></div>
+                                        <div><div className="flex justify-between text-[10px] text-slate-400 mb-1"><span>Staff Spacing</span><span className="text-white">{staffSep}</span></div><input type="range" min="40" max="150" value={staffSep} onChange={(e) => { setStaffSep(e.target.value); setIsDirty(true); }} /></div>
+                                        <div><div className="flex justify-between text-[10px] text-slate-400 mb-1"><span>Lyrics Size</span><span className="text-white">{lyricsSize}px</span></div><input type="range" min="8" max="24" value={lyricsSize} onChange={(e) => { setLyricsSize(e.target.value); setIsDirty(true); }} /></div>
+                                        <div><div className="flex justify-between text-[10px] text-slate-400 mb-1"><span>Lyrics Position</span><span className="text-white">{lyricsY}px</span></div><input type="range" min="-50" max="50" value={lyricsY} onChange={(e) => { setLyricsY(e.target.value); setIsDirty(true); }} /></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Main Editor */}
+                        <div className="flex-grow flex flex-col min-w-0 bg-white relative" ref={containerRef}>
+                            <div style={{ height: previewHeight }} className="flex-shrink-0 bg-slate-50 flex flex-col border-b border-slate-200 min-h-[100px]">
+                                <div className="px-4 py-2 border-b border-slate-200 bg-white flex justify-between items-center">
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-bold text-slate-500 flex items-center gap-1"><Icons.Eye className="w-3.5 h-3.5" /> PREVIEW</span>
+                                            {/* Preview Title Display */}
+                                            {songTitle && <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 ml-2" title="현재 곡 제목">{songTitle}</span>}
+                                        </div>
+
+                                        <div className="flex items-center bg-slate-100 rounded-md border border-slate-200">
+                                            <button onClick={handleZoomOut} className="p-1 hover:bg-slate-200 text-slate-500"><Icons.ZoomOut className="w-3 h-3" /></button>
+                                            <span className="text-[10px] font-mono text-slate-500 px-1 min-w-[30px] text-center">{Math.round(zoom * 100)}%</span>
+                                            <button onClick={handleZoomIn} className="p-1 hover:bg-slate-200 text-slate-500"><Icons.ZoomIn className="w-3 h-3" /></button>
+                                        </div>
+                                    </div>
+                                    <button onClick={handlePlayToggle} className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm ${isPlaying ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-emerald-500 hover:bg-emerald-600 text-white'}`}>
+                                        {isPlaying ? <Icons.Square className="w-3 h-3 fill-current" /> : <Icons.Play className="w-3 h-3 fill-current" />}
+                                        {isPlaying ? "STOP" : "PLAY"}
+                                    </button>
+                                </div>
+                                <div className="flex-grow overflow-auto p-4 flex items-center justify-center bg-white relative">
+                                    {popupWindow && !popupWindow.closed ? (
+                                        <div className="text-center text-slate-400"><Icons.ExternalLink className="w-8 h-8 mx-auto mb-2 opacity-50" /><p>새 창에서 미리보기 중입니다.</p></div>
+                                    ) : (
+                                        <div id="paper" ref={paperRef} className="w-full"></div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="resizer flex-shrink-0 z-10" onMouseDown={(e) => { setIsDragging(true); e.preventDefault(); }}><div className="resizer-handle"></div></div>
+                            <div className="flex-grow flex flex-col bg-slate-900 min-h-0">
+                                <div className="px-4 py-2 bg-slate-800 border-b border-slate-700 flex justify-between items-center flex-shrink-0">
+                                    <span className="text-xs font-bold text-slate-400 flex items-center gap-1"><Icons.Code className="w-3.5 h-3.5" /> ABC EDITOR</span>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => { if (confirm("모두 지우시겠습니까?")) { setAbcContent(""); setCurrentSongId(null); setSongTitle(""); setIsDirty(true); } }} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"><Icons.Trash2 className="w-3 h-3" /> Reset</button>
+                                    </div>
+                                </div>
+                                <div className="relative flex-grow">
+                                    <textarea ref={editorRef} value={abcContent} onChange={handleAbcChange} className="absolute inset-0 w-full h-full bg-slate-900 text-green-400 code-font p-4 outline-none resize-none text-sm leading-relaxed" placeholder="드럼 코드를 입력하세요..." spellCheck="false"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+
+                    {/* --- Intro Modal (Planner's Note) --- */}
+                    <div className={`fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 intro-modal-wrapper ${isIntroOpen ? 'intro-modal-visible' : 'intro-modal-hidden'}`}>
+                        <div className="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col overflow-hidden relative" onClick={e => e.stopPropagation()}>
+                            {/* Decorative Header Background */}
+                            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-indigo-900 via-slate-800 to-slate-800 opacity-50 z-0 pointer-events-none"></div>
+                            
+                            <div className="relative z-10 p-8">
+                                <div className="flex items-start justify-between mb-6">
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+                                            <Icons.Lightbulb className="w-6 h-6 text-yellow-400" />
+                                            기획의도 및 개발배경
+                                        </h2>
+                                        <p className="text-slate-400 text-sm">Drum Beat Composer v3.6 Project Note</p>
+                                    </div>
+                                    <button onClick={() => setIsIntroOpen(false)} className="text-slate-400 hover:text-white p-2 hover:bg-slate-700 rounded-full transition-colors">
+                                        <Icons.X className="w-6 h-6" />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-6 text-slate-300 leading-relaxed">
+                                    <div className="bg-slate-700/30 p-4 rounded-xl border border-slate-700">
+                                        <h3 className="text-white font-bold mb-2 flex items-center gap-2 text-sm uppercase tracking-wider">
+                                            <span className="w-2 h-2 bg-red-500 rounded-full"></span> Problem (문제 인식)
+                                        </h3>
+                                        <p className="text-sm">
+                                            기존 음악 제작 환경에서 <strong>ABC 표기법(텍스트 코드)</strong>을 사용하여 드럼 악보를 작성하는 것은 
+                                            높은 진입 장벽과 복잡한 문법으로 인해 창작자에게 큰 스트레스와 비효율을 초래했습니다.
+                                        </p>
+                                    </div>
+
+                                    <div className="bg-slate-700/30 p-4 rounded-xl border border-slate-700">
+                                        <h3 className="text-white font-bold mb-2 flex items-center gap-2 text-sm uppercase tracking-wider">
+                                            <span className="w-2 h-2 bg-emerald-500 rounded-full"></span> Solution (해결 방안)
+                                        </h3>
+                                        <p className="text-sm">
+                                            기획자로서 이러한 <strong>접근성 문제</strong>를 해결하기 위해, 
+                                            <span className="text-indigo-400 font-semibold">"드럼 패드를 클릭하면 코드가 자동으로 생성되는"</span> 
+                                            직관적인 시각적 인터페이스(GUI)를 고안했습니다.
+                                        </p>
+                                        <ul className="mt-3 space-y-2 text-xs text-slate-400 list-disc list-inside">
+                                            <li>코드 문법을 몰라도 즉시 작곡 가능</li>
+                                            <li>실시간 미리보기로 피드백 루프 최소화</li>
+                                            <li><strong>작업 소요 시간 기존 대비 1/10 수준으로 혁신적 단축</strong></li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div className="mt-8 pt-6 border-t border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4">
+                                    <div className="flex flex-col sm:flex-row gap-3 text-xs w-full md:w-auto">
+                                        <div className="flex items-center justify-center sm:justify-start gap-2 bg-slate-900 px-3 py-2 rounded border border-slate-700 text-slate-300">
+                                            <Icons.Cpu className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                                            <span className="whitespace-nowrap">기획: 100% 현명규</span>
+                                        </div>
+                                        <div className="flex items-center justify-center sm:justify-start gap-2 bg-slate-900 px-3 py-2 rounded border border-slate-700 text-slate-300">
+                                            <Icons.Zap className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+                                            <span className="whitespace-nowrap">개발 & 디자인: 100% 제미나이 AI</span>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={() => setIsIntroOpen(false)}
+                                        className="w-full md:w-auto whitespace-nowrap px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-lg shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <span>작곡 시작하기</span>
+                                        <Icons.ArrowLeft className="w-4 h-4 rotate-180" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* --- Floating Action Button (FAB) --- */}
+                    <div className={`fixed bottom-6 right-6 z-[50] fab-wrapper ${!isIntroOpen ? 'fab-visible' : 'fab-hidden'}`}>
+                        <button 
+                            onClick={() => setIsIntroOpen(true)}
+                            className="w-14 h-14 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-full shadow-xl shadow-blue-900/40 text-white flex items-center justify-center hover:scale-110 active:scale-90 transition-transform border border-white/10 group"
+                            title="기획 의도 및 프로젝트 정보 보기"
+                        >
+                            <Icons.Info className="w-7 h-7 group-hover:animate-pulse" />
+                        </button>
+                    </div>
+
+
+                    {/* --- Save Modal --- */}
+                    {isSaveModalOpen && (
+                        <div className="modal-overlay" onClick={() => setIsSaveModalOpen(false)}>
+                            <div className="modal-content" onClick={e => e.stopPropagation()}>
+                                <div className="flex justify-between items-center p-4 border-b border-slate-700">
+                                    <h3 className="text-lg font-bold text-white flex items-center gap-2"><Icons.Save className="w-5 h-5 text-blue-500" /> 곡 저장하기</h3>
+                                    <button onClick={() => setIsSaveModalOpen(false)} className="text-slate-400 hover:text-white"><Icons.X className="w-5 h-5" /></button>
+                                </div>
+                                <div className="p-6">
+                                    <label className="block text-xs font-bold text-slate-400 mb-2">곡 제목 (Song Title)</label>
+                                    <input type="text" value={songTitle} onChange={handleTitleChange} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white focus:border-blue-500 outline-none mb-1" placeholder="곡 이름을 입력하세요" autoFocus />
+                                    <p className="text-[11px] text-slate-500 mb-6">현재 설정된 BPM, 레이아웃, 악보 데이터가 모두 저장됩니다.</p>
+
+                                    <div className="flex gap-3 justify-end">
+                                        {currentSongId && (
+                                            <button onClick={() => confirmSave(true)} className="px-4 py-2 text-sm bg-slate-700 hover:bg-slate-600 text-white rounded font-medium">
+                                                다른 이름으로 저장 (새로 만들기)
+                                            </button>
+                                        )}
+                                        <button onClick={() => confirmSave(false)} className="px-6 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded font-bold">
+                                            {currentSongId ? "덮어쓰기 (저장)" : "저장하기"}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* --- Load Modal --- */}
+                    {isLoadModalOpen && (
+                        <div className="modal-overlay" onClick={() => setIsLoadModalOpen(false)}>
+                            <div className="modal-content" onClick={e => e.stopPropagation()}>
+                                <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800 rounded-t-xl">
+                                    <h3 className="text-lg font-bold text-white flex items-center gap-2"><Icons.FolderOpen className="w-5 h-5 text-yellow-500" /> 불러오기</h3>
+                                    <button onClick={() => setIsLoadModalOpen(false)} className="text-slate-400 hover:text-white"><Icons.X className="w-5 h-5" /></button>
+                                </div>
+                                <div className="flex-grow overflow-y-auto p-0 max-h-[60vh]">
+                                    {savedSongs.length === 0 ? (
+                                        <div className="p-10 text-center text-slate-500">저장된 곡이 없습니다.</div>
+                                    ) : (
+                                        <table className="w-full text-left text-sm text-slate-300">
+                                            <thead className="bg-slate-900 text-xs uppercase text-slate-400 sticky top-0">
+                                                <tr>
+                                                    <th className="px-4 py-3 font-medium w-16 text-center">No.</th>
+                                                    <th className="px-4 py-3 font-medium">Title</th>
+                                                    <th className="px-4 py-3 font-medium w-40">Date</th>
+                                                    <th className="px-4 py-3 font-medium w-20 text-center">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-700">
+                                                {savedSongs.map((song, idx) => (
+                                                    <tr key={song.id} className="hover:bg-slate-700/50 cursor-pointer transition-colors group" onClick={() => selectSong(song)}>
+                                                        <td className="px-4 py-3 text-center text-slate-500">{idx + 1}</td>
+                                                        <td className="px-4 py-3 font-medium text-white group-hover:text-blue-400">{song.title}</td>
+                                                        <td className="px-4 py-3 text-xs text-slate-500">{song.updatedAt}</td>
+                                                        <td className="px-4 py-3 text-center">
+                                                            <button onClick={(e) => deleteSong(e, song.id)} className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors" title="삭제">
+                                                                <Icons.Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </div>
+                                <div className="p-4 border-t border-slate-700 bg-slate-800 rounded-b-xl text-right">
+                                    <button onClick={() => setIsLoadModalOpen(false)} className="px-4 py-2 text-sm text-slate-400 hover:text-white">닫기</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
