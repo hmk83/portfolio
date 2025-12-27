@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>김은애쌤과 신나는 토요일 수업!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nanum+Square+Round:wght@400;700;800&display=swap');
+
+        :root {
+            --indigo-600: #4f46e5;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: 'Nanum Square Round', sans-serif;
+            overflow: hidden;
+            background-color: #f8fafc;
+            touch-action: none;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            /* 모바일 브라우저 주소창 대응 */
+            height: 100dvh;
+        }
+
+        /* 전체 화면 꽉 채우기 */
+        .game-container {
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 둥근 모서리 디자인 */
+        .soft-round {
+            border-radius: 2.5rem !important;
+        }
+
+        .soft-round-lg {
+            border-radius: 3.5rem !important;
+        }
+
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+
+        .backface-hidden {
+            backface-visibility: hidden;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translate(0, 0);
+            }
+
+            10% {
+                transform: translate(-15px, -15px);
+            }
+
+            30% {
+                transform: translate(15px, 15px);
+            }
+
+            50% {
+                transform: translate(-15px, 15px);
+            }
+
+            70% {
+                transform: translate(15px, -15px);
+            }
+        }
+
+        .shaking {
+            animation: shake 0.1s infinite;
+        }
+
+        .hidden-screen {
+            display: none !important;
+        }
+
+        .active-scale:active {
+            transform: scale(0.95);
+            transition: transform 0.1s;
+        }
+
+        .silhouette {
+            filter: brightness(0) opacity(0.2);
+        }
+
+        /* 그리드 최적화 */
+        .matching-grid {
+            display: grid;
+            grid-template-rows: repeat(2, 1fr);
+            grid-auto-flow: column;
+            gap: 1rem;
+            width: 100%;
+            height: 100%;
+            padding: 1rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .race-track {
+            background: linear-gradient(180deg, #475569 0%, #334155 50%, #475569 100%);
+        }
+
+        /* 스크롤바 숨기기 */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="game-container" id="app">
+        <!-- 1. Welcome Screen -->
+        <div id="screen-welcome"
+            class="absolute inset-0 w-full h-full bg-gradient-to-br from-blue-400 via-indigo-500 to-purple-600 flex flex-col items-center justify-center p-6 text-white animate__animated animate__fadeIn z-[100]">
+            <div class="relative mb-10 w-full max-w-2xl">
+                <div class="absolute -top-12 -left-4 animate-bounce"><i data-lucide="party-popper"
+                        class="w-16 h-16 text-yellow-300"></i></div>
+                <div class="absolute -bottom-12 -right-4 animate-bounce" style="animation-delay: 0.4s"><i
+                        data-lucide="party-popper" class="w-16 h-16 text-pink-300"></i></div>
+                <div
+                    class="bg-white p-12 soft-round-lg shadow-2xl border-[10px] border-white/30 transform transition-transform hover:scale-105 mx-4">
+                    <h2
+                        class="text-5xl sm:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 leading-tight text-center break-keep">
+                        웰컴 김지우!</h2>
+                </div>
+            </div>
+            <div class="text-center mb-16 space-y-4">
+                <p class="text-2xl sm:text-3xl font-bold opacity-90 text-center">지우야, 오늘 선생님이랑</p>
+                <p
+                    class="text-4xl sm:text-5xl font-black text-yellow-300 text-center animate__animated animate__pulse animate__infinite">
+                    신나는 자동차 놀이 할까? 🚗</p>
+            </div>
+            <button onclick="changeScreen('menu')"
+                class="bg-white text-indigo-600 px-20 py-8 soft-round-lg font-black text-4xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:bg-yellow-100 active-scale transition-all border-b-[10px] border-indigo-200">
+                입장하기! ✨
+            </button>
+        </div>
+
+        <!-- 2. Main Menu -->
+        <div id="screen-menu" class="hidden-screen h-full w-full flex flex-col bg-slate-50 overflow-hidden">
+            <div class="p-6 pb-2">
+                <div
+                    class="text-center py-8 bg-white soft-round shadow-md border-4 border-white flex flex-col items-center justify-center mb-4">
+                    <h1 class="text-3xl sm:text-4xl font-black text-blue-600 mb-2 leading-tight tracking-tighter">김은애쌤과
+                        신나는 토요일!</h1>
+                    <p class="text-lg text-gray-500 font-bold italic">"김지우 학생, 오늘도 최고가 될 거예요!"</p>
+                </div>
+            </div>
+            <div class="flex-grow overflow-y-auto p-6 pt-0 pb-24">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5" id="menu-items"></div>
+            </div>
+        </div>
+
+        <!-- 3. Result Screen -->
+        <div id="screen-result"
+            class="hidden-screen h-full w-full flex flex-col items-center justify-center bg-blue-50 text-center p-6">
+            <div
+                class="w-64 h-64 sm:w-80 sm:h-80 bg-yellow-100 rounded-full flex items-center justify-center border-[20px] border-yellow-200 shadow-2xl animate__animated animate__zoomIn">
+                <i data-lucide="trophy" class="w-32 h-32 sm:w-48 sm:h-48 text-yellow-500"></i>
+            </div>
+            <div class="mt-12 space-y-4">
+                <h2 class="text-6xl sm:text-7xl font-black text-blue-600 tracking-tight text-center leading-tight">지우
+                    최고! ✨</h2>
+                <p class="text-2xl sm:text-3xl text-slate-500 font-bold leading-relaxed px-4 text-center break-keep">오늘
+                    수업은 지우가 1등 주인공!<br>실력이 쑥쑥 자라났어요.</p>
+            </div>
+            <div class="flex gap-6 mt-10 justify-center" id="result-stars"></div>
+            <button onclick="changeScreen('menu')"
+                class="w-full max-w-lg bg-blue-600 text-white p-8 soft-round font-black text-3xl shadow-2xl active-scale transition-all border-b-[12px] border-blue-800 mt-12">
+                메뉴로 돌아가기
+            </button>
+        </div>
+
+        <!-- 4. Game Arena -->
+        <div id="game-arena" class="hidden-screen h-full w-full flex flex-col relative overflow-hidden bg-white"></div>
+
+        <!-- 5. Message Box -->
+        <div id="message-box"
+            class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[200] bg-white p-10 soft-round-lg border-[12px] border-indigo-400 shadow-[0_30px_60px_rgba(0,0,0,0.4)] text-center pointer-events-none w-11/12 max-w-2xl animate__animated">
+            <p id="message-text" class="text-4xl sm:text-5xl font-black text-indigo-600 break-keep leading-tight"></p>
+        </div>
+    </div>
+
+    <script>
+        // --- Data ---
+        const TRAFFIC_CAR_TYPES = ['🚗', '🚙', '🚕', '🚓', '🚑', '🚒', '🚌', '🚐', '🚚', '🚛'];
+        const HANGUL_CHARS = ['가', '나', '다', '라', '마', '바', '사', '아', '자', '차'];
+        const NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+        const ANIMALS = ['🦁', '🐯', '🦒', '🐘', '🐵', '🐰', '🐼', '🦊'];
+        const HUMANS = ['👨', '👩', '👧', '👦'];
+        const FRUITS = ['🍎', '🍌', '🍇', '🍓', '🍊', '🍐'];
+        const SUCCESS_MESSAGES = ["지우 정말 대단해! 👍", "지우는 최고의 운전사야! ✨", "우와! 지우 최고! ❤️", "지우 정말 멋지다! 🔥", "지우가 해냈어! 🎉"];
+        const FAILURE_MESSAGES = ["지우야 괜찮아, 다시 해보자! 😊", "지우는 할 수 있어! 홧팅!", "천천히 하면 성공할 거야! 🙌", "부릉부릉~ 힘내라 지우! 🚗"];
+
+        const MEMORY_CARS = [
+            { id: 'fire', emoji: '🚒', name: '소방차' },
+            { id: 'police', emoji: '🚓', name: '경찰차' },
+            { id: 'amb', emoji: '🚑', name: '구급차' },
+            { id: 'taxi', emoji: '🚕', name: '택시' },
+            { id: 'bus', emoji: '🚌', name: '버스' }
+        ];
+
+        const GAME_COLORS = [
+            { id: 'red', name: '빨강', color: 'bg-red-500', border: 'border-red-600', text: 'text-red-600' },
+            { id: 'yellow', name: '노랑', color: 'bg-yellow-400', border: 'border-yellow-500', text: 'text-yellow-600' },
+            { id: 'blue', name: '파랑', color: 'bg-blue-500', border: 'border-blue-600', text: 'text-blue-600' }
+        ];
+
+        const MAZE_CONFIGS = {
+            1: { start: { x: 15, y: 50 }, goal: { x: 85, y: 50 }, walls: [{ x: 0, y: 0, w: 100, h: 25 }, { x: 0, y: 75, w: 100, h: 25 }] },
+            2: { start: { x: 15, y: 20 }, goal: { x: 80, y: 80 }, walls: [{ x: 40, y: 0, w: 60, h: 50 }, { x: 0, y: 80, w: 65, h: 20 }] },
+            3: { start: { x: 10, y: 15 }, goal: { x: 85, y: 85 }, walls: [{ x: 40, y: 0, w: 15, h: 40 }, { x: 0, y: 70, w: 75, h: 10 }, { x: 80, y: 25, w: 20, h: 10 }] },
+            4: { start: { x: 15, y: 15 }, goal: { x: 85, y: 15 }, walls: [{ x: 0, y: 35, w: 35, h: 65 }, { x: 65, y: 35, w: 35, h: 65 }, { x: 40, y: 50, w: 20, h: 10 }] },
+            5: { start: { x: 10, y: 10 }, goal: { x: 90, y: 90 }, walls: [{ x: 30, y: 0, w: 10, h: 40 }, { x: 60, y: 30, w: 10, h: 70 }, { x: 0, y: 70, w: 30, h: 10 }, { x: 80, y: 0, w: 10, h: 70 }, { x: 20, y: 85, w: 30, h: 15 }] }
+        };
+
+        // --- Time Manager ---
+        const TimeManager = {
+            timers: [],
+            intervals: [],
+            addTimeout: function (fn, delay) {
+                const id = setTimeout(fn, delay);
+                this.timers.push(id);
+                return id;
+            },
+            addInterval: function (fn, delay) {
+                const id = setInterval(fn, delay);
+                this.intervals.push(id);
+                return id;
+            },
+            clearAll: function () {
+                this.timers.forEach(clearTimeout);
+                this.intervals.forEach(clearInterval);
+                this.timers = [];
+                this.intervals = [];
+            }
+        };
+
+        function changeScreen(screenId) {
+            TimeManager.clearAll(); // 모든 타이머 정지
+            document.getElementById('app').classList.remove('shaking');
+
+            // Fix: Force hide message box to prevent it from persisting
+            const msgBox = document.getElementById('message-box');
+            msgBox.classList.add('hidden');
+            msgBox.classList.remove('animate__zoomIn', 'animate__fadeOut');
+
+            document.querySelectorAll('[id^="screen-"]').forEach(s => s.classList.add('hidden-screen'));
+            document.getElementById('game-arena').classList.add('hidden-screen');
+
+            if (screenId === 'menu') {
+                renderMenu();
+                document.getElementById('screen-menu').classList.remove('hidden-screen');
+            } else if (screenId === 'welcome') {
+                document.getElementById('screen-welcome').classList.remove('hidden-screen');
+            } else if (screenId === 'result') {
+                document.getElementById('screen-result').classList.remove('hidden-screen');
+                renderResultStars();
+            }
+
+            if (screenId === 'menu') {
+                document.getElementById('game-arena').innerHTML = '';
+            }
+
+            lucide.createIcons();
+        }
+
+        function renderResultStars() {
+            const container = document.getElementById('result-stars'); container.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                const star = document.createElement('i'); star.setAttribute('data-lucide', 'star');
+                star.className = "w-20 h-20 text-yellow-400 fill-current animate-bounce";
+                star.style.animationDelay = `${i * 0.2}s`; container.appendChild(star);
+            }
+            lucide.createIcons();
+        }
+
+        function showSupportMessage(isSuccess) {
+            const box = document.getElementById('message-box');
+            const text = document.getElementById('message-text');
+            text.innerText = isSuccess ? SUCCESS_MESSAGES[Math.floor(Math.random() * SUCCESS_MESSAGES.length)] : FAILURE_MESSAGES[Math.floor(Math.random() * FAILURE_MESSAGES.length)];
+            box.classList.remove('hidden', 'animate__fadeOut'); box.classList.add('animate__zoomIn');
+            TimeManager.addTimeout(() => {
+                box.classList.add('animate__fadeOut');
+                TimeManager.addTimeout(() => box.classList.add('hidden'), 500);
+            }, 1500);
+        }
+
+        function playSound(type) {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode); gainNode.connect(audioContext.destination);
+                const now = audioContext.currentTime;
+                if (type === 'success') { oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(523.25, now); oscillator.frequency.setValueAtTime(659.25, now + 0.1); gainNode.gain.setValueAtTime(0.1, now); oscillator.start(); oscillator.stop(now + 0.3); }
+                else if (type === 'failure') { oscillator.type = 'sawtooth'; oscillator.frequency.setValueAtTime(150, now); gainNode.gain.setValueAtTime(0.1, now); oscillator.start(); oscillator.stop(now + 0.4); }
+                else if (type === 'scream') { oscillator.type = 'square'; oscillator.frequency.setValueAtTime(400, now); oscillator.frequency.exponentialRampToValueAtTime(1200, now + 0.5); gainNode.gain.setValueAtTime(0.1, now); oscillator.start(); oscillator.stop(now + 0.6); }
+                else { oscillator.type = 'triangle'; oscillator.frequency.setValueAtTime(261.63, now); oscillator.start(); oscillator.stop(now + 0.2); }
+            } catch (e) { }
+        }
+
+        // --- Menu Rendering ---
+        const MENU_DATA = [
+            { id: 'maze', color: 'emerald', icon: 'navigation', title: '미로 찾기 주차', desc: '5단계 미로를 탈출해요' },
+            { id: 'colorDrive', color: 'orange', icon: 'zap', title: '색깔 레이싱 레이스', desc: '지우가 1등을 향해 달려요!' },
+            { id: 'memorySequence', color: 'indigo', icon: 'siren', title: '반짝반짝 기억하기', desc: '순서대로 눌러봐요' },
+            { id: 'whereIsCar', color: 'violet', icon: 'eye', title: '어디에 있었을까?', desc: '실루엣을 보고 맞춰요' },
+            { id: 'missingCar', color: 'fuchsia', icon: 'search', title: '사라진 차 찾기', desc: '관찰력을 키워요' },
+            { id: 'hunting', color: 'red', icon: 'target', title: '순발력 사냥', desc: '사람은 클릭 금지!' },
+            { id: 'fruitMath', color: 'orange', icon: 'apple', title: '과일 계산대', desc: '숫자와 친해져요' },
+            { id: 'matching', color: 'indigo', icon: 'puzzle', title: '자동차 짝 맞추기', desc: '2줄 가로 배치 게임' },
+            { id: 'numberParking', color: 'emerald', icon: 'hash', title: '숫자 주차장', desc: '1부터 9까지 터치' },
+            { id: 'hangulRoad', color: 'sky', icon: 'type', title: '한글 도로 여행', desc: '글자를 골라요' }
+        ];
+
+        function renderMenu() {
+            const container = document.getElementById('menu-items'); container.innerHTML = '';
+            MENU_DATA.forEach(game => {
+                const btn = document.createElement('button');
+                btn.className = `w-full bg-white border-b-[8px] border-${game.color}-500 p-6 soft-round flex items-center gap-6 transition-all active-scale shadow-lg hover:shadow-xl`;
+                btn.onclick = () => startGame(game.id);
+                btn.innerHTML = `<div class="bg-${game.color}-100 text-${game.color}-600 p-4 rounded-3xl"><i data-lucide="${game.icon}" class="w-8 h-8 sm:w-10 sm:h-10"></i></div><div class="text-left font-bold"><div class="text-xl sm:text-2xl leading-tight text-slate-700 text-left">${game.title}</div><div class="text-sm sm:text-base text-slate-400 mt-1 text-left">${game.desc}</div></div>`;
+                container.appendChild(btn);
+            });
+            lucide.createIcons();
+        }
+
+
+        let currentGameId = null;
+
+        function showGameHelp(type) {
+            // Hint Hook
+            if (type === 'hint') {
+                if (currentGameId === 'missingCar' && window.triggerMissingCarHint) {
+                    window.triggerMissingCarHint();
+                    return;
+                }
+                if (currentGameId === 'matching' && window.useMatchHint) {
+                    window.useMatchHint();
+                    return;
+                }
+            }
+
+            const game = MENU_DATA.find(g => g.id === currentGameId);
+            if (!game) return;
+            const msg = type === 'desc' ? game.desc : "선생님과 함께 즐겁게 문제를 풀어봐요! ✨";
+            const box = document.getElementById('message-box');
+            const text = document.getElementById('message-text');
+            text.innerText = msg;
+            box.classList.remove('hidden', 'animate__fadeOut');
+            box.classList.add('animate__zoomIn');
+            TimeManager.addTimeout(() => {
+                box.classList.add('animate__fadeOut');
+                TimeManager.addTimeout(() => box.classList.add('hidden'), 500);
+            }, 3000);
+        }
+
+        function getCommonHeader(title) {
+            return `
+                <div class="p-6 flex justify-between bg-white border-b shadow-sm z-30 rounded-b-[3rem]">
+                    <div class="flex gap-2">
+                        <button onclick="changeScreen('menu')" class="p-2 active-scale"><i data-lucide="home" class="w-8 h-8"></i></button>
+                        <button onclick="showGameHelp('desc')" class="p-2 active-scale"><i data-lucide="info" class="w-8 h-8 text-blue-500"></i></button>
+                        <button onclick="showGameHelp('hint')" class="p-2 active-scale"><i data-lucide="lightbulb" class="w-8 h-8 text-yellow-500"></i></button>
+                    </div>
+                    <div class="px-6 py-2 bg-emerald-500 text-white rounded-full font-black text-xl">${title}</div>
+                </div>
+            `;
+        }
+
+        function startGame(gameId) {
+            currentGameId = gameId;
+            document.querySelectorAll('[id^="screen-"]').forEach(s => s.classList.add('hidden-screen'));
+            const arena = document.getElementById('game-arena');
+            arena.classList.remove('hidden-screen');
+            arena.innerHTML = '';
+            switch (gameId) {
+                case 'maze': initMazeGame(); break;
+                case 'memorySequence': initMemorySequence(); break;
+                case 'matching': initMatchingGame(); break;
+                case 'hunting': initHuntingGame(); break;
+                case 'fruitMath': initFruitMath(); break;
+                case 'numberParking': initNumberParking(); break;
+                case 'hangulRoad': initHangulRoad(); break;
+                case 'whereIsCar': initWhereIsCar(); break;
+                case 'missingCar': initMissingCar(); break;
+                case 'colorDrive': initColorDrive(); break;
+            }
+        }
+
+        // --- Games Logic ---
+
+        // 1. 미로 (Maze)
+        function initMazeGame() {
+            let level = 1, carPos = { ...MAZE_CONFIGS[1].start }, isDragging = false;
+            function render() {
+                const config = MAZE_CONFIGS[level]; const arena = document.getElementById('game-arena');
+                arena.innerHTML = `
+                ${getCommonHeader(`미로: ${level}/5`)}
+                <div id="maze-board" class="flex-grow relative bg-white m-6 soft-round border-[12px] border-emerald-100 overflow-hidden shadow-inner cursor-pointer">
+                    ${config.walls.map(w => `<div class="absolute bg-slate-200 soft-round shadow-sm" style="left:${w.x}%; top:${w.y}%; width:${w.w}%; height:${w.h}%;"></div>`).join('')}
+                    <div class="absolute bg-red-50 border-4 border-dashed border-red-400 rounded-[2.5rem] flex items-center justify-center animate-pulse" style="left:${config.goal.x - 7.5}%; top:${config.goal.y - 7.5}%; width:15%; height:15%;"><i data-lucide="flag" class="text-red-500 w-12 h-12"></i></div>
+                    <div id="maze-car" class="absolute text-8xl drop-shadow-xl" style="left:${carPos.x}%; top:${carPos.y}%; transform: translate(-50%, -50%) scaleX(-1);">🚗</div>
+                </div>
+                <div class="p-8 text-center bg-white soft-round shadow-2xl border-t-[10px] border-emerald-50 m-4"><p id="maze-msg" class="text-emerald-500 font-black text-3xl text-center">지우야 깃발까지 운전하자!</p></div>
+            `;
+                lucide.createIcons();
+                const board = document.getElementById('maze-board'), car = document.getElementById('maze-car');
+                const startDrag = () => isDragging = true;
+                const stopDrag = () => isDragging = false;
+                const move = (e) => {
+                    if (!isDragging) return;
+                    const rect = board.getBoundingClientRect(); const touch = e.touches ? e.touches[0] : e;
+                    const x = ((touch.clientX - rect.left) / rect.width) * 100, y = ((touch.clientY - rect.top) / rect.height) * 100;
+                    if (config.walls.some(w => x > w.x - 4 && x < w.x + w.w + 4 && y > w.y - 4 && y < w.y + w.h + 4)) {
+                        playSound('failure'); isDragging = false; carPos = { ...config.start }; car.style.left = `${carPos.x}%`; car.style.top = `${carPos.y}%`;
+                        showSupportMessage(false); return;
+                    }
+                    carPos = { x: Math.max(5, Math.min(95, x)), y: Math.max(5, Math.min(95, y)) }; car.style.left = `${carPos.x}%`; car.style.top = `${carPos.y}%`;
+                    if (Math.sqrt(Math.pow(x - config.goal.x, 2) + Math.pow(y - config.goal.y, 2)) < 8) {
+                        isDragging = false; playSound('success'); showSupportMessage(true);
+                        if (level >= 5) changeScreen('result'); else { level++; carPos = { ...MAZE_CONFIGS[level].start }; TimeManager.addTimeout(render, 600); }
+                    }
+                };
+                car.addEventListener('mousedown', startDrag); car.addEventListener('touchstart', startDrag);
+                window.addEventListener('mouseup', stopDrag); window.addEventListener('touchend', stopDrag);
+                window.addEventListener('mousemove', move); window.addEventListener('touchmove', move);
+            }
+            render();
+        }
+
+        // 2. 색깔 레이싱 (Color Drive)
+        function initColorDrive() {
+            let userPos = 0, npc1Pos = 0, npc2Pos = 0;
+            let winDist = 500;
+            let targetColor = GAME_COLORS[0];
+
+            function nextColor() { targetColor = GAME_COLORS[Math.floor(Math.random() * 3)]; render(); }
+            function update() {
+                npc1Pos += Math.random() * 2.1; npc2Pos += Math.random() * 2.1;
+                if (userPos > winDist * 0.82) { npc1Pos -= 0.6; npc2Pos -= 0.6; }
+                render();
+            }
+
+            function render() {
+                const arena = document.getElementById('game-arena');
+                const uP = (userPos / winDist) * 85 + 5;
+                const n1P = (npc1Pos / winDist) * 85 + 5;
+                const n2P = (npc2Pos / winDist) * 85 + 5;
+                const rank = [userPos, npc1Pos, npc2Pos].sort((a, b) => b - a).indexOf(userPos) + 1;
+
+                arena.innerHTML = `
+                <div class="flex-grow flex flex-col h-full bg-slate-100">
+                ${getCommonHeader(`지우: ${rank}등 | 남은거리: ${Math.max(0, Math.floor(winDist - userPos))}`)}
+                <div class="flex-grow flex flex-col items-center justify-center p-8 bg-slate-100 relative">
+                    <div class="bg-white p-10 soft-round border-[10px] border-orange-100 shadow-2xl w-full text-center mb-10">
+                        <p class="text-gray-400 font-black mb-2 text-center text-xl">지우야, 이 색깔 버튼을 눌러서 1등으로 가자!</p>
+                        <div class="inline-block px-16 py-6 rounded-[3rem] text-white font-black text-5xl shadow-xl ${targetColor.color} border-8 border-white animate__animated animate__pulse animate__infinite">${targetColor.name}</div>
+                    </div>
+                    <div class="w-full flex-grow bg-slate-300 soft-round border-y-[12px] border-slate-400 relative overflow-hidden shadow-inner race-track max-h-96">
+                        <div class="absolute top-1/3 w-full border-t-8 border-dashed border-white opacity-40"></div>
+                        <div class="absolute top-2/3 w-full border-t-8 border-dashed border-white opacity-40"></div>
+                        <div class="absolute right-6 top-0 bottom-0 w-3 bg-white flex flex-col justify-around py-4 border-l-8 border-dashed border-red-500"><i data-lucide="flag" class="text-red-500 w-10 h-10"></i><i data-lucide="flag" class="text-red-500 w-10 h-10"></i></div>
+                        <div class="absolute text-8xl transition-all duration-300" style="left:${uP}%; top:25%; transform:translate(-50%, -50%) scaleX(-1);">🚗</div>
+                        <div class="absolute text-white font-black text-sm bg-blue-600 px-3 py-1 soft-round shadow-md" style="left:${uP}%; top:8%; transform:translateX(-50%);">지우</div>
+                        <div class="absolute text-8xl transition-all duration-500" style="left:${Math.min(92, n1P)}%; top:50%; transform:translate(-50%, -50%) scaleX(-1);">🚕</div>
+                        <div class="absolute text-8xl transition-all duration-500" style="left:${Math.min(92, n2P)}%; top:75%; transform:translate(-50%, -50%) scaleX(-1);">🚙</div>
+                    </div>
+                </div>
+                <div class="p-10 grid grid-cols-3 gap-8 bg-white border-t-[12px] border-orange-100 soft-round shadow-2xl m-4">
+                    ${GAME_COLORS.map(c => `<button onclick="handleRaceTap('${c.id}')" class="${c.color} h-36 soft-round text-white font-black text-4xl shadow-2xl active-scale border-b-[16px] border-black/10 transition-all">${c.name}</button>`).join('')}
+                </div>
+            `;
+                lucide.createIcons();
+            }
+
+            window.handleRaceTap = (id) => {
+                if (id === targetColor.id) { playSound('success'); userPos += 18; if (userPos >= winDist) { showSupportMessage(true); TimeManager.addTimeout(() => changeScreen('result'), 1000); } else nextColor(); }
+                else { playSound('failure'); showSupportMessage(false); }
+            };
+
+            TimeManager.addInterval(update, 180);
+            nextColor();
+        }
+
+        // 3. 자동차 짝 맞추기 (2줄 레이아웃 + 힌트)
+        function initMatchingGame() {
+            let level = null, cards = [], flipped = [], matched = [], hintActive = false;
+            function start(count) { level = count; cards = [...TRAFFIC_CAR_TYPES.slice(0, count / 2), ...TRAFFIC_CAR_TYPES.slice(0, count / 2)].sort(() => Math.random() - 0.5).map((e, i) => ({ id: i, emoji: e })); matched = []; flipped = []; render(); }
+            function render() {
+                const arena = document.getElementById('game-arena');
+                if (!level) { arena.innerHTML = `<div class="p-12 h-full flex flex-col justify-center items-center text-center bg-indigo-50"><div class="bg-white p-16 soft-round shadow-2xl border-[10px] border-indigo-200 mb-10"><h2 class="text-5xl font-black text-indigo-600 mb-8 text-center leading-tight">자동차 짝 맞추기</h2><div class="grid grid-cols-1 gap-6 max-w-sm mx-auto w-full">${[4, 6, 8, 12].map(l => `<button onclick="startMatching(${l})" class="p-8 bg-indigo-500 text-white soft-round text-3xl font-black shadow-xl active-scale border-b-[12px] border-indigo-700">${l}개의 카드</button>`).join('')}</div></div><button onclick="changeScreen('menu')" class="text-slate-400 font-bold text-2xl underline">메뉴로 가기</button></div>`; }
+                else {
+                    arena.innerHTML = `
+                    <div class="flex flex-col h-full bg-indigo-50">
+                        ${getCommonHeader(`찾은 짝: ${matched.length / 2} / ${cards.length / 2}`)}
+                        <div class="flex justify-end p-4">
+                             <button onclick="useMatchHint()" class="px-8 py-3 bg-yellow-400 text-white rounded-full font-black text-xl shadow-lg active-scale">힌트 ✨</button>
+                        </div>
+                        <div class="matching-grid" id="match-cont">
+                            ${cards.map(card => {
+                        const isFlipped = flipped.includes(card.id) || matched.includes(card.id) || hintActive;
+                        return `<button onclick="handleMatchClick(${card.id})" class="soft-round text-7xl sm:text-8xl flex items-center justify-center shadow-2xl transition-all duration-500 border-[10px] ${isFlipped ? 'bg-white border-indigo-100' : 'bg-indigo-500 border-indigo-600 rotate-y-180'} h-44 sm:h-56 w-44 sm:w-56">
+                                    ${isFlipped ? (hintActive && !matched.includes(card.id) && !flipped.includes(card.id) ? `<span class="silhouette">${card.emoji}</span>` : card.emoji) : '❓'}
+                                </button>`;
+                    }).join('')}
+                        </div>
+                    </div>
+                `;
+                }
+                lucide.createIcons();
+            }
+            window.startMatching = start;
+            window.useMatchHint = () => { if (hintActive) return; hintActive = true; render(); TimeManager.addTimeout(() => { hintActive = false; render(); }, 3000); };
+            window.handleMatchClick = (id) => {
+                if (flipped.length >= 2 || flipped.includes(id) || matched.includes(id)) return;
+                flipped.push(id); render();
+                if (flipped.length === 2) {
+                    if (cards[flipped[0]].emoji === cards[flipped[1]].emoji) { matched.push(...flipped); flipped = []; playSound('success'); if (matched.length === cards.length) { showSupportMessage(true); TimeManager.addTimeout(() => changeScreen('result'), 1000); } else render(); }
+                    else { playSound('failure'); TimeManager.addTimeout(() => { flipped = []; render(); }, 800); }
+                }
+            };
+            render();
+        }
+
+        // 4. 사라진 차 찾기
+        function initMissingCar() {
+            let level = 1, stage = 'mem', fullList = [], missing = '', isHinting = false;
+
+            function setup() {
+                const count = 4; // 항상 4개 고정
+                fullList = [...TRAFFIC_CAR_TYPES].sort(() => Math.random() - 0.5).slice(0, count);
+                missing = fullList[Math.floor(Math.random() * count)];
+                stage = 'mem';
+                isHinting = false;
+                render();
+                TimeManager.addTimeout(() => { stage = 'quiz'; render(); }, 4000);
+            }
+
+            window.triggerMissingCarHint = () => {
+                if (stage !== 'quiz') return;
+                isHinting = true;
+                render();
+                TimeManager.addTimeout(() => { isHinting = false; render(); }, 2000);
+            };
+
+            function render() {
+                const arena = document.getElementById('game-arena');
+                arena.innerHTML = `
+                <div class="flex flex-col h-full bg-fuchsia-50">
+                    ${getCommonHeader(`단계: ${level}`)}
+                    <div class="bg-white p-12 soft-round border-[10px] border-fuchsia-200 shadow-2xl mb-6 text-center">
+                        <p class="text-4xl font-black text-fuchsia-600 leading-tight">${stage === 'mem' ? '지우야, 이 차들을 다 기억해봐!' : '지우야! 어떤 차가 사라졌니?'}</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-8 mb-12 px-8 flex-grow content-center justify-items-center">
+                        ${fullList.map(car => {
+                    const isMissing = stage === 'quiz' && car === missing;
+                    const content = isMissing ? (isHinting ? `<span class="silhouette">${car}</span>` : '') : car;
+                    const style = isMissing ? 'bg-fuchsia-100 border-dashed border-fuchsia-300' : 'bg-white border-slate-100 shadow-xl';
+                    return `<div class="w-40 h-40 sm:w-56 sm:h-56 soft-round flex items-center justify-center text-8xl sm:text-[10rem] border-b-[16px] ${style}">${content}</div>`;
+                }).join('')}
+                    </div>
+                    ${stage === 'quiz' ? `<div class="bg-white p-12 soft-round shadow-2xl flex flex-col items-center border-t-[12px] border-fuchsia-100 m-4 animate__animated animate__slideInUp"><p class="text-gray-400 font-bold text-2xl mb-8">지우의 선택은?</p><div class="flex gap-8">${[missing, ...TRAFFIC_CAR_TYPES.filter(c => !fullList.includes(c)).slice(0, 2)].sort(() => Math.random() - 0.5).map(c => `<button onclick="handleMissingAns('${c}')" class="w-28 h-28 sm:w-40 sm:h-40 bg-fuchsia-100 soft-round text-7xl sm:text-9xl flex items-center justify-center border-b-[12px] border-fuchsia-300 active-scale">${c}</button>`).join('')}</div></div>` : ''}
+                </div>
+            `;
+                lucide.createIcons();
+            }
+            window.handleMissingAns = (ans) => { if (ans === missing) { playSound('success'); showSupportMessage(true); if (level >= 5) changeScreen('result'); else { level++; setup(); } } else { playSound('failure'); showSupportMessage(false); } };
+            setup();
+        }
+
+        // 5. 순발력 사냥
+        function initHuntingGame() {
+            let level = 1, count = 0, activeIdx = null, type = 'animal', emoji = '', scream = false;
+            function spawn() { activeIdx = Math.floor(Math.random() * 3); const isH = Math.random() < 0.25; type = isH ? 'human' : 'animal'; emoji = isH ? HUMANS[Math.floor(Math.random() * HUMANS.length)] : ANIMALS[Math.floor(Math.random() * ANIMALS.length)]; render(); }
+            function render() {
+                const arena = document.getElementById('game-arena');
+                arena.innerHTML = `
+                ${getCommonHeader(`사냥단계: ${level}`)}
+                ${scream ? `<div class="absolute inset-0 z-[150] bg-red-600/40 flex flex-col items-center justify-center animate__animated animate__flash text-center"><span class="text-[18rem] text-center drop-shadow-2xl">😱</span><span class="text-9xl font-black text-white text-center drop-shadow-2xl">꺄아아악~!</span></div>` : ''}
+                <div class="flex-grow flex justify-around items-center px-10">
+                    ${GAME_COLORS.map((c, i) => `<div class="w-32 h-32 sm:w-64 sm:h-64 rounded-full border-[20px] ${c.border} bg-white flex items-center justify-center relative shadow-2xl transition-all ${activeIdx === i ? 'scale-125' : 'opacity-25'}">${activeIdx === i ? `<div class="text-8xl sm:text-[14rem] animate__animated animate__zoomIn text-center">${emoji}</div>` : ''}</div>`).join('')}
+                </div>
+                <div class="p-16 grid grid-cols-3 gap-10 bg-slate-50 border-t-[12px] border-slate-200 soft-round shadow-2xl m-6">
+                    ${GAME_COLORS.map(c => `<button onclick="handleHuntTap('${c.id}')" class="${c.color} h-40 soft-round shadow-2xl active-scale border-b-[18px] border-black/20 text-white font-black text-5xl transition-all">${c.name}</button>`).join('')}
+                </div>
+            `;
+                lucide.createIcons();
+            }
+            window.handleHuntTap = (id) => {
+                const aId = GAME_COLORS[activeIdx].id;
+                if (type === 'human' && id === aId) { scream = true; playSound('scream'); render(); document.getElementById('app').classList.add('shaking'); TimeManager.addTimeout(() => { scream = false; document.getElementById('app').classList.remove('shaking'); spawn(); }, 1200); }
+                else if (id === aId && type === 'animal') { playSound('success'); count++; if (count >= 5) { if (level === 1) { level = 2; count = 0; showSupportMessage(true); spawn(); } else changeScreen('result'); } else spawn(); }
+                else playSound('failure');
+            };
+            spawn(); TimeManager.addInterval(spawn, 3000);
+        }
+
+        // 6. 어디에 있었을까 (실루엣 버전)
+        function initWhereIsCar() {
+            let level = 1, stage = 'mem', target, positions = [];
+            function setup() {
+                const count = Math.min(9, level + 2); positions = [...TRAFFIC_CAR_TYPES].sort(() => Math.random() - 0.5).slice(0, count);
+                target = positions[Math.floor(Math.random() * count)]; stage = 'mem'; render();
+                TimeManager.addTimeout(() => { stage = 'quiz'; render(); }, 3500);
+            }
+            function render() {
+                const arena = document.getElementById('game-arena');
+                arena.innerHTML = `
+                <div class="flex flex-col h-full bg-violet-50 text-center">
+                    ${getCommonHeader(`지우 기억력: ${level}단계`)}
+                    <div class="bg-white p-12 soft-round border-[10px] border-violet-200 shadow-2xl mb-12 text-center mx-6">
+                        ${stage === 'mem' ? '<p class="text-4xl font-black text-violet-600 animate-pulse text-center">지우야! 자동차 자리를 잘 기억해!</p>' : `<div class="flex flex-col items-center gap-4 text-center"><p class="text-2xl text-gray-400 font-bold">이 차는 어디에 있었지?</p><span class="text-[12rem] animate-bounce">${target}</span></div>`}
+                    </div>
+                    <div class="grid grid-cols-3 gap-8 px-10 flex-grow content-center">
+                        ${positions.map(car => `<button onclick="handleWhereClick('${car}')" class="h-36 sm:h-56 bg-white soft-round border-b-[12px] border-violet-200 shadow-2xl flex items-center justify-center text-8xl sm:text-9xl active-scale">${stage === 'mem' ? car : `<span class="silhouette">${car}</span>`}</button>`).join('')}
+                    </div>
+                </div>
+            `;
+                lucide.createIcons();
+            }
+            window.handleWhereClick = (car) => { if (stage !== 'quiz') return; if (car === target) { playSound('success'); showSupportMessage(true); if (level >= 5) changeScreen('result'); else { level++; setup(); } } else { playSound('failure'); showSupportMessage(false); stage = 'mem'; render(); TimeManager.addTimeout(() => { stage = 'quiz'; render(); }, 2000); } };
+            setup();
+        }
+
+        // 7. 과일 계산대
+        function initFruitMath() {
+            let n1, n2, op, res, solved = 0, fruit, clicked = [];
+            function gen() { const isA = Math.random() < 0.5; if (isA) { res = Math.floor(Math.random() * 8) + 2; n1 = Math.floor(Math.random() * (res - 1)) + 1; n2 = res - n1; op = '+'; } else { n1 = Math.floor(Math.random() * 6) + 3; n2 = Math.floor(Math.random() * (n1 - 1)) + 1; res = n1 - n2; op = '-'; } fruit = FRUITS[Math.floor(Math.random() * FRUITS.length)]; clicked = []; render(); }
+            function render() {
+                const arena = document.getElementById('game-arena'); const total = (op === '+' ? n1 + n2 : n1);
+                arena.innerHTML = `
+                <div class="flex flex-col h-full bg-orange-50 text-center text-orange-600 font-black">
+                    ${getCommonHeader(`성공: ${solved}/5`)}
+                    <div class="bg-white p-10 soft-round border-[10px] border-orange-100 shadow-2xl mb-10 mx-6"><div class="flex justify-center gap-10 text-6xl mb-4"><span>${n1}</span><span class="text-4xl text-slate-300">${op}</span><span>${n2}</span><span class="text-4xl text-slate-300">=</span><span class="text-orange-500 animate-pulse text-7xl">?</span></div><p class="text-slate-400 font-bold text-xl">지우야, 과일을 직접 하나씩 눌러보자!</p></div>
+                    <div class="flex-grow grid grid-cols-3 sm:grid-cols-5 gap-6 content-center p-8">${Array.from({ length: total }).map((_, i) => { const rem = (op === '-' && i >= n1 - n2), sel = clicked.includes(i); return `<button onclick="toggleFruit(${i},${rem})" class="w-20 h-20 sm:w-32 sm:h-32 soft-round flex items-center justify-center text-6xl sm:text-8xl shadow-2xl transition-all relative ${rem ? 'opacity-10 scale-90' : 'bg-white active-scale'} ${sel ? 'border-[8px] border-green-400 bg-green-50' : ''}">${fruit}${sel ? '<div class="absolute -top-4 -right-4 bg-green-500 text-white rounded-full p-2 shadow-lg"><i data-lucide="star" class="w-6 h-6" style="fill:white"></i></div>' : ''}</button>` }).join('')}</div>
+                    <div class="grid grid-cols-5 gap-4 bg-white p-10 soft-round shadow-inner m-4">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(n => `<button onclick="handleMathAns(${n})" class="h-16 bg-orange-500 text-white soft-round text-3xl font-black active-scale border-b-[10px] border-orange-700">${n}</button>`).join('')}</div>
+                </div>
+            `;
+                lucide.createIcons();
+            }
+            window.toggleFruit = (i, r) => { if (r) return; playSound('count'); if (clicked.includes(i)) clicked = clicked.filter(x => x !== i); else clicked.push(i); render(); };
+            window.handleMathAns = (ans) => { if (ans === res) { playSound('success'); solved++; showSupportMessage(true); if (solved >= 5) changeScreen('result'); else gen(); } else { playSound('failure'); showSupportMessage(false); } };
+            gen();
+        }
+
+        // 8. 숫자 주차장
+        function initNumberParking() {
+            let t = 1, grid = [...NUMBERS].sort(() => Math.random() - 0.5);
+            function render() {
+                const arena = document.getElementById('game-arena');
+                arena.innerHTML = `<div class="p-8 h-full flex flex-col justify-between bg-emerald-50 text-center"><div class="flex justify-between items-center bg-white p-4 soft-round shadow-md"><button onclick="changeScreen('menu')" class="p-2 active-scale"><i data-lucide="home" class="w-8 h-8"></i></button><div class="font-black text-emerald-700 text-2xl">지우 목표: ${t}</div></div><div class="text-center p-12 bg-white soft-round border-[12px] border-emerald-100 shadow-2xl mb-6 text-[14rem] font-black text-emerald-500 animate-bounce leading-none">${t}</div><div class="grid grid-cols-3 gap-6 px-10 pb-12 flex-grow">${grid.map(n => `<button onclick="handleNumTap(${n})" class="soft-round flex flex-col items-center justify-center font-black text-7xl shadow-2xl transition-all active-scale ${n < t ? 'bg-gray-300 opacity-20' : 'bg-white text-emerald-600 border-b-[14px] border-emerald-300'}"><span class="text-xs opacity-30 mb-2">CARS</span>${n}</button>`).join('')}</div></div>`;
+                lucide.createIcons();
+            }
+            window.handleNumTap = (n) => { if (n === t) { playSound('success'); t++; if (t > 9) { showSupportMessage(true); changeScreen('result'); } else render(); } else { playSound('failure'); showSupportMessage(false); } };
+            render();
+        }
+
+        // 9. 한글 여행
+        function initHangulRoad() {
+            let t, grid, s = 0;
+            function next() { t = HANGUL_CHARS[Math.floor(Math.random() * HANGUL_CHARS.length)]; grid = Array.from({ length: 9 }, () => HANGUL_CHARS[Math.floor(Math.random() * HANGUL_CHARS.length)]); grid[Math.floor(Math.random() * 9)] = t; render(); }
+            function render() {
+                const arena = document.getElementById('game-arena');
+                arena.innerHTML = `<div class="p-8 h-full flex flex-col justify-between bg-sky-50 text-center"><div class="flex justify-between items-center bg-white p-4 soft-round shadow-sm"><button onclick="changeScreen('menu')" class="p-2 active-scale"><i data-lucide="home" class="w-8 h-8"></i></button><div class="font-black text-sky-700 text-2xl">성공: ${s}/5</div></div><div class="bg-white p-16 soft-round border-[12px] border-sky-100 shadow-2xl mb-8 text-[12rem] font-black text-sky-600 animate-bounce leading-none">${t}</div><div class="grid grid-cols-3 gap-6 px-10 pb-12 flex-grow">${grid.map(c => `<button onclick="handleHanTap('${c}')" class="soft-round flex items-center justify-center font-black text-8xl text-slate-700 shadow-2xl border-b-[14px] border-slate-200 active-scale bg-white">${c}</button>`).join('')}</div></div>`;
+                lucide.createIcons();
+            }
+            window.handleHanTap = (c) => { if (c === t) { playSound('success'); s++; showSupportMessage(true); if (s >= 5) changeScreen('result'); else next(); } else { playSound('failure'); showSupportMessage(false); } };
+            next();
+        }
+
+        // 10. 반짝반짝 기억하기
+        function initMemorySequence() {
+            let level = 1, seq = [], uIdx = 0, watching = true;
+
+            // Start by adding one to sequence
+            function addAndStart() {
+                seq.push(MEMORY_CARS[Math.floor(Math.random() * 5)].id);
+                start();
+            }
+
+            async function start() {
+                watching = true; uIdx = 0;
+                render(); await new Promise(r => TimeManager.addTimeout(r, 1000));
+                for (let id of seq) {
+                    const b = document.getElementById(`ms-${id}`); if (b) b.classList.add('bg-yellow-300', 'scale-110', 'z-50', 'shadow-2xl'); playSound('blink');
+                    await new Promise(r => TimeManager.addTimeout(r, 600)); if (b) b.classList.remove('bg-yellow-300', 'scale-110', 'z-50', 'shadow-2xl');
+                    await new Promise(r => TimeManager.addTimeout(r, 400));
+                }
+                watching = false; render();
+            }
+            function render() {
+                const arena = document.getElementById('game-arena');
+                arena.innerHTML = `<div class="p-6 flex justify-between bg-white border-b shadow-sm rounded-b-[3rem]"><button onclick="changeScreen('menu')" class="p-2 active-scale"><i data-lucide="home" class="w-8 h-8"></i></button><div class="font-black text-indigo-600 text-2xl px-6">지우의 기억력: ${level}단계</div></div><div class="flex-grow flex flex-col justify-center items-center p-10 bg-indigo-50"><div class="bg-white p-12 soft-round border-[10px] border-indigo-100 shadow-2xl mb-12 w-full text-center animate__animated animate__pulse animate__infinite"><p class="text-4xl font-black text-indigo-600 text-center">${watching ? '지우야, 자동차를 잘 보렴!' : '지우야! 이제 순서대로 눌러봐!'}</p></div><div class="grid grid-cols-5 gap-4 w-full px-4">${MEMORY_CARS.map(c => `<button id="ms-${c.id}" onclick="handleMsTap('${c.id}')" class="flex flex-col items-center p-6 bg-white border-8 border-white soft-round shadow-2xl active-scale transition-all"><span class="text-8xl mb-4">${c.emoji}</span><span class="text-base font-black text-slate-400 uppercase">${c.name}</span></button>`).join('')}</div></div>`;
+                lucide.createIcons();
+            }
+            window.handleMsTap = (id) => { if (watching) return; if (id === seq[uIdx]) { playSound('count'); uIdx++; if (uIdx === seq.length) { playSound('success'); showSupportMessage(true); if (level >= 6) changeScreen('result'); else { level++; TimeManager.addTimeout(addAndStart, 1000); } } } else { playSound('failure'); showSupportMessage(false); TimeManager.addTimeout(start, 1000); } };
+            addAndStart();
+        }
+
+        // --- Boot ---
+        window.onload = () => { lucide.createIcons(); renderMenu(); }
+    </script>
+
+</body>
+
+</html>
