@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400" fill="none">
-  <rect width="400" height="400" rx="28" fill="#FEE2E2"/>
-  <path d="M122 84C122 73.5066 130.507 65 141 65H226.716C231.756 65 236.59 67.0018 240.154 70.5655L292.434 122.846C295.998 126.41 298 131.244 298 136.284V316C298 326.493 289.493 335 279 335H141C130.507 335 122 326.493 122 316V84Z" fill="#FFF7F7"/>
-  <path d="M230 66V118C230 128.493 238.507 137 249 137H301" stroke="#DC2626" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="200" y="250" text-anchor="middle" fill="#B91C1C" font-family="Pretendard, Arial, sans-serif" font-size="78" font-weight="800">PDF</text>
-</svg>
