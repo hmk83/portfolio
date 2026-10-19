@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>신나는 두더지 잡기 - 드럼 컨트롤 게임</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { corePlugins: { preflight: false } }</script>
+    <script src="https://unpkg.com/lucide@latest" onerror="console.warn('Lucide icons failed to load');"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Jua', sans-serif;
+            overflow: hidden;
+            background: #F8F9FA;
+            color: #3b1e1e;
+            user-select: none;
+            -webkit-user-select: none;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+            touch-action: none;
+        }
+
+        /* 카카오 스타일 헤더 */
+        .kakao-header {
+            background: linear-gradient(135deg, #FEE500 0%, #FBC02D 100%);
+            color: #3b1e1e;
+            width: 100%;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 2000;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        .header-title {
+            font-size: clamp(16px, 4vw, 22px);
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header-btn {
+            padding: 8px 16px;
+            font-size: clamp(12px, 2.5vw, 14px);
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            border-radius: 20px;
+            color: #3b1e1e;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Jua', sans-serif;
+        }
+
+        .header-btn:hover {
+            background: rgba(255, 255, 255, 0.8);
+            transform: translateY(-1px);
+        }
+
+        .header-btn:active {
+            transform: translateY(0);
+        }
+
+        /* 인트로 화면 */
+        #intro-screen {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, #A8E6CF 0%, #DCEDC1 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 60px 20px 10px 20px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .intro-content {
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: min-content;
+        }
+
+        .intro-title {
+            font-size: clamp(28px, 5vh, 48px);
+            font-weight: bold;
+            margin-bottom: 1vh;
+            color: #FF8A65;
+            text-shadow: 2px 2px 0 #FFF;
+            line-height: 1.2;
+        }
+
+        .intro-subtitle {
+            font-size: clamp(14px, 2vh, 18px);
+            color: #555;
+            margin-bottom: 1.5vh;
+            line-height: 1.4;
+        }
+
+        /* 선택 카드 (난이도 & 캐릭터 공통) */
+        .selection-section {
+            width: 100%;
+            margin: 0.5vh 0;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 20px;
+            padding: 10px;
+        }
+
+        .selection-title {
+            font-size: clamp(16px, 2.5vh, 20px);
+            color: #D84315;
+            margin-bottom: 1vh;
+            font-weight: bold;
+        }
+
+        .difficulty-container {
+            display: flex;
+            gap: clamp(5px, 1vw, 10px);
+            justify-content: center;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding: 10px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .difficulty-card {
+            background: rgba(255, 255, 255, 0.95);
+            border: clamp(2px, 0.5vh, 3px) solid #FF8A65;
+            border-radius: 15px;
+            padding: clamp(6px, 1vh, 12px) 8px;
+            min-width: 65px;
+            flex: 1;
+            max-width: 110px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.2s;
+        }
+
+        .difficulty-card.selected {
+            background: linear-gradient(135deg, #FFAB91, #FF8A65);
+            border-color: #E64A19;
+            transform: scale(1.05);
+            color: white;
+        }
+
+        .difficulty-card.selected .difficulty-name,
+        .difficulty-card.selected .difficulty-desc {
+            color: white;
+        }
+
+        .difficulty-icon {
+            font-size: clamp(20px, 3vh, 32px);
+            margin-bottom: 0.5vh;
+        }
+
+        .difficulty-name {
+            font-size: clamp(12px, 2vh, 15px);
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .difficulty-desc {
+            font-size: clamp(10px, 1.5vh, 11px);
+            color: #666;
+            line-height: 1.2;
+        }
+
+        /* 버튼 */
+        .btn-large {
+            padding: clamp(10px, 1.5vh, 16px) clamp(24px, 5vw, 48px);
+            font-size: clamp(18px, 3vh, 26px);
+            font-weight: bold;
+            background: linear-gradient(135deg, #FF8A65, #E64A19);
+            border: 3px solid #FFF;
+            border-radius: 50px;
+            color: #FFF;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #BF360C;
+            transition: transform 0.1s;
+            font-family: 'Jua', sans-serif;
+            white-space: nowrap;
+        }
+
+        .btn-large:active {
+            transform: translateY(4px);
+            box-shadow: 0 0px 0 #BF360C;
+        }
+
+        .btn-secondary {
+            padding: clamp(8px, 1.5vh, 12px) clamp(16px, 3vw, 32px);
+            font-size: clamp(14px, 2vh, 18px);
+            font-weight: bold;
+            background: white;
+            border: 3px solid #FF8A65;
+            border-radius: 40px;
+            color: #FF8A65;
+            cursor: pointer;
+            font-family: 'Jua', sans-serif;
+            white-space: nowrap;
+        }
+
+        /* 게임 화면 */
+        #game-screen {
+            display: none;
+            width: 100%;
+            height: calc(100vh - 60px);
+            position: fixed;
+            top: 60px;
+            left: 0;
+            background: linear-gradient(180deg, #A8E6CF 0%, #DCEDC1 100%);
+            overflow: hidden;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 20px;
+        }
+
+        /* GNB 하단 한 줄 정렬 UI */
+        .game-ui-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: clamp(5px, 1.5vw, 15px);
+            width: 100%;
+            padding: clamp(5px, 1vh, 10px) 10px;
+            background: rgba(255, 255, 255, 0.6);
+            z-index: 10;
+            margin-bottom: auto;
+        }
+
+        .stat-badge {
+            background: white;
+            color: #FF8A65;
+            padding: clamp(4px, 1vh, 6px) clamp(8px, 2vw, 16px);
+            border-radius: 30px;
+            border: 2px solid #FF8A65;
+            font-size: clamp(14px, 2.5vh, 20px);
+            font-weight: bold;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+        }
+
+        .stat-badge.time-badge {
+            border-color: #ff9800;
+            color: #f57c00;
+        }
+
+        .stat-badge.best-badge {
+            border-color: #FBC02D;
+            color: #8B6914;
+        }
+
+        /* ==================== 구멍 및 캐릭터 UI ==================== */
+        .drum-pad-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: clamp(12px, 2.5vh, 30px);
+            width: 100%;
+            max-width: 1100px;
+            padding: 5px;
+            justify-content: center;
+            margin-bottom: auto;
+        }
+
+        .pad-row {
+            display: flex;
+            justify-content: center;
+            gap: clamp(10px, 3vw, 25px);
+            width: 100%;
+        }
+
+        .hole-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        /* 저사양 최적화: 복잡한 inset shadow를 단순한 배경색/테두리로 변경 */
+        .hole {
+            width: clamp(100px, min(28vw, 24vh), 180px);
+            height: clamp(100px, min(28vw, 24vh), 180px);
+            border-radius: 50%;
+            background: #4E342E;
+            border: clamp(5px, min(2vw, 1.5vh), 10px) solid;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            will-change: transform;
+        }
+
+        .hole:active {
+            transform: translateY(4px);
+        }
+
+        /* 캐릭터 */
+        .mole {
+            font-size: clamp(60px, min(18vw, 14vh), 120px);
+            position: absolute;
+            bottom: -100%;
+            left: 50%;
+            transform: translate3d(-50%, 0, 0);
+            transition: bottom 0.15s linear;
+            user-select: none;
+            line-height: 1;
+            will-change: bottom;
+        }
+
+        .hole.up .mole {
+            bottom: 5%;
+        }
+
+        /* 헛스윙 애니메이션 최적화: 단순한 translateX */
+        @keyframes shake {
+            0% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-4px);
+            }
+
+            50% {
+                transform: translateX(4px);
+            }
+
+            75% {
+                transform: translateX(-4px);
+            }
+
+            100% {
+                transform: translateX(0);
+            }
+        }
+
+        .shake {
+            animation: shake 0.2s;
+        }
+
+        /* 색상 매핑 (테두리 색상으로 구분) */
+        .pad-crash {
+            border-color: #FF4136;
+        }
+
+        .pad-tom1 {
+            border-color: #FF851B;
+        }
+
+        .pad-tom2 {
+            border-color: #FFDC00;
+        }
+
+        .pad-ride {
+            border-color: #2ECC40;
+        }
+
+        .pad-snare {
+            border-color: #0074D9;
+        }
+
+        .pad-hihat {
+            border-color: #F012BE;
+        }
+
+        .pad-floor {
+            border-color: #B10DC9;
+        }
+
+        .pad-text-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        .pad-text-ko {
+            font-size: clamp(12px, min(4vw, 3vh), 20px);
+            font-weight: 900;
+            line-height: 1.1;
+        }
+
+        .pad-text-en {
+            font-size: clamp(9px, min(2vw, 1.5vh), 12px);
+            font-weight: 500;
+            opacity: 0.9;
+        }
+
+        .pad-crash-txt .pad-text-ko,
+        .pad-crash-txt .pad-text-en {
+            color: #FF4136;
+        }
+
+        .pad-tom1-txt .pad-text-ko,
+        .pad-tom1-txt .pad-text-en {
+            color: #FF851B;
+        }
+
+        .pad-tom2-txt .pad-text-ko,
+        .pad-tom2-txt .pad-text-en {
+            color: #FFDC00;
+        }
+
+        .pad-ride-txt .pad-text-ko,
+        .pad-ride-txt .pad-text-en {
+            color: #2ECC40;
+        }
+
+        .pad-snare-txt .pad-text-ko,
+        .pad-snare-txt .pad-text-en {
+            color: #0074D9;
+        }
+
+        .pad-hihat-txt .pad-text-ko,
+        .pad-hihat-txt .pad-text-en {
+            color: #F012BE;
+        }
+
+        .pad-floor-txt .pad-text-ko,
+        .pad-floor-txt .pad-text-en {
+            color: #B10DC9;
+        }
+
+        /* 모달 및 기타 UI */
+        .game-over-overlay,
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+
+        .game-over-content,
+        .modal-content {
+            background: linear-gradient(135deg, #FFF, #FBE9E7);
+            padding: clamp(20px, 4vh, 40px);
+            border-radius: 30px;
+            border: 4px solid #FF8A65;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .game-over-title {
+            font-size: clamp(24px, 4vh, 40px);
+            color: #FF8A65;
+            margin-bottom: 2vh;
+        }
+
+        .final-score {
+            font-size: clamp(20px, 4vh, 32px);
+            color: #3b1e1e;
+            margin: 2vh 0;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2vh;
+        }
+
+        .modal-title {
+            font-size: clamp(20px, 3vh, 26px);
+            color: #FF8A65;
+            font-weight: bold;
+        }
+
+        .modal-close {
+            font-size: 24px;
+            color: #FF8A65;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(255, 138, 101, 0.1);
+        }
+
+        .modal-body {
+            color: #3b1e1e;
+            line-height: 1.5;
+            font-size: clamp(14px, 2.5vh, 16px);
+        }
+
+        .midi-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: clamp(12px, 2.5vw, 14px);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 50;
+        }
+
+        .midi-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ef4444;
+        }
+
+        .midi-dot.connected {
+            background: #10b981;
+        }
+
+        @media (max-width: 768px) {
+            .kakao-header {
+                height: 50px;
+                padding: 0 12px;
+            }
+
+            .header-btn {
+                padding: 6px 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 헤더 -->
+    <div class="kakao-header">
+        <div class="header-title"><span id="header-icon">🐹</span> 신나는 두더지 잡기</div>
+        <div class="header-buttons">
+            <button class="header-btn" onclick="restartGame()">🔄 다시시작</button>
+            <button class="header-btn" onclick="exitGame()">❌ 학습종료</button>
+        </div>
+    </div>
+
+    <!-- 인트로 화면 -->
+    <div id="intro-screen">
+        <div class="intro-content">
+            <div style="font-size: clamp(40px, 8vh, 60px); margin-bottom: 0.5vh;"><span id="intro-icon">🐹</span></div>
+            <h1 class="intro-title">신나는 캐릭터 잡기!<br>드럼 컨트롤</h1>
+            <p class="intro-subtitle">
+                구멍에서 튀어나오는 친구들!<br>
+                해당하는 드럼을 정확하게 쳐서 잡아보세요.
+            </p>
+
+            <!-- 캐릭터 선택 버튼 (모달 오픈) -->
+            <button id="btn-char-select" class="btn-secondary" onclick="openCharacterModal()"
+                style="margin-bottom: 1.5vh; display: flex; align-items: center; justify-content: center; gap: 8px; margin-left: auto; margin-right: auto; padding: 6px 20px; border-radius: 30px;">
+                <span id="btn-char-icon" style="font-size: 1.5em; line-height: 1;">🐹</span>
+                <span>캐릭터 변경</span>
+            </button>
+
+            <!-- 난이도 선택 -->
+            <div class="selection-section">
+                <h2 class="selection-title">⚡ 난이도 선택</h2>
+                <div class="difficulty-container" id="difficulty-container">
+                    <div class="difficulty-card selected" onclick="selectDifficulty('kindergarten')"
+                        data-difficulty="kindergarten">
+                        <div class="difficulty-icon">🍼</div>
+                        <div class="difficulty-name">유치원</div>
+                        <div class="difficulty-desc">아주 느림</div>
+                    </div>
+                    <div class="difficulty-card" onclick="selectDifficulty('elementary')" data-difficulty="elementary">
+                        <div class="difficulty-icon">🎒</div>
+                        <div class="difficulty-name">초등</div>
+                        <div class="difficulty-desc">보통 속도</div>
+                    </div>
+                    <div class="difficulty-card" onclick="selectDifficulty('middle')" data-difficulty="middle">
+                        <div class="difficulty-icon">📚</div>
+                        <div class="difficulty-name">중수</div>
+                        <div class="difficulty-desc">빠른 속도</div>
+                    </div>
+                    <div class="difficulty-card" onclick="selectDifficulty('high')" data-difficulty="high">
+                        <div class="difficulty-icon">🎓</div>
+                        <div class="difficulty-name">고수</div>
+                        <div class="difficulty-desc">눈 깜짝할 새</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 버튼 -->
+            <div
+                style="display: flex; gap: clamp(10px, 2vw, 15px); justify-content: center; flex-wrap: wrap; margin-top: 1.5vh;">
+                <button class="btn-secondary" onclick="showHowToPlay()">📖 게임 방법</button>
+                <button class="btn-large" onclick="startGame()">🎮 게임 시작</button>
+            </div>
+
+            <p id="introMidiText"
+                style="margin-top: 1.5vh; color: #555; font-weight:bold; font-size: clamp(12px, 2vh, 14px); padding: 5px; border-radius: 8px;">
+                💡 MIDI 드럼 연결이 필요합니다.
+            </p>
+        </div>
+    </div>
+
+    <!-- 교육적 가치 모달 -->
+    <div class="modal-overlay" id="educationalModal" style="display: flex;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">🎓 두뇌 성장 인지 게임</div>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <div style="font-size: clamp(36px, 6vh, 48px); margin: 1vh 0;">👀⚡</div>
+                <h3 style="color: #FF8A65; margin-bottom: 1.5vh;">이런 능력이 쑥쑥 자라요!</h3>
+                <div style="text-align: left; margin: 1.5vh 0;">
+                    <p style="margin: 1vh 0; font-size: clamp(14px, 2.5vh, 16px);">
+                        ⚡ <strong>순발력 및 반응 속도 향상</strong><br>
+                        <span style="color:#666; font-size:clamp(12px, 2vh, 14px);">갑작스럽 나타나는 목표물을 빠르게 파악하고 대처하는 능력을
+                            기릅니다.</span>
+                    </p>
+                    <p style="margin: 1vh 0; font-size: clamp(14px, 2.5vh, 16px);">
+                        👁️ <strong>눈-손 협응력 (Eye-Hand Coordination)</strong><br>
+                        <span style="color:#666; font-size:clamp(12px, 2vh, 14px);">눈으로 위치를 확인하고 즉각적으로 손(드럼 타격)을 움직이는 뇌
+                            신경망을 강화합니다.</span>
+                    </p>
+                    <p style="margin: 1vh 0; font-size: clamp(14px, 2.5vh, 16px);">
+                        🎯 <strong>집중력 유지</strong><br>
+                        <span style="color:#666; font-size:clamp(12px, 2vh, 14px);">제한된 시간 동안 한곳에 시선을 고정하고 변화에 집중하는
+                            훈련입니다.</span>
+                    </p>
+                </div>
+                <button class="btn-large" onclick="closeModal('educationalModal')"
+                    style="margin-top: 1vh; width:100%; font-size: clamp(16px, 3vh, 20px); padding: 12px;">
+                    ✅ 멋져요! 시작할게요
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 게임 화면 -->
+    <div id="game-screen">
+        <div class="game-ui-row">
+            <div class="stat-badge time-badge">
+                ⏱ <span id="gameTimeDisplay">60</span>
+            </div>
+            <div class="stat-badge">
+                점수: <span id="scoreValue">0</span>
+            </div>
+            <div class="stat-badge best-badge">
+                최고: <span id="bestValue">0</span>
+            </div>
+        </div>
+
+        <!-- 2D 구멍 7구 -->
+        <div class="drum-pad-container" id="drumPadContainer">
+            <!-- 윗줄 4개 -->
+            <div class="pad-row">
+                <div class="hole-wrapper">
+                    <div class="hole pad-crash" id="hole-crash">
+                        <div class="mole" id="mole-crash">🐹</div>
+                    </div>
+                    <div class="pad-text-wrapper pad-crash-txt">
+                        <div class="pad-text-ko">크래쉬</div>
+                        <div class="pad-text-en">CRASH</div>
+                    </div>
+                </div>
+                <div class="hole-wrapper">
+                    <div class="hole pad-tom1" id="hole-tom1">
+                        <div class="mole" id="mole-tom1">🐹</div>
+                    </div>
+                    <div class="pad-text-wrapper pad-tom1-txt">
+                        <div class="pad-text-ko">탐1</div>
+                        <div class="pad-text-en">TOM 1</div>
+                    </div>
+                </div>
+                <div class="hole-wrapper">
+                    <div class="hole pad-tom2" id="hole-tom2">
+                        <div class="mole" id="mole-tom2">🐹</div>
+                    </div>
+                    <div class="pad-text-wrapper pad-tom2-txt">
+                        <div class="pad-text-ko">탐2</div>
+                        <div class="pad-text-en">TOM 2</div>
+                    </div>
+                </div>
+                <div class="hole-wrapper">
+                    <div class="hole pad-ride" id="hole-ride">
+                        <div class="mole" id="mole-ride">🐹</div>
+                    </div>
+                    <div class="pad-text-wrapper pad-ride-txt">
+                        <div class="pad-text-ko">라이드</div>
+                        <div class="pad-text-en">RIDE</div>
+                    </div>
+                </div>
+            </div>
+            <!-- 아랫줄 3개 -->
+            <div class="pad-row">
+                <div class="hole-wrapper">
+                    <div class="hole pad-snare" id="hole-snare">
+                        <div class="mole" id="mole-snare">🐹</div>
+                    </div>
+                    <div class="pad-text-wrapper pad-snare-txt">
+                        <div class="pad-text-ko">스네어</div>
+                        <div class="pad-text-en">SNARE</div>
+                    </div>
+                </div>
+                <div class="hole-wrapper">
+                    <div class="hole pad-hihat" id="hole-hihat">
+                        <div class="mole" id="mole-hihat">🐹</div>
+                    </div>
+                    <div class="pad-text-wrapper pad-hihat-txt">
+                        <div class="pad-text-ko">하이햇</div>
+                        <div class="pad-text-en">HI-HAT</div>
+                    </div>
+                </div>
+                <div class="hole-wrapper">
+                    <div class="hole pad-floor" id="hole-floor">
+                        <div class="mole" id="mole-floor">🐹</div>
+                    </div>
+                    <div class="pad-text-wrapper pad-floor-txt">
+                        <div class="pad-text-ko">플로어</div>
+                        <div class="pad-text-en">FLOOR</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 게임 오버 -->
+    <div class="game-over-overlay" id="gameOverOverlay">
+        <div class="game-over-content">
+            <div class="game-over-title" id="gameOverTitle">⏱️ 시간 종료!</div>
+            <div class="final-score">최종 점수: <span id="finalScore">0</span>점</div>
+            <div style="font-size: clamp(14px, 2.5vh, 18px); color: #666; margin-bottom: 3vh;" id="gameOverDesc">친구들을 정말
+                잘 잡으시네요!</div>
+            <button class="btn-large" onclick="restartFromGameOver()">🔄 다시 도전</button>
+            <button class="btn-secondary" onclick="backToIntro()" style="margin-top: 10px;">🏠 처음으로</button>
+        </div>
+    </div>
+
+    <!-- 게임 방법 -->
+    <div class="modal-overlay" id="howToPlayModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">📖 게임 방법</div>
+                <div class="modal-close" onclick="closeModal('howToPlayModal')">×</div>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <p style="font-size: clamp(14px, 2.5vh, 18px); line-height: 1.4; margin-bottom: 2vh;">
+                    제한 시간 <strong>60초</strong> 동안<br>구멍에서 나오는 친구들을 잡으세요!
+                </p>
+                <div
+                    style="background: rgba(255, 138, 101, 0.1); padding: 15px; border-radius: 15px; text-align: left; font-size: clamp(14px, 2.5vh, 16px);">
+                    <p style="margin: 1vh 0; padding-bottom: 10px; border-bottom: 1px dashed #ccc;">
+                        🎯 <strong>명중 (점수 획득)</strong><br>
+                        캐릭터가 나온 구멍과 똑같은 <strong>드럼</strong>을 치면 잡을 수 있습니다.
+                    </p>
+                    <p style="margin: 1vh 0;">
+                        💔 <strong>헛스윙 주의 (콤보 초기화)</strong><br>
+                        캐릭터가 <strong>없는 빈 구멍</strong>을 치면 콤보가 초기화됩니다. 정확하게 노려보세요!
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 캐릭터 선택 모달 -->
+    <div class="modal-overlay" id="characterModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">🐾 캐릭터 선택</div>
+                <div class="modal-close" onclick="closeModal('characterModal')">×</div>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <div class="difficulty-container" id="character-container"
+                    style="flex-wrap: wrap; gap: 10px; padding: 15px;">
+                    <div class="difficulty-card selected" onclick="selectCharacter('🐹')" data-char="🐹">
+                        <div class="difficulty-icon">🐹</div>
+                        <div class="difficulty-name">두더지</div>
+                    </div>
+                    <div class="difficulty-card" onclick="selectCharacter('🐰')" data-char="🐰">
+                        <div class="difficulty-icon">🐰</div>
+                        <div class="difficulty-name">토끼</div>
+                    </div>
+                    <div class="difficulty-card" onclick="selectCharacter('🐸')" data-char="🐸">
+                        <div class="difficulty-icon">🐸</div>
+                        <div class="difficulty-name">개구리</div>
+                    </div>
+                    <div class="difficulty-card" onclick="selectCharacter('👽')" data-char="👽">
+                        <div class="difficulty-icon">👽</div>
+                        <div class="difficulty-name">외계인</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MIDI 미연결 (자동 플레이) -->
+    <div id="modal-no-midi" style="display: none;" class="modal-overlay">
+        <div class="modal-content" style="background: #1e293b; border-color:#FF8A65; max-width: 500px;">
+            <div style="text-align: center; color: white;">
+                <div style="font-size: clamp(36px, 6vh, 48px); margin-bottom: 1vh;">🤖</div>
+                <h3 style="font-size: clamp(18px, 3.5vh, 24px); font-weight: bold; margin-bottom: 1.5vh;">자동 플레이 모드</h3>
+                <p style="font-size: clamp(14px, 2.5vh, 16px); color: #cbd5e1; margin-bottom: 2.5vh; line-height: 1.5;">
+                    전자 드럼이 연결되어 있지 않습니다.<br>
+                    AI 봇이 백발백중으로 <strong>빠르게 캐릭터를 잡는</strong> 모습을 감상해보세요!
+                </p>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button onclick="closeModal('modal-no-midi')"
+                        style="padding: 12px 24px; border-radius: 12px; font-weight: bold; background: #475569; color: white; border: none; cursor: pointer;">돌아가기</button>
+                    <button onclick="startAutoPlay()"
+                        style="padding: 12px 24px; border-radius: 12px; font-weight: bold; background: #FF8A65; color: white; border: none; cursor: pointer;">자동
+                        시작</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="midi-indicator">
+        <div class="midi-dot" id="midiDot"></div>
+        <span id="midiStatusText">MIDI 대기</span>
+    </div>
+
+    <script>
+        let gameRunning = false;
+        let isAutoPlay = false;
+        let audioCtx = null;
+
+        let score = 0, combo = 0; // 하트 생명력 로직 삭제
+        let bestScore = localStorage.getItem('drumWhackAMoleBestScore') || 0;
+        let globalGameTime = 60;
+        let globalTimerInterval = null;
+
+        let currentCharacter = '🐹'; // 기본 캐릭터 두더지
+
+        // 드럼 기본 데이터 키값
+        const drumKeys = ['crash', 'tom1', 'tom2', 'ride', 'snare', 'hihat', 'floor'];
+
+        // 캐릭터 관리 객체: padId를 키로, 타이머 정보를 가짐
+        let activeMoles = {};
+        let spawnIntervalId = null;
+        let midiAccess = null, midiConnected = false;
+
+        let currentDifficulty = 'kindergarten';
+        const difficultySettings = {
+            kindergarten: { stayTime: 2500, spawnRate: 1500 }, // 매우 느림
+            elementary: { stayTime: 1800, spawnRate: 1000 },   // 보통
+            middle: { stayTime: 1200, spawnRate: 700 },        // 빠름
+            high: { stayTime: 800, spawnRate: 500 }            // 눈 깜짝할 새
+        };
+
+        const MIDI_MAP = {
+            'snare': [38, 40, 31, 34, 37],
+            'floor': [41, 43],
+            'hihat': [42, 44, 46, 22, 26],
+            'tom1': [50, 48],
+            'tom2': [47, 45],
+            'crash': [49, 52, 55, 57],
+            'ride': [51, 59, 53]
+        };
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        // 사운드 함수 (저사양 태블릿 최적화를 위해 오실레이터 갯수 대폭 축소)
+        function playDrumSound(type) {
+            if (!audioCtx) return;
+            const t = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            if (type === 'crash') {
+                [500, 1000].forEach(f => {
+                    const o = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    o.type = 'square'; o.frequency.setValueAtTime(f, t);
+                    g.gain.setValueAtTime(0.05, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+                    o.connect(g); g.connect(audioCtx.destination);
+                    o.start(t); o.stop(t + 0.6);
+                });
+                return;
+            }
+
+            osc.connect(gain); gain.connect(audioCtx.destination);
+
+            if (type === 'snare') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(250, t); osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.2);
+                gain.gain.setValueAtTime(0.5, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+                osc.start(t); osc.stop(t + 0.2);
+            } else if (type === 'floor') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(100, t); osc.frequency.exponentialRampToValueAtTime(20, t + 0.3);
+                gain.gain.setValueAtTime(0.6, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+                osc.start(t); osc.stop(t + 0.3);
+            } else if (type === 'tom1') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(150, t); osc.frequency.exponentialRampToValueAtTime(40, t + 0.25);
+                gain.gain.setValueAtTime(0.5, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.25);
+                osc.start(t); osc.stop(t + 0.25);
+            } else if (type === 'tom2') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(120, t); osc.frequency.exponentialRampToValueAtTime(30, t + 0.3);
+                gain.gain.setValueAtTime(0.5, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+                osc.start(t); osc.stop(t + 0.3);
+            } else if (type === 'ride') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(800, t);
+                gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.8);
+                osc.start(t); osc.stop(t + 0.8);
+            } else if (type === 'hihat') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(800, t); osc.frequency.exponentialRampToValueAtTime(100, t + 0.1);
+                gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+                osc.start(t); osc.stop(t + 0.1);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, t); osc.frequency.exponentialRampToValueAtTime(50, t + 0.4);
+                gain.gain.setValueAtTime(0.4, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+                osc.start(t); osc.stop(t + 0.4);
+            }
+        }
+
+        function updateStatsUI() {
+            document.getElementById('scoreValue').textContent = score;
+            document.getElementById('bestValue').textContent = bestScore;
+        }
+
+        // --- 캐릭터 선택 모달 및 로직 ---
+        function openCharacterModal() {
+            document.getElementById('characterModal').style.display = 'flex';
+        }
+
+        function selectCharacter(char) {
+            currentCharacter = char;
+
+            // 카드 UI 업데이트
+            document.querySelectorAll('#character-container .difficulty-card').forEach(card => card.classList.remove('selected'));
+            document.querySelector(`[data-char="${char}"]`)?.classList.add('selected');
+
+            // 화면 및 버튼에 반영
+            document.getElementById('header-icon').textContent = char;
+            document.getElementById('intro-icon').textContent = char;
+            const btnIcon = document.getElementById('btn-char-icon');
+            if (btnIcon) btnIcon.textContent = char;
+
+            drumKeys.forEach(key => {
+                document.getElementById(`mole-${key}`).textContent = char;
+            });
+
+            // 선택 완료 시 모달 자동 닫기
+            closeModal('characterModal');
+        }
+
+        // --- 캐릭터 잡기 로직 ---
+        function spawnMole() {
+            if (!gameRunning) return;
+
+            let emptyPads = drumKeys.filter(key => !activeMoles[key]);
+            if (emptyPads.length === 0) return;
+
+            let numToSpawn = 1;
+            if (currentDifficulty === 'high' && Math.random() > 0.7 && emptyPads.length >= 2) {
+                numToSpawn = 2;
+            }
+
+            for (let i = 0; i < numToSpawn; i++) {
+                if (emptyPads.length === 0) break;
+                let randIdx = Math.floor(Math.random() * emptyPads.length);
+                let padId = emptyPads.splice(randIdx, 1)[0];
+
+                showMole(padId);
+            }
+        }
+
+        function showMole(padId) {
+            const holeEl = document.getElementById(`hole-${padId}`);
+            const moleEl = document.getElementById(`mole-${padId}`);
+
+            moleEl.textContent = currentCharacter;
+            holeEl.classList.add('up');
+
+            const settings = difficultySettings[currentDifficulty];
+            const stayTime = settings.stayTime;
+
+            let timeoutId = setTimeout(() => {
+                hideMole(padId, false);
+            }, stayTime);
+
+            let botTimeoutId = null;
+            if (isAutoPlay) {
+                let reaction = stayTime * (0.5 + Math.random() * 0.3);
+                botTimeoutId = setTimeout(() => {
+                    if (gameRunning && activeMoles[padId]) {
+                        handlePadHit(padId);
+                    }
+                }, reaction);
+            }
+
+            activeMoles[padId] = { timeoutId, botTimeoutId };
+        }
+
+        function hideMole(padId, isHit) {
+            if (!activeMoles[padId]) return;
+
+            const holeEl = document.getElementById(`hole-${padId}`);
+            const moleEl = document.getElementById(`mole-${padId}`);
+
+            clearTimeout(activeMoles[padId].timeoutId);
+            if (activeMoles[padId].botTimeoutId) clearTimeout(activeMoles[padId].botTimeoutId);
+            delete activeMoles[padId];
+
+            if (!isHit) {
+                combo = 0;
+                holeEl.classList.remove('up');
+            } else {
+                moleEl.textContent = '💥';
+
+                setTimeout(() => {
+                    holeEl.classList.remove('up');
+                    setTimeout(() => {
+                        moleEl.textContent = currentCharacter; // 타격 효과 종료 후 현재 캐릭터로 복구
+                    }, 150);
+                }, 200);
+            }
+        }
+
+        function handlePadHit(padId) {
+            if (!gameRunning) return;
+
+            playDrumSound(padId);
+
+            if (activeMoles[padId]) {
+                hideMole(padId, true);
+                score += 10 + (combo * 2);
+                combo++;
+                updateStatsUI();
+            } else {
+                // 헛스윙 처리 (하트 감소 로직 삭제, 콤보만 초기화)
+                playDrumSound('wrong');
+                combo = 0;
+                updateStatsUI();
+
+                const holeEl = document.getElementById(`hole-${padId}`);
+                holeEl.classList.add('shake');
+                setTimeout(() => holeEl.classList.remove('shake'), 200);
+            }
+        }
+
+        function updateGlobalTimer() {
+            globalGameTime--;
+            document.getElementById('gameTimeDisplay').textContent = globalGameTime;
+            if (globalGameTime <= 0) gameOver();
+        }
+
+        function executeGameStart() {
+            document.getElementById('intro-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'flex';
+
+            initAudio();
+
+            gameRunning = true;
+            score = 0; combo = 0; // 초기화
+            bestScore = localStorage.getItem(`drumWhackAMoleBestScore_${currentDifficulty}`) || 0;
+
+            globalGameTime = 60;
+            document.getElementById('gameTimeDisplay').textContent = globalGameTime;
+            if (globalTimerInterval) clearInterval(globalTimerInterval);
+            globalTimerInterval = setInterval(updateGlobalTimer, 1000);
+
+            activeMoles = {};
+            drumKeys.forEach(key => {
+                document.getElementById(`hole-${key}`).classList.remove('up');
+                document.getElementById(`mole-${key}`).textContent = currentCharacter;
+            });
+
+            updateStatsUI();
+
+            const spawnRate = difficultySettings[currentDifficulty].spawnRate;
+            if (spawnIntervalId) clearInterval(spawnIntervalId);
+
+            setTimeout(() => {
+                if (!gameRunning) return;
+                spawnMole();
+                spawnIntervalId = setInterval(spawnMole, spawnRate);
+            }, 1000); // 첫 대기시간
+        }
+
+        function startGame() {
+            if (!midiConnected) {
+                document.getElementById('modal-no-midi').style.display = 'flex';
+                return;
+            }
+            isAutoPlay = false;
+            executeGameStart();
+        }
+
+        function startAutoPlay() {
+            closeModal('modal-no-midi'); isAutoPlay = true; executeGameStart();
+        }
+
+        function gameOver() {
+            gameRunning = false;
+
+            if (globalTimerInterval) clearInterval(globalTimerInterval);
+            if (spawnIntervalId) clearInterval(spawnIntervalId);
+
+            Object.keys(activeMoles).forEach(padId => {
+                clearTimeout(activeMoles[padId].timeoutId);
+                if (activeMoles[padId].botTimeoutId) clearTimeout(activeMoles[padId].botTimeoutId);
+                document.getElementById(`hole-${padId}`).classList.remove('up');
+            });
+            activeMoles = {};
+
+            if (score > bestScore) {
+                bestScore = score;
+                localStorage.setItem(`drumWhackAMoleBestScore_${currentDifficulty}`, bestScore);
+            }
+
+            // 하트 소진에 의한 게임 오버가 없으므로 종료 메시지 단순화
+            const titleEl = document.getElementById('gameOverTitle');
+            const descEl = document.getElementById('gameOverDesc');
+            titleEl.textContent = "⏱️ 시간 종료!";
+            descEl.textContent = "친구들을 정말 잘 잡으시네요!";
+
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOverOverlay').style.display = 'flex';
+        }
+
+        function restartFromGameOver() {
+            document.getElementById('gameOverOverlay').style.display = 'none'; executeGameStart();
+        }
+
+        function backToIntro() {
+            gameRunning = false;
+            if (globalTimerInterval) clearInterval(globalTimerInterval);
+            if (spawnIntervalId) clearInterval(spawnIntervalId);
+
+            document.getElementById('gameOverOverlay').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('intro-screen').style.display = 'flex';
+            bestScore = localStorage.getItem(`drumWhackAMoleBestScore_${currentDifficulty}`) || 0;
+        }
+
+        function restartGame() { backToIntro(); }
+        function exitGame() {
+            if (confirm('정말 학습을 종료하시겠습니까?')) {
+                if (document.referrer || window.history.length > 1) {
+                    window.history.back();
+                } else {
+                    window.close();
+                }
+            }
+        }
+
+        function selectDifficulty(difficulty) {
+            currentDifficulty = difficulty;
+            document.querySelectorAll('#difficulty-container .difficulty-card').forEach(card => card.classList.remove('selected'));
+            document.querySelector(`[data-difficulty="${difficulty}"]`)?.classList.add('selected');
+            bestScore = localStorage.getItem(`drumWhackAMoleBestScore_${difficulty}`) || 0;
+        }
+
+        function showHowToPlay() { document.getElementById('howToPlayModal').style.display = 'flex'; }
+        function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', (e) => { if (e.target === modal && modal.id !== 'educationalModal' && modal.id !== 'modal-no-midi') modal.style.display = 'none'; });
+        });
+
+        // MIDI 초기화
+        async function initMIDI() {
+            try {
+                midiAccess = await navigator.requestMIDIAccess();
+                const checkMIDIInputs = () => {
+                    let hasInputs = false;
+                    midiAccess.inputs.forEach(input => {
+                        input.onmidimessage = handleMIDIMessage;
+                        hasInputs = true;
+                    });
+                    updateMIDIStatus(hasInputs);
+                };
+                checkMIDIInputs();
+                midiAccess.onstatechange = () => checkMIDIInputs();
+            } catch (err) {
+                updateMIDIStatus(false);
+            }
+        }
+
+        function updateMIDIStatus(connected) {
+            midiConnected = connected;
+            const dot = document.getElementById('midiDot');
+            const text = document.getElementById('midiStatusText');
+            const introText = document.getElementById('introMidiText');
+
+            if (connected) {
+                dot.classList.add('connected');
+                text.textContent = 'MIDI 연결됨';
+                if (introText) {
+                    introText.innerHTML = '✅ MIDI 드럼 연결 완료! [게임 시작]을 누르세요.';
+                    introText.style.color = '#10b981';
+                    introText.style.background = 'rgba(16, 185, 129, 0.1)';
+                    introText.style.border = '2px solid #10b981';
+                }
+            } else {
+                dot.classList.remove('connected');
+                text.textContent = 'MIDI 없음';
+                if (introText) {
+                    introText.innerHTML = '💡 MIDI 드럼 연결이 필요합니다.';
+                    introText.style.color = '#555';
+                    introText.style.background = 'transparent';
+                    introText.style.border = 'none';
+                }
+            }
+        }
+
+        function handleMIDIMessage(message) {
+            const [status, note, velocity] = message.data;
+            if ((status >= 144 && status <= 159) && velocity > 0) {
+                if (isAutoPlay) {
+                    isAutoPlay = false;
+                    Object.keys(activeMoles).forEach(padId => {
+                        if (activeMoles[padId].botTimeoutId) clearTimeout(activeMoles[padId].botTimeoutId);
+                    });
+                }
+                initAudio();
+                let hitPad = null;
+                for (const [padName, notes] of Object.entries(MIDI_MAP)) {
+                    if (notes.includes(note)) { hitPad = padName; break; }
+                }
+                if (!hitPad) hitPad = 'snare';
+                if (hitPad) handlePadHit(hitPad);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initMIDI();
+            selectDifficulty('kindergarten');
+            selectCharacter('🐹'); // 초기 캐릭터 설정
+
+            document.querySelectorAll('.hole').forEach(hole => {
+                const trigger = (e) => {
+                    e.preventDefault();
+                    if (isAutoPlay) return;
+                    initAudio();
+                    const padId = hole.id.replace('hole-', '');
+                    handlePadHit(padId);
+                };
+                hole.addEventListener('mousedown', trigger);
+                hole.addEventListener('touchstart', trigger);
+            });
+
+            const educationalShown = localStorage.getItem('drumWhackAMoleEduShown');
+            if (!educationalShown) {
+                document.getElementById('educationalModal').style.display = 'flex';
+                localStorage.setItem('drumWhackAMoleEduShown', 'true');
+            }
+        });
+
+    </script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-07" defer></script>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-midi-status.js?v=20260618-04" data-instrument="drum" defer></script>
+</body>
+
+</html>

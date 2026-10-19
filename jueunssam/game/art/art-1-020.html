@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>철봉 색상 섞기</title>
+    <style>
+        :root {
+            --header-height: 58px;
+            --ink: #2d2438;
+            --safe-top: clamp(36px, 6dvh, 64px);
+            --safe-bottom: clamp(150px, 22dvh, 210px);
+            --art-height: min(360px, calc(100dvh - var(--header-height) - var(--safe-top) - var(--safe-bottom)));
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100dvh;
+            margin: 0;
+            overflow: hidden;
+            background: #c9efe9;
+            color: var(--ink);
+            font-family: "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        button {
+            font: inherit;
+        }
+
+        .kakao-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 60;
+            width: 100%;
+            height: var(--header-height);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 0 16px;
+            background: linear-gradient(135deg, #fee500 0%, #f9c51b 100%);
+            border-bottom: 2px solid rgba(74, 47, 34, 0.22);
+            box-shadow: 0 5px 18px rgba(0, 0, 0, 0.18);
+            color: #3b1e1e;
+        }
+
+        .header-title {
+            min-width: 0;
+            font-size: clamp(16px, 3vw, 22px);
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .header-btn {
+            min-height: 34px;
+            padding: 6px 12px;
+            border: 2px solid rgba(255, 255, 255, 0.72);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.52);
+            color: #3b1e1e;
+            font-size: clamp(12px, 2.2vw, 14px);
+            font-weight: 900;
+            cursor: pointer;
+        }
+
+        .game {
+            position: relative;
+            width: 100vw;
+            height: calc(100dvh - var(--header-height));
+            margin-top: var(--header-height);
+            overflow: hidden;
+            background-image: url('images/pull-up-bar-bg.webp');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .game-bg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+        }
+
+        .playfield {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            display: grid;
+            grid-template-rows: auto 1fr;
+            justify-items: center;
+            align-content: start;
+            padding: var(--safe-top) clamp(16px, 3vw, 42px) var(--safe-bottom);
+        }
+
+        .progress-orbs {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 5px;
+            min-width: min(25rem, 72vw);
+            margin-bottom: clamp(10px, 1.8dvh, 18px);
+            padding: 8px 12px;
+            border: 3px solid rgba(255, 255, 255, 0.82);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.86);
+            box-shadow: 0 8px 0 rgba(0, 0, 0, 0.08);
+        }
+
+        .progress-orb {
+            width: clamp(16px, 2vw, 24px);
+            aspect-ratio: 1;
+            border: 2px solid rgba(57, 46, 37, 0.34);
+            border-radius: 999px;
+            background: #c9c9c9;
+            box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18);
+        }
+
+        .stage-row {
+            width: min(1120px, 96vw);
+            display: grid;
+            grid-template-columns: minmax(280px, 0.92fr) minmax(420px, 1.08fr);
+            align-items: center;
+            justify-items: center;
+            gap: clamp(22px, 5vw, 82px);
+        }
+
+        .player-zone {
+            display: grid;
+            justify-items: center;
+        }
+
+        .bar-wrap {
+            position: relative;
+            width: min(38vw, calc(var(--art-height) * 431 / 432));
+            max-height: var(--art-height);
+            aspect-ratio: 431 / 432;
+        }
+
+        .bar-img,
+        .player-img {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: auto;
+            height: 100%;
+            max-height: var(--art-height);
+            object-fit: contain;
+            transform: translateX(-50%);
+        }
+
+        .bar-img {
+            filter: drop-shadow(0 18px 18px rgba(0, 0, 0, 0.18));
+        }
+
+        .player-img {
+            display: block;
+            transform-origin: center top;
+        }
+
+        .copy-mark {
+            position: absolute;
+            top: 3%;
+            right: -10%;
+            z-index: 6;
+            width: clamp(84px, 14vw, 132px);
+            height: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.22));
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .copy-mark.visible {
+            opacity: 1;
+            animation: pop-copy 260ms ease-out;
+        }
+
+        @keyframes pop-copy {
+            0% {
+                transform: scale(0.3) rotate(-12deg);
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+            }
+        }
+
+        .question-zone {
+            width: min(560px, 46vw);
+            display: grid;
+            justify-items: center;
+            gap: 14px;
+            align-self: center;
+        }
+
+        .question-title {
+            min-height: 48px;
+            display: grid;
+            place-items: center;
+            padding: 8px 18px;
+            border: 4px dotted rgba(53, 42, 28, 0.78);
+            border-radius: 10px;
+            background: #fff;
+            color: #3b2a20;
+            font-size: clamp(20px, 2.6vw, 30px);
+            font-weight: 900;
+            text-align: center;
+            box-shadow: 0 7px 0 rgba(86, 63, 42, 0.16);
+        }
+
+        .mix-card {
+            width: 100%;
+            min-height: clamp(190px, 31dvh, 280px);
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: clamp(10px, 1.8vw, 18px);
+            padding: clamp(14px, 2vw, 22px);
+            border: 5px solid rgba(255, 255, 255, 0.78);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 18px 32px rgba(0, 0, 0, 0.16);
+        }
+
+        .color-card {
+            display: grid;
+            justify-items: center;
+            gap: 10px;
+        }
+
+        .color-swatch {
+            width: clamp(82px, 12vw, 130px);
+            aspect-ratio: 1;
+            border: 5px solid rgba(50, 39, 29, 0.8);
+            border-radius: 18px;
+            box-shadow: inset 0 -8px 0 rgba(0, 0, 0, 0.16), 0 8px 0 rgba(0, 0, 0, 0.12);
+        }
+
+        .color-name {
+            min-width: 88px;
+            padding: 8px 10px;
+            border: 3px solid rgba(48, 36, 25, 0.66);
+            border-radius: 999px;
+            background: #fff;
+            color: #302319;
+            font-size: clamp(18px, 2.4vw, 26px);
+            font-weight: 900;
+            text-align: center;
+        }
+
+        .mix-plus {
+            color: #33261d;
+            font-size: clamp(42px, 6vw, 72px);
+            font-weight: 900;
+            text-shadow: 0 4px 0 rgba(255, 255, 255, 0.76);
+        }
+
+        .answer-guide {
+            width: 100%;
+            min-height: 42px;
+            display: grid;
+            place-items: center;
+            padding: 6px 16px;
+            border: 4px dotted rgba(53, 42, 28, 0.78);
+            border-radius: 10px;
+            background: #fff;
+            color: #3b2a20;
+            font-size: clamp(18px, 2.1vw, 24px);
+            font-weight: 900;
+            text-align: center;
+            box-shadow: 0 7px 0 rgba(86, 63, 42, 0.16);
+        }
+
+        .answer-row {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: clamp(8px, 1.4vw, 14px);
+        }
+
+        .answer-btn {
+            min-height: clamp(64px, 10dvh, 92px);
+            display: grid;
+            grid-template-columns: auto 1fr;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border: 4px solid rgba(255, 255, 255, 0.9);
+            border-radius: 14px;
+            background: #fff;
+            color: #2f261f;
+            font-size: clamp(17px, 2.2vw, 25px);
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 8px 0 rgba(0, 0, 0, 0.16);
+        }
+
+        .answer-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.16);
+        }
+
+        .answer-dot {
+            width: clamp(36px, 5vw, 58px);
+            aspect-ratio: 1;
+            border: 4px solid rgba(48, 36, 25, 0.72);
+            border-radius: 999px;
+            box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.16);
+        }
+
+        .overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 20;
+            display: grid;
+            place-items: center;
+            padding: 18px;
+            background-image: url('images/pull-up-bar-bg.webp');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .overlay::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        .overlay.hidden,
+        .hidden {
+            display: none !important;
+        }
+
+        .intro-panel,
+        .howto-panel,
+        .result-panel {
+            position: relative;
+            z-index: 1;
+            width: min(660px, 92vw);
+            display: grid;
+            justify-items: center;
+            gap: clamp(12px, 2.4dvh, 22px);
+            text-align: center;
+        }
+
+        .title-img {
+            width: min(560px, 84vw);
+            height: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 12px 0 rgba(0, 0, 0, 0.12));
+        }
+
+        .intro-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .intro-guide-text {
+            flex-basis: 100%;
+            color: #3b1e1e;
+            font-size: clamp(16px, 2.5vw, 22px);
+            font-weight: 900;
+            text-shadow: 0 2px 0 rgba(255, 255, 255, 0.74);
+        }
+
+        .play-button,
+        .howto-button,
+        .result-button {
+            min-width: 150px;
+            min-height: 58px;
+            border: 4px solid rgba(255, 255, 255, 0.88);
+            border-radius: 10px;
+            background: #fee500;
+            color: #3b1e1e;
+            font-size: clamp(22px, 4vw, 36px);
+            font-weight: 900;
+            box-shadow: 0 8px 0 rgba(74, 47, 34, 0.18);
+            cursor: pointer;
+        }
+
+        .howto-button {
+            background: #fff;
+        }
+
+        .howto-modal {
+            z-index: 30;
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(4px);
+        }
+
+        .howto-panel,
+        .result-panel {
+            padding: clamp(18px, 4vw, 30px);
+            border: 4px solid rgba(255, 255, 255, 0.92);
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.94);
+            box-shadow: 0 18px 34px rgba(0, 0, 0, 0.18);
+        }
+
+        .howto-title,
+        .result-title {
+            margin: 0;
+            color: #33261d;
+            font-size: clamp(30px, 7vw, 54px);
+            line-height: 1;
+        }
+
+        .howto-list {
+            margin: 0;
+            padding-left: 1.2em;
+            text-align: left;
+            color: #3c2f24;
+            font-size: clamp(17px, 3vw, 24px);
+            font-weight: 900;
+            line-height: 1.5;
+        }
+
+        .result-score,
+        .result-text {
+            color: #3c2f24;
+            font-size: clamp(18px, 3vw, 26px);
+            font-weight: 900;
+        }
+
+        @media (max-width: 820px) {
+            :root {
+                --header-height: 52px;
+                --safe-top: 24px;
+                --safe-bottom: 170px;
+                --art-height: min(270px, calc(100dvh - var(--header-height) - var(--safe-top) - var(--safe-bottom)));
+            }
+
+            .stage-row {
+                width: 96vw;
+                grid-template-columns: 0.85fr 1.15fr;
+                gap: 10px;
+            }
+
+            .question-zone {
+                width: 54vw;
+            }
+
+            .mix-card {
+                min-height: 180px;
+                gap: 8px;
+                padding: 10px;
+            }
+
+            .answer-btn {
+                min-height: 62px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="kakao-header">
+        <div class="header-title">철봉 색상 섞기</div>
+        <div class="header-buttons">
+            <button class="header-btn" type="button" onclick="restartGameBtn()">다시시작</button>
+            <button class="header-btn" type="button" onclick="exitGame()">학습종료</button>
+        </div>
+    </header>
+
+    <main class="game">
+        <img class="game-bg" src="images/pull-up-bar-bg.webp" alt="" fetchpriority="high" decoding="async">
+        <section class="playfield" aria-label="철봉 색상 섞기">
+            <div class="progress-orbs" id="orbs" aria-label="정답 구슬"></div>
+            <div class="stage-row">
+                <article class="player-zone">
+                    <div class="bar-wrap">
+                        <img class="bar-img" src="images/pull-up-bar.webp" alt="철봉" fetchpriority="high" decoding="async">
+                        <img class="player-img" id="player-img" src="images/1P-01.webp" alt="캐릭터" fetchpriority="high" decoding="async">
+                        <img class="copy-mark" id="copy-mark" src="images/pull-up-bar-copy.webp" alt="성공" decoding="async">
+                    </div>
+                </article>
+
+                <article class="question-zone" aria-label="색상 문제">
+                    <div class="question-title" id="question-title">어떤 색이 될까요?</div>
+                    <div class="mix-card">
+                        <div class="color-card">
+                            <div class="color-swatch" id="left-swatch"></div>
+                            <div class="color-name" id="left-name">빨강</div>
+                        </div>
+                        <div class="mix-plus">+</div>
+                        <div class="color-card">
+                            <div class="color-swatch" id="right-swatch"></div>
+                            <div class="color-name" id="right-name">노랑</div>
+                        </div>
+                    </div>
+                    <div class="answer-guide" id="answer-guide">오른쪽 보기에서 정답 색을 선택하세요.</div>
+                    <div class="answer-row" id="answer-row" aria-label="정답 보기"></div>
+                </article>
+            </div>
+        </section>
+
+        <section class="overlay" id="start-overlay">
+            <div class="intro-panel">
+                <img class="title-img" src="images/pull-up-bar-art.webp" alt="철봉 미술" fetchpriority="high" decoding="async">
+                <div class="intro-actions" id="intro-actions">
+                    <button class="play-button" id="btn-start" type="button">게임시작</button>
+                    <button class="howto-button" id="btn-howto" type="button">게임방법</button>
+                    <div class="intro-guide-text">두 색을 섞으면 어떤 색이 되는지 골라보세요.</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="overlay howto-modal hidden" id="howto-modal">
+            <div class="howto-panel">
+                <h2 class="howto-title">게임방법</h2>
+                <ul class="howto-list">
+                    <li>오른쪽에 나온 두 색을 확인해요.</li>
+                    <li>두 색을 섞었을 때 나오는 색을 아래 보기에서 골라요.</li>
+                    <li>10문제를 모두 맞히면 철봉 성공이에요.</li>
+                </ul>
+                <button class="result-button" id="btn-howto-close" type="button">알겠어요</button>
+            </div>
+        </section>
+
+        <section class="overlay hidden" id="result-overlay">
+            <div class="result-panel">
+                <h2 class="result-title">성공!</h2>
+                <div class="result-score">
+                    <span>턱걸이 <strong id="final-score">0</strong>개 완료</span>
+                </div>
+                <p class="result-text">색상 섞기 10문제를 모두 맞혔어요.</p>
+                <button class="result-button" id="btn-again" type="button">다시하기</button>
+            </div>
+        </section>
+
+        <img src="images/1P-02.webp" alt="" hidden loading="lazy" decoding="async">
+        <img src="images/1P-03.webp" alt="" hidden loading="lazy" decoding="async">
+        <img src="images/1P-04.webp" alt="" hidden loading="lazy" decoding="async">
+        <img src="images/pull-up-bar-copy.webp" alt="" hidden loading="lazy" decoding="async">
+        <img src="images/pull-up-bar-copy-1.webp" alt="" hidden loading="lazy" decoding="async">
+    </main>
+
+    <script>
+        const IMAGE_BASE = 'images/';
+        const TOTAL_ROUNDS = 10;
+        const NEXT_ROUND_MS = 720;
+        const COPY_VISIBLE_MS = 560;
+        const WRONG_HOLD_MS = 900;
+        const SUCCESS_MARK_SRC = `${IMAGE_BASE}pull-up-bar-copy.webp`;
+        const FAILURE_MARK_SRC = `${IMAGE_BASE}pull-up-bar-copy-1.webp`;
+        const SOUND_SOURCES = {
+            bgm: 'ht' + 'tps://cdn.pixabay.com/audio/2022/12/13/audio_dba0111d9c.mp3',
+            click: 'ht' + 'tps://cdn.pixabay.com/audio/2024/11/09/audio_cad57da7be.mp3',
+            loop: 'ht' + 'tps://cdn.pixabay.com/audio/2024/03/08/audio_858ecbed3d.mp3'
+        };
+        const bgmAudio = new Audio();
+        bgmAudio.loop = true;
+        bgmAudio.volume = 0.35;
+        let bgmPlaying = false;
+
+        const clickAudio = new Audio();
+        clickAudio.volume = 0.8;
+
+        const gameLoopAudio = new Audio();
+        gameLoopAudio.loop = true;
+        gameLoopAudio.volume = 0.45;
+        let gameLoopPlaying = false;
+
+        const COLORS = {
+            red: { name: '빨강', hex: '#ef4444' },
+            yellow: { name: '노랑', hex: '#facc15' },
+            blue: { name: '파랑', hex: '#2563eb' },
+            green: { name: '초록', hex: '#22c55e' },
+            orange: { name: '주황', hex: '#f97316' },
+            purple: { name: '보라', hex: '#8b5cf6' },
+            brown: { name: '갈색', hex: '#92400e' },
+            lime: { name: '연두', hex: '#84cc16' },
+            pink: { name: '분홍', hex: '#ec4899' }
+        };
+
+        const QUESTIONS = [
+            { left: 'red', right: 'yellow', answer: 'orange' },
+            { left: 'green', right: 'yellow', answer: 'lime' },
+            { left: 'blue', right: 'yellow', answer: 'green' },
+            { left: 'red', right: 'blue', answer: 'purple' },
+            { left: 'red', right: 'green', answer: 'brown' },
+            { left: 'white', right: 'red', answer: 'pink' },
+            { left: 'yellow', right: 'red', answer: 'orange' },
+            { left: 'yellow', right: 'green', answer: 'lime' },
+            { left: 'blue', right: 'red', answer: 'purple' },
+            { left: 'yellow', right: 'blue', answer: 'green' }
+        ];
+
+        COLORS.white = { name: '흰색', hex: '#ffffff' };
+
+        const OPTION_KEYS = ['orange', 'green', 'purple', 'lime', 'brown', 'pink'];
+
+        const els = {
+            startOverlay: document.getElementById('start-overlay'),
+            resultOverlay: document.getElementById('result-overlay'),
+            howtoModal: document.getElementById('howto-modal'),
+            btnStart: document.getElementById('btn-start'),
+            btnHowto: document.getElementById('btn-howto'),
+            btnHowtoClose: document.getElementById('btn-howto-close'),
+            btnAgain: document.getElementById('btn-again'),
+            playerImg: document.getElementById('player-img'),
+            copyMark: document.getElementById('copy-mark'),
+            questionTitle: document.getElementById('question-title'),
+            answerGuide: document.getElementById('answer-guide'),
+            leftSwatch: document.getElementById('left-swatch'),
+            rightSwatch: document.getElementById('right-swatch'),
+            leftName: document.getElementById('left-name'),
+            rightName: document.getElementById('right-name'),
+            answerRow: document.getElementById('answer-row'),
+            orbs: document.getElementById('orbs'),
+            finalScore: document.getElementById('final-score')
+        };
+
+        const state = {
+            phase: 'intro',
+            score: 0,
+            answers: [],
+            order: [],
+            currentQuestion: null,
+            nextRoundTimer: 0,
+            copyTimer: 0,
+            playerAnimationTimer: 0
+        };
+
+        function padImageNumber(number) {
+            return String(number).padStart(2, '0');
+        }
+
+        function playerSrc(frameNumber) {
+            return `${IMAGE_BASE}1P-${padImageNumber(frameNumber)}.webp`;
+        }
+
+        function clearTimers() {
+            clearTimeout(state.nextRoundTimer);
+            clearTimeout(state.copyTimer);
+            clearTimeout(state.playerAnimationTimer);
+            state.nextRoundTimer = 0;
+            state.copyTimer = 0;
+            state.playerAnimationTimer = 0;
+        }
+
+        function startGame() {
+            startBgm();
+            bgmAudio.volume = 0.1;
+            startGameLoopAudio();
+            clearTimers();
+            hideCopyMark();
+            state.phase = 'playing';
+            state.score = 0;
+            state.answers = [];
+            state.order = shuffledQuestionOrder();
+            els.playerImg.src = playerSrc(1);
+            els.startOverlay.classList.add('hidden');
+            els.resultOverlay.classList.add('hidden');
+            els.howtoModal.classList.add('hidden');
+            renderProgress();
+            startRound();
+        }
+
+        function showIntro() {
+            clearTimers();
+            hideCopyMark();
+            state.phase = 'intro';
+            state.score = 0;
+            state.answers = [];
+            state.order = [];
+            state.currentQuestion = null;
+            els.playerImg.src = playerSrc(1);
+            els.questionTitle.textContent = '어떤 색이 될까요?';
+            els.answerGuide.textContent = '오른쪽 보기에서 정답 색을 선택하세요.';
+            els.resultOverlay.classList.add('hidden');
+            els.howtoModal.classList.add('hidden');
+            els.startOverlay.classList.remove('hidden');
+            renderProgress();
+            renderOptions([]);
+        }
+
+        function shuffledQuestionOrder() {
+            const order = QUESTIONS.map((_, index) => index);
+            for (let i = order.length - 1; i > 0; i -= 1) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [order[i], order[j]] = [order[j], order[i]];
+            }
+            return order;
+        }
+
+        function startRound() {
+            if (state.score >= TOTAL_ROUNDS) {
+                finishGame();
+                return;
+            }
+            state.phase = 'playing';
+            hideCopyMark();
+            const questionIndex = state.order[state.score % state.order.length];
+            state.currentQuestion = QUESTIONS[questionIndex];
+            renderQuestion(state.currentQuestion);
+            renderOptions(makeOptions(state.currentQuestion.answer));
+            els.answerGuide.textContent = '오른쪽 보기에서 정답 색을 선택하세요.';
+        }
+
+        function renderQuestion(question) {
+            const left = COLORS[question.left];
+            const right = COLORS[question.right];
+            els.leftSwatch.style.backgroundColor = left.hex;
+            els.rightSwatch.style.backgroundColor = right.hex;
+            els.leftName.textContent = left.name;
+            els.rightName.textContent = right.name;
+            els.questionTitle.textContent = '두 색을 섞으면?';
+        }
+
+        function makeOptions(answerKey) {
+            const pool = OPTION_KEYS.filter(key => key !== answerKey);
+            for (let i = pool.length - 1; i > 0; i -= 1) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+            const options = [answerKey, ...pool.slice(0, 3)];
+            for (let i = options.length - 1; i > 0; i -= 1) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [options[i], options[j]] = [options[j], options[i]];
+            }
+            return options;
+        }
+
+        function renderOptions(options) {
+            els.answerRow.innerHTML = '';
+            options.forEach(key => {
+                const color = COLORS[key];
+                const button = document.createElement('button');
+                button.className = 'answer-btn';
+                button.type = 'button';
+                button.dataset.answer = key;
+                button.innerHTML = `<span class="answer-dot" style="background:${color.hex}"></span><span>${color.name}</span>`;
+                button.addEventListener('click', () => chooseAnswer(key));
+                els.answerRow.appendChild(button);
+            });
+        }
+
+        function chooseAnswer(key) {
+            if (state.phase !== 'playing' || !state.currentQuestion) return;
+            const expected = state.currentQuestion.answer;
+            if (key !== expected) {
+                handleWrongAnswer();
+                return;
+            }
+            handleCorrectAnswer(expected);
+        }
+
+        function handleCorrectAnswer(answerKey) {
+            state.phase = 'feedback';
+            state.score += 1;
+            state.answers.push(COLORS[answerKey].hex);
+            els.answerGuide.textContent = '정답이에요!';
+            animatePlayerSuccess();
+            showSuccessMark();
+            renderProgress();
+            state.nextRoundTimer = setTimeout(startRound, NEXT_ROUND_MS);
+        }
+
+        function handleWrongAnswer() {
+            state.phase = 'feedback';
+            els.answerGuide.textContent = '틀렸어요. 오른쪽 보기에서 다시 선택하세요.';
+            showFailureMark();
+            animatePlayerWrong();
+            state.nextRoundTimer = setTimeout(() => {
+                state.phase = 'playing';
+                hideCopyMark();
+                els.playerImg.src = playerSrc(1);
+                els.answerGuide.textContent = '오른쪽 보기에서 정답 색을 선택하세요.';
+            }, WRONG_HOLD_MS);
+        }
+
+        function renderProgress() {
+            els.finalScore.textContent = state.score;
+            els.orbs.innerHTML = '';
+            for (let i = 0; i < TOTAL_ROUNDS; i += 1) {
+                const orb = document.createElement('span');
+                orb.className = 'progress-orb';
+                if (state.answers[i]) orb.style.backgroundColor = state.answers[i];
+                els.orbs.appendChild(orb);
+            }
+        }
+
+        function animatePlayerSuccess() {
+            const successFrames = [1, 2, 3, 2, 1];
+            playPlayerFrames(successFrames, 90);
+        }
+
+        function animatePlayerWrong() {
+            clearTimeout(state.playerAnimationTimer);
+            els.playerImg.src = playerSrc(4);
+            state.playerAnimationTimer = setTimeout(() => {
+                els.playerImg.src = playerSrc(1);
+                state.playerAnimationTimer = 0;
+            }, WRONG_HOLD_MS);
+        }
+
+        function playPlayerFrames(frames, frameMs) {
+            let index = 0;
+            clearTimeout(state.playerAnimationTimer);
+            const next = () => {
+                els.playerImg.src = playerSrc(frames[index]);
+                index += 1;
+                if (index < frames.length) {
+                    state.playerAnimationTimer = setTimeout(next, frameMs);
+                } else {
+                    state.playerAnimationTimer = 0;
+                }
+            };
+            next();
+        }
+
+        function showSuccessMark() {
+            els.copyMark.src = SUCCESS_MARK_SRC;
+            els.copyMark.alt = '성공';
+            showCopyMark();
+        }
+
+        function showFailureMark() {
+            els.copyMark.src = FAILURE_MARK_SRC;
+            els.copyMark.alt = '실패';
+            showCopyMark();
+        }
+
+        function showCopyMark() {
+            clearTimeout(state.copyTimer);
+            els.copyMark.classList.add('visible');
+            state.copyTimer = setTimeout(hideCopyMark, COPY_VISIBLE_MS);
+        }
+
+        function hideCopyMark() {
+            clearTimeout(state.copyTimer);
+            state.copyTimer = 0;
+            els.copyMark.classList.remove('visible');
+        }
+
+        function finishGame() {
+            state.phase = 'result';
+            hideCopyMark();
+            bgmAudio.volume = 0.35;
+            stopGameLoopAudio();
+            els.resultOverlay.classList.remove('hidden');
+        }
+
+        function startBgm() {
+            if (bgmPlaying) return;
+            prepareAudio(bgmAudio, SOUND_SOURCES.bgm);
+            bgmAudio.play().then(() => {
+                bgmPlaying = true;
+            }).catch(err => console.log('BGM play blocked:', err));
+        }
+
+        function playClickSound() {
+            prepareAudio(clickAudio, SOUND_SOURCES.click);
+            clickAudio.currentTime = 0;
+            clickAudio.play().catch(err => console.log('Click sound blocked:', err));
+        }
+
+        function startGameLoopAudio() {
+            if (gameLoopPlaying) return;
+            prepareAudio(gameLoopAudio, SOUND_SOURCES.loop);
+            gameLoopAudio.currentTime = 0;
+            gameLoopAudio.play().then(() => {
+                gameLoopPlaying = true;
+            }).catch(err => console.log('Game loop audio blocked:', err));
+        }
+
+        function stopGameLoopAudio() {
+            if (!gameLoopPlaying) return;
+            gameLoopAudio.pause();
+            gameLoopAudio.currentTime = 0;
+            gameLoopPlaying = false;
+        }
+
+        function prepareAudio(audio, src) {
+            if (!audio.src) audio.src = src;
+        }
+
+        function restartGameBtn() {
+            playClickSound();
+            stopGameLoopAudio();
+            bgmAudio.volume = 0.35;
+            showIntro();
+        }
+
+        function exitGame() {
+            playClickSound();
+            stopGameLoopAudio();
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: 'gameExit' }, '*');
+            }
+            history.back();
+        }
+
+        els.btnStart.addEventListener('click', () => {
+            playClickSound();
+            startGame();
+        });
+        els.btnAgain.addEventListener('click', () => {
+            playClickSound();
+            startGame();
+        });
+        els.btnHowto.addEventListener('click', () => {
+            playClickSound();
+            els.howtoModal.classList.remove('hidden');
+        });
+        els.btnHowtoClose.addEventListener('click', () => {
+            playClickSound();
+            els.howtoModal.classList.add('hidden');
+        });
+        els.howtoModal.addEventListener('click', event => {
+            if (event.target === els.howtoModal) els.howtoModal.classList.add('hidden');
+        });
+
+        showIntro();
+    </script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-03" defer></script>
+</body>
+
+</html>

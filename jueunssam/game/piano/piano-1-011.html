@@ -1,0 +1,2595 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>어린음악대 오른손 연주 마스터</title>
+
+    <script> var ref = document.referrer || ""; if (ref.indexOf("jueunssam.com") === -1 && ref.indexOf("funnelmoa.com") === -1) { console.log("로컬 테스트 환경 허용"); } </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest" onerror="console.warn('Lucide icons failed to load');"></script>
+
+    <style>
+        /* 기본 설정 및 박스 사이징 최적화 (건반 잘림 완벽 방지) */
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --app-height: 100vh;
+            --piano-height: 160px;
+            --lyrics-bottom: 174px;
+        }
+
+        body {
+            font-family: 'Jua', sans-serif;
+            background: #fdfbf7;
+            user-select: none;
+            overflow: hidden;
+            height: var(--app-height, 100vh);
+            min-height: 100vh;
+            min-height: 100dvh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+            touch-action: none;
+            color: #4a4a4a;
+            -webkit-touch-callout: none;
+            transition: background 1s ease-in-out;
+        }
+
+        /* --- Header --- */
+        .game-header {
+            background-color: rgba(255, 255, 255, 0.95);
+            border-bottom: 2px solid #e5e5e5;
+            color: #333;
+            width: 100%;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+            z-index: 10001;
+            flex-shrink: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+        }
+
+        /* 가로 모드 강제 오버레이 */
+        #orientation-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #fff9f0;
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+            text-align: center;
+        }
+
+        @media (orientation: portrait) {
+            #orientation-overlay {
+                display: flex;
+            }
+        }
+
+        /* 메인 컨텐츠 영역 */
+        #main-container {
+            padding-top: 60px;
+            height: var(--app-height, 100vh);
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        #game-canvas {
+            flex-grow: 1;
+            width: 100%;
+            display: block;
+            touch-action: none;
+        }
+
+        /* 가사 표시 영역 - 건반 바로 위 고정, 오선보와 절대 겹치지 않음 */
+        #lyrics-display {
+            position: absolute;
+            bottom: var(--lyrics-bottom);
+            /* 건반 바로 위 */
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            z-index: 25;
+            pointer-events: none;
+        }
+
+        .lyric-box {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            padding: 10px 40px;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 3px solid rgba(226, 232, 240, 0.8);
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        #current-lyric-line {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #334155;
+            letter-spacing: 1px;
+        }
+
+        /* 피아노 건반 영역 최적화 (잘림 완벽 방지) */
+        .piano-wrapper {
+            height: var(--piano-height, 160px);
+            min-height: 112px;
+            flex: 0 0 var(--piano-height, 160px);
+            width: 100%;
+            background: #2c2c2c;
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            padding: 6px 4px calc(8px + env(safe-area-inset-bottom, 0px)) 4px;
+            overflow-x: hidden;
+            overflow-y: hidden;
+            box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .keys-container {
+            display: flex;
+            width: 100%;
+            flex: 1 1 auto;
+            min-height: 0;
+            align-items: stretch;
+            gap: clamp(2px, 0.5vw, 6px);
+            /* 작은 화면에서도 일정 간격 유지 */
+        }
+
+        .piano-key {
+            flex: 1;
+            min-width: 0;
+            /* 중요: 플렉스 자식이 화면 밖으로 삐져나가는 것 방지 */
+            border-radius: 0 0 8px 8px;
+            height: 100%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            padding-bottom: clamp(8px, 1.6vh, 15px);
+            background: white;
+            border: 1px solid #ccc;
+            box-shadow: inset 0 -2px 5px rgba(0, 0, 0, 0.1), 0 2px 2px rgba(0, 0, 0, 0.2);
+            transition: all 0.05s;
+        }
+
+        .piano-key.active {
+            transform: scaleY(0.96);
+            transform-origin: top;
+            background: #f1f5f9;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .piano-key.hit-fail {
+            background: #fee2e2 !important;
+        }
+
+        .key-color-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 12px;
+            background: var(--key-color);
+            opacity: 0.85;
+        }
+
+        .key-label {
+            position: absolute;
+            left: 50%;
+            top: 48%;
+            transform: translate(-50%, -50%);
+            color: #0f172a;
+            font-weight: bold;
+            font-size: clamp(0.8rem, 1.9vw, 1.15rem);
+            line-height: 1;
+            z-index: 2;
+            pointer-events: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: clamp(22px, 3.2vw, 32px);
+            height: clamp(18px, 2.8vh, 24px);
+            padding: 0 0.35rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.14);
+            margin-bottom: 0;
+        }
+
+        .key-bottom-labels {
+            display: grid;
+            grid-template-columns: repeat(8, minmax(0, 1fr));
+            gap: clamp(1.5px, 0.4vw, 5px);
+            height: clamp(20px, 3.4vh, 30px);
+            align-items: center;
+            margin-top: 3px;
+            padding-bottom: 1px;
+        }
+
+        .key-bottom-label {
+            text-align: center;
+            font-weight: bold;
+            font-size: clamp(0.76rem, 1.7vw, 0.98rem);
+            letter-spacing: 0.02em;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+        }
+
+        #beam-layer {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 9;
+        }
+
+        .key-press-beam {
+            position: absolute;
+            transform-origin: bottom center;
+            border-radius: 999px;
+            opacity: 0;
+            pointer-events: none;
+            background: linear-gradient(to top,
+                    rgba(255, 255, 255, 0.14) 0%,
+                    var(--beam-color) 14%,
+                    rgba(255, 255, 255, 0.78) 58%,
+                    rgba(255, 255, 255, 0) 100%);
+            filter: blur(0.6px);
+            box-shadow: 0 0 16px rgba(255, 255, 255, 0.3);
+            animation: keyBeamPulse 0.42s cubic-bezier(0.17, 0.76, 0.2, 1) forwards;
+        }
+
+        @keyframes keyBeamPulse {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, 0) scaleY(0.2);
+            }
+
+            35% {
+                opacity: 0.9;
+                transform: translate(-50%, calc(var(--beam-rise, 120px) * -1)) scaleY(1);
+            }
+
+            72% {
+                opacity: 0.45;
+                transform: translate(-50%, calc(var(--beam-rise, 120px) * -0.48)) scaleY(0.72);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(-50%, 0) scaleY(0.2);
+            }
+        }
+
+        #countdown-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 40;
+        }
+
+        #countdown-number {
+            font-size: clamp(4rem, 16vw, 9rem);
+            font-weight: 700;
+            line-height: 1;
+            color: #f8fafc;
+            opacity: 0;
+            text-shadow:
+                0 0 14px rgba(16, 185, 129, 0.4),
+                0 8px 20px rgba(0, 0, 0, 0.28);
+            -webkit-text-stroke: 2px rgba(15, 23, 42, 0.18);
+        }
+
+        .countdown-pop {
+            animation: countdownPop 0.84s cubic-bezier(0.22, 0.8, 0.2, 1) forwards;
+        }
+
+        @keyframes countdownPop {
+            0% {
+                opacity: 0;
+                transform: scale(0.62);
+            }
+
+            20% {
+                opacity: 1;
+                transform: scale(1.08);
+            }
+
+            70% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(1.26);
+            }
+        }
+
+        /* HUD */
+        .hud-panel {
+            position: absolute;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        .hud-item {
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid #e2e8f0;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            padding: 6px 20px;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 100px;
+        }
+
+        .hud-label {
+            font-size: 0.8rem;
+            color: #64748b;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .hud-value {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: #1e293b;
+        }
+
+        /* 피드백 효과 영역 (놓침!, 콤보 등) - 상단 20% 지점으로 이동하여 가리지 않음 */
+        #effect-container {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+            z-index: 30;
+            text-align: center;
+        }
+
+        .effect-text {
+            font-size: 3.5rem;
+            font-weight: bold;
+            text-shadow: 0 4px 0px white, 0 8px 15px rgba(0, 0, 0, 0.15);
+            opacity: 0;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .effect-pop {
+            animation: popEffect 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes popEffect {
+            0% {
+                opacity: 0;
+                transform: scale(0.6) translateY(20px);
+            }
+
+            30% {
+                opacity: 1;
+                transform: scale(1.1) translateY(-10px);
+            }
+
+            80% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(0.8) translateY(-20px);
+            }
+        }
+
+        .text-perfect {
+            color: #10b981;
+        }
+
+        .text-early {
+            color: #f59e0b;
+        }
+
+        .text-late {
+            color: #f59e0b;
+        }
+
+        .text-miss {
+            color: #ef4444;
+        }
+
+        .text-combo {
+            color: #3b82f6;
+            font-size: 2.2rem;
+            margin-top: -5px;
+        }
+
+        /* UI Common */
+        .btn-modern {
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-modern:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-bg {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(6px);
+        }
+
+        /* 버튼 그룹 그리드 */
+        .selection-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            width: 100%;
+            max-width: 45rem;
+            margin-top: 1rem;
+        }
+
+        .option-btn {
+            width: 100%;
+            padding: 1rem 0.5rem;
+            border-radius: 15px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            border: 2px solid #e5e5e5;
+            transition: all 0.2s;
+            background: white;
+            color: #64748b;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .option-btn:hover {
+            border-color: #cbd5e1;
+            background: #f8fafc;
+        }
+
+        .option-btn.selected {
+            background: #10b981;
+            color: white;
+            border-color: #059669;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            transform: scale(1.05);
+            z-index: 10;
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .animate-pop-in {
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .bg-pattern {
+            background-color: #fdfbf7;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M15 25c-3.3 0-6 2.7-6 6s2.7 6 6 6 6-2.7 6-6-2.7-6-6-6zm0 9c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3zm24-24c-3.3 0-6 2.7-6 6s2.7 6 6 6 6-2.7 6-6-2.7-6-6-6zm0 9c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3zM21 28v-9h16v9h2v-11h-20v11h2z' fill='%23e2e8f0' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E");
+        }
+
+        /* 결과 화면 통계 */
+        .stat-box {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .stat-box:last-child {
+            border-bottom: none;
+        }
+
+        /* 곡 테마별 백그라운드 클래스 */
+        .theme-song1 {
+            background: radial-gradient(circle at center, #e0f2fe 0%, #bae6fd 100%);
+        }
+
+        .theme-song2 {
+            background: radial-gradient(circle at center, #fce7f3 0%, #fbcfe8 100%);
+        }
+
+        .theme-song3 {
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+        }
+
+        .theme-song3 .hud-item {
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .theme-song3 .lyric-box {
+            background: rgba(255, 255, 255, 0.85);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="orientation-overlay">
+        <i data-lucide="smartphone" class="w-24 h-24 text-emerald-500 mb-4 animate-spin-slow"></i>
+        <h2 class="text-3xl font-bold">화면을 가로로 눕혀주세요!</h2>
+    </div>
+
+    <!-- Header -->
+    <header class="game-header">
+        <div class="flex items-center gap-3">
+            <div class="bg-emerald-100 p-2 rounded-full">
+                <i data-lucide="music-4" class="w-6 h-6 text-emerald-600"></i>
+            </div>
+            <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">어린음악대 오른손 연주 마스터</h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="toggleMute(); event.stopPropagation();" id="mute-btn"
+                class="text-slate-500 hover:bg-slate-100 p-2 rounded-full transition">
+                <i data-lucide="volume-2" class="w-6 h-6"></i>
+            </button>
+            <button id="btn-exit-intro" onclick="openExitIntroModal(); event.stopPropagation();"
+                class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-4 py-2 rounded-full text-sm font-bold transition flex items-center gap-2">
+                종료하기 <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- 메인 메뉴 (Intro Screen) -->
+    <section id="intro-screen"
+        class="fixed inset-0 z-40 flex flex-col items-center justify-center pt-5 bg-pattern overflow-y-auto">
+        <div class="relative z-10 text-center space-y-3 max-w-5xl px-4 w-full flex flex-col items-center py-10">
+
+            <h1 class="text-5xl md:text-6xl font-bold text-slate-800 mb-2">
+                오른손 연주 마스터
+            </h1>
+
+            <p class="text-lg text-emerald-700 font-bold mb-2">어떤 곡을 연주해 볼까요?</p>
+            <!-- 곡 선택 -->
+            <div class="selection-grid">
+                <button onclick="selectSong('song1')" id="btn-song1" class="option-btn selected"><span>비행기
+                        ✈️</span><span class="text-sm font-normal">3절 연주</span></button>
+                <button onclick="selectSong('song2')" id="btn-song2" class="option-btn"><span>나비야 🦋</span><span
+                        class="text-sm font-normal">4절 연주</span></button>
+                <button onclick="selectSong('song3')" id="btn-song3" class="option-btn"><span>반짝반짝 작은 별 🌟</span><span
+                        class="text-sm font-normal">2절 연주</span></button>
+            </div>
+
+            <p class="text-lg text-emerald-700 font-bold mt-4 mb-2">속도를 선택해주세요</p>
+            <!-- 속도 선택 -->
+            <div class="selection-grid mt-0">
+                <button onclick="selectSpeed('x075')" id="btn-speed-x075" class="option-btn"><span>🐢
+                        0.75x</span></button>
+                <button onclick="selectSpeed('slow')" id="btn-speed-slow" class="option-btn"><span>🚶
+                        0.9x</span></button>
+                <button onclick="selectSpeed('normal')" id="btn-speed-normal" class="option-btn selected"><span>🐰
+                        1.0x</span></button>
+                <button onclick="selectSpeed('fast')" id="btn-speed-fast" class="option-btn"><span>🏃
+                        1.15x</span></button>
+                <button onclick="selectSpeed('faster')" id="btn-speed-faster" class="option-btn"><span>⚡
+                        1.3x</span></button>
+                <button onclick="selectSpeed('turbo')" id="btn-speed-turbo" class="option-btn"><span>🔥
+                        1.5x</span></button>
+            </div>
+
+            <div id="midi-status-intro"
+                class="flex items-center gap-2 px-6 py-3 rounded-full bg-white text-slate-500 font-bold border border-slate-200 mt-6 transition-all cursor-pointer hover:bg-slate-50 shadow-sm"
+                onclick="checkMidiSupport()">
+                <i data-lucide="loader" class="w-5 h-5 animate-spin"></i>
+                <span>피아노 연결 확인 중... (클릭해서 재시도)</span>
+            </div>
+
+            <div class="flex gap-4 mt-6">
+                <button id="btn-start-game" onclick="startGame()"
+                    class="btn-modern bg-emerald-500 text-white px-12 py-4 rounded-full text-2xl font-bold hover:bg-emerald-400 flex items-center gap-3">
+                    <i data-lucide="play" class="w-8 h-8 fill-current"></i> 연주 시작하기
+                </button>
+                <button onclick="toggleModal('modal-help')"
+                    class="btn-modern bg-white text-slate-600 px-8 py-4 rounded-full text-2xl font-bold hover:bg-slate-50 border border-slate-200">
+                    <i data-lucide="help-circle" class="w-8 h-8"></i>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Game Screen -->
+    <section id="game-screen" class="hidden">
+        <div id="main-container">
+            <!-- HUD -->
+            <div class="hud-panel">
+                <div class="hud-item">
+                    <span class="hud-label">점수</span>
+                    <span id="score-display" class="hud-value text-emerald-600">0</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">진행도</span>
+                    <span id="time-display" class="hud-value">0%</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">연속 연주</span>
+                    <span id="combo-display" class="hud-value text-blue-500">0</span>
+                </div>
+                <div class="hud-item" style="pointer-events:auto">
+                    <button onclick="openExitModal(); event.stopPropagation();"
+                        class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 py-1 rounded-full text-sm font-bold transition flex items-center gap-1">
+                        <i data-lucide="square" class="w-4 h-4"></i> 그만하기
+                    </button>
+                </div>
+            </div>
+
+            <!-- Effect Container (상단 분리 배치) -->
+            <div id="effect-container">
+                <div id="effect-main" class="effect-text"></div>
+                <div id="effect-sub" class="effect-text text-combo mt-2"></div>
+            </div>
+
+            <div id="countdown-overlay" class="hidden">
+                <span id="countdown-number">3</span>
+            </div>
+
+            <!-- 가사 표시 영역 (하단 안전 배치) -->
+            <div id="lyrics-display">
+                <div class="lyric-box">
+                    <span id="current-lyric-line">준비하세요...</span>
+                </div>
+            </div>
+
+            <!-- 캔버스 레이어 -->
+            <canvas id="game-canvas"></canvas>
+            <div id="beam-layer"></div>
+
+            <!-- 피아노 건반 -->
+            <div class="piano-wrapper">
+                <div class="keys-container" id="piano-keys">
+                    <!-- JS로 생성됨 -->
+                </div>
+                <div class="key-bottom-labels" aria-hidden="true">
+                    <span class="key-bottom-label" style="color:#ef4444">도</span>
+                    <span class="key-bottom-label" style="color:#f97316">레</span>
+                    <span class="key-bottom-label" style="color:#eab308">미</span>
+                    <span class="key-bottom-label" style="color:#22c55e">파</span>
+                    <span class="key-bottom-label" style="color:#0ea5e9">솔</span>
+                    <span class="key-bottom-label" style="color:#6366f1">라</span>
+                    <span class="key-bottom-label" style="color:#a855f7">시</span>
+                    <span class="key-bottom-label" style="color:#ef4444">도</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 도움말 모달 -->
+    <div id="modal-help" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-10 max-w-2xl w-full relative shadow-2xl border border-slate-100">
+            <button onclick="toggleModal('modal-help', false)"
+                class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 bg-slate-50 rounded-full p-2">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+            <h3 class="text-3xl font-bold mb-8 flex items-center gap-3 text-emerald-600">
+                <i data-lucide="book-open" class="w-8 h-8"></i> 어떻게 연주하나요?
+            </h3>
+            <ul class="space-y-6 text-xl text-slate-700 font-medium">
+                <li class="flex items-start gap-4 bg-slate-50 p-4 rounded-2xl">
+                    <span
+                        class="bg-emerald-100 text-emerald-600 rounded-full w-8 h-8 flex items-center justify-center font-bold shrink-0 mt-1">1</span>
+                    <span>노래의 <strong>정확한 리듬과 박자</strong>에 맞춰 음표가 다가옵니다.</span>
+                </li>
+                <li class="flex items-start gap-4 bg-slate-50 p-4 rounded-2xl">
+                    <span
+                        class="bg-emerald-100 text-emerald-600 rounded-full w-8 h-8 flex items-center justify-center font-bold shrink-0 mt-1">2</span>
+                    <span>음표가 <strong>초록색 선</strong>에 닿을 때 알맞은 피아노 건반을 누르세요. 하단의 가사를 보며 노래를 불러봐요.</span>
+                </li>
+                <li class="flex items-start gap-4 bg-slate-50 p-4 rounded-2xl">
+                    <span
+                        class="bg-emerald-100 text-emerald-600 rounded-full w-8 h-8 flex items-center justify-center font-bold shrink-0 mt-1">3</span>
+                    <span>선택한 속도에 맞춰 <strong>신나는 밴드 사운드</strong>가 자동으로 흘러나와요!</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 게임 중 그만하기 확인 모달 -->
+    <div id="modal-exit" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4">
+        <div
+            class="bg-white rounded-3xl p-8 max-w-sm w-full text-center border border-slate-100 shadow-2xl animate-pop-in">
+            <div class="bg-rose-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i data-lucide="circle-stop" class="w-10 h-10 text-rose-500"></i>
+            </div>
+            <h3 class="text-3xl font-bold text-slate-800 mb-2">그만할까요?</h3>
+            <p class="text-lg text-slate-600 mb-8">연주를 멈추고<br>처음 화면으로 돌아갈까요?</p>
+            <div class="flex gap-4">
+                <button onclick="closeExitModal()"
+                    class="flex-1 bg-slate-100 text-slate-600 py-3 rounded-full font-bold text-lg hover:bg-slate-200 transition">계속
+                    연주</button>
+                <button onclick="confirmExit()"
+                    class="flex-1 bg-rose-500 text-white py-3 rounded-full font-bold text-lg hover:bg-rose-400 transition shadow-md">그만하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 인트로 종료하기 확인 모달 -->
+    <div id="modal-exit-intro" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4">
+        <div
+            class="bg-white rounded-3xl p-8 max-w-sm w-full text-center border border-slate-100 shadow-2xl animate-pop-in">
+            <div class="bg-rose-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i data-lucide="door-open" class="w-10 h-10 text-rose-500"></i>
+            </div>
+            <h3 class="text-3xl font-bold text-slate-800 mb-2">종료할까요?</h3>
+            <p class="text-lg text-slate-600 mb-8">게임을 종료하고<br>이전 페이지로 이동합니다.</p>
+            <div class="flex gap-4">
+                <button onclick="toggleModal('modal-exit-intro', false)"
+                    class="flex-1 bg-slate-100 text-slate-600 py-3 rounded-full font-bold text-lg hover:bg-slate-200 transition">취소</button>
+                <button onclick="confirmExitToBack()"
+                    class="flex-1 bg-rose-500 text-white py-3 rounded-full font-bold text-lg hover:bg-rose-400 transition shadow-md">종료하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 결과 모달 -->
+    <div id="modal-result" class="hidden fixed inset-0 z-[20000] modal-bg flex items-center justify-center p-4">
+        <div id="result-stage-score"
+            class="hidden bg-white rounded-3xl p-8 max-w-2xl w-full text-center relative overflow-hidden border border-slate-100 animate-pop-in shadow-2xl">
+
+            <h2 class="text-4xl font-bold text-slate-800 mb-2">연주 결과 분석</h2>
+            <p id="feedback-message"
+                class="text-xl text-blue-600 font-bold bg-blue-50 py-4 px-6 rounded-2xl mb-6 min-h-[80px] flex items-center justify-center leading-relaxed break-keep">
+                결과를 분석 중입니다...
+            </p>
+
+            <div class="flex flex-col md:flex-row gap-6">
+                <!-- 점수 영역 -->
+                <div
+                    class="flex-1 bg-emerald-50 rounded-2xl p-6 flex flex-col justify-center border border-emerald-100">
+                    <div class="text-slate-500 font-bold mb-2">최종 점수</div>
+                    <div class="text-6xl font-bold text-emerald-600 tracking-tight mb-4" id="final-score">0</div>
+                    <div class="flex justify-center gap-6 mt-2 text-slate-600 font-medium items-center">
+                        <span class="flex flex-col"><span class="text-sm text-slate-400">최대 연속</span><span
+                                id="final-combo" class="text-blue-500 text-2xl font-bold">0</span></span>
+                    </div>
+                </div>
+
+                <!-- 상세 통계 영역 -->
+                <div class="flex-1 bg-slate-50 rounded-2xl p-4 border border-slate-200">
+                    <div class="stat-box">
+                        <span class="text-emerald-500">정확함 (Perfect)</span>
+                        <span id="stat-perfect" class="text-slate-700">0</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="text-amber-500">조금 빠름 (Early)</span>
+                        <span id="stat-early" class="text-slate-700">0</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="text-amber-500">조금 늦음 (Late)</span>
+                        <span id="stat-late" class="text-slate-700">0</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="text-rose-500">잘못 누름 (Wrong)</span>
+                        <span id="stat-wrong" class="text-slate-700">0</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="text-slate-400">놓침 (Miss)</span>
+                        <span id="stat-miss" class="text-slate-700">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-4 mt-8">
+                <button onclick="goHome()"
+                    class="flex-1 bg-slate-100 text-slate-600 py-4 rounded-full font-bold text-xl hover:bg-slate-200 transition">홈으로</button>
+                <button onclick="restartGame()"
+                    class="flex-1 bg-emerald-500 text-white py-4 rounded-full font-bold text-xl hover:bg-emerald-400 transition shadow-md">다시
+                    연주하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 인트로/결과창 전용 오디오 -->
+    <audio id="bgm-intro" loop preload="auto">
+        <source src="https://cdn.pixabay.com/audio/2023/04/18/audio_8e727e467d.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="sfx-result" preload="auto">
+        <source src="https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // ==========================================
+        // Audio Manager
+        // ==========================================
+        const audioEls = {
+            intro: document.getElementById('bgm-intro'),
+            result: document.getElementById('sfx-result')
+        };
+        let isMuted = false;
+        let audioCtx = null;
+        const ACCOMPANIMENT_MIX = 0.3; // 반주 체감 볼륨 상향
+        let bgmBus = null;
+        let drumNoiseBuffer = null;
+        let ttsAudioEl = null;
+        let ttsRequestToken = 0;
+
+        function ensureBgmBus() {
+            if (!audioCtx) return null;
+            if (!bgmBus || bgmBus.context !== audioCtx) {
+                bgmBus = audioCtx.createGain();
+                bgmBus.gain.setValueAtTime(ACCOMPANIMENT_MIX, audioCtx.currentTime);
+                bgmBus.connect(audioCtx.destination);
+            }
+            return bgmBus;
+        }
+
+        function playBgm(type) {
+            if (isMuted) return;
+            if (audioEls.intro) { audioEls.intro.pause(); audioEls.intro.currentTime = 0; }
+
+            try {
+                if (type === 'intro') { audioEls.intro.volume = 0.4; audioEls.intro.play().catch(e => { }); }
+                else if (type === 'result') { audioEls.result.volume = 0.6; audioEls.result.currentTime = 0; audioEls.result.play().catch(e => { }); }
+            } catch (e) { }
+        }
+
+        function stopAllBgm() {
+            Object.values(audioEls).forEach(el => { if (el) el.pause(); });
+        }
+
+        function ensureTtsAudioEl() {
+            if (ttsAudioEl) return ttsAudioEl;
+            try {
+                const el = new Audio();
+                el.preload = 'none';
+                el.setAttribute('playsinline', '');
+                el.setAttribute('webkit-playsinline', '');
+                ttsAudioEl = el;
+                return ttsAudioEl;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function stopAllTts() {
+            ttsRequestToken += 1;
+            if (ttsAudioEl) {
+                ttsAudioEl.pause();
+                ttsAudioEl.removeAttribute('src');
+                ttsAudioEl.load();
+            }
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+        }
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            const btn = document.getElementById('mute-btn');
+            if (isMuted) {
+                stopAllBgm();
+                stopAllTts();
+                if (bgmBus && audioCtx) bgmBus.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+                btn.innerHTML = '<i data-lucide="volume-x" class="w-6 h-6"></i>';
+            } else {
+                if (gameState !== 'playing') playBgm('intro');
+                if (bgmBus && audioCtx) bgmBus.gain.setValueAtTime(ACCOMPANIMENT_MIX, audioCtx.currentTime);
+                btn.innerHTML = '<i data-lucide="volume-2" class="w-6 h-6"></i>';
+            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function resumeAudioContext() {
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            if (!isMuted && (gameState === 'intro') && audioEls.intro.paused) playBgm('intro');
+        }
+
+        function initAudio() {
+            if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { } }
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            ensureBgmBus();
+        }
+
+        // ==========================================
+        // Game Settings & Melody Data with Lyrics
+        // ==========================================
+        const NOTES = [
+            { note: 60, name: '도', color: '#ef4444' },
+            { note: 62, name: '레', color: '#f97316' },
+            { note: 64, name: '미', color: '#eab308' },
+            { note: 65, name: '파', color: '#22c55e' },
+            { note: 67, name: '솔', color: '#0ea5e9' },
+            { note: 69, name: '라', color: '#6366f1' },
+            { note: 71, name: '시', color: '#a855f7' },
+            { note: 72, name: '도', color: '#ef4444' } // 8개의 건반
+        ];
+
+        // 3절, 4절까지 꽉 채운 멜로디 및 가사, 화음 매핑
+        const SONGS = {
+            song1: {
+                title: "비행기",
+                bpm: 110,
+                melody: [
+                    // 1절
+                    { n: 64, b: 1, l: "떳다떳다 비행기" }, { n: 62, b: 1, l: "떳다떳다 비행기" }, { n: 60, b: 1, l: "떳다떳다 비행기" }, { n: 62, b: 1, l: "떳다떳다 비행기" }, { n: 64, b: 1, l: "떳다떳다 비행기" }, { n: 64, b: 1, l: "떳다떳다 비행기" }, { n: 64, b: 2, l: "떳다떳다 비행기" },
+                    { n: 62, b: 1, l: "날아라 날아라" }, { n: 62, b: 1, l: "날아라 날아라" }, { n: 62, b: 2, l: "날아라 날아라" }, { n: 64, b: 1, l: "날아라 날아라" }, { n: 67, b: 1, l: "날아라 날아라" }, { n: 67, b: 2, l: "날아라 날아라" },
+                    { n: 64, b: 1, l: "높이 높이 날아라" }, { n: 62, b: 1, l: "높이 높이 날아라" }, { n: 60, b: 1, l: "높이 높이 날아라" }, { n: 62, b: 1, l: "높이 높이 날아라" }, { n: 64, b: 1, l: "높이 높이 날아라" }, { n: 64, b: 1, l: "높이 높이 날아라" }, { n: 64, b: 2, l: "높이 높이 날아라" },
+                    { n: 62, b: 1, l: "우리 비행기" }, { n: 62, b: 1, l: "우리 비행기" }, { n: 64, b: 1, l: "우리 비행기" }, { n: 62, b: 1, l: "우리 비행기" }, { n: 60, b: 4, l: "우리 비행기" },
+                    // 2절
+                    { n: 64, b: 1, l: "내가만든 비행기" }, { n: 62, b: 1, l: "내가만든 비행기" }, { n: 60, b: 1, l: "내가만든 비행기" }, { n: 62, b: 1, l: "내가만든 비행기" }, { n: 64, b: 1, l: "내가만든 비행기" }, { n: 64, b: 1, l: "내가만든 비행기" }, { n: 64, b: 2, l: "내가만든 비행기" },
+                    { n: 62, b: 1, l: "날아라 날아라" }, { n: 62, b: 1, l: "날아라 날아라" }, { n: 62, b: 2, l: "날아라 날아라" }, { n: 64, b: 1, l: "날아라 날아라" }, { n: 67, b: 1, l: "날아라 날아라" }, { n: 67, b: 2, l: "날아라 날아라" },
+                    { n: 64, b: 1, l: "멀리멀리 날아라" }, { n: 62, b: 1, l: "멀리멀리 날아라" }, { n: 60, b: 1, l: "멀리멀리 날아라" }, { n: 62, b: 1, l: "멀리멀리 날아라" }, { n: 64, b: 1, l: "멀리멀리 날아라" }, { n: 64, b: 1, l: "멀리멀리 날아라" }, { n: 64, b: 2, l: "멀리멀리 날아라" },
+                    { n: 62, b: 1, l: "우리 비행기" }, { n: 62, b: 1, l: "우리 비행기" }, { n: 64, b: 1, l: "우리 비행기" }, { n: 62, b: 1, l: "우리 비행기" }, { n: 60, b: 4, l: "우리 비행기" },
+                    // 3절
+                    { n: 64, b: 1, l: "떳다떳다 비행기" }, { n: 62, b: 1, l: "떳다떳다 비행기" }, { n: 60, b: 1, l: "떳다떳다 비행기" }, { n: 62, b: 1, l: "떳다떳다 비행기" }, { n: 64, b: 1, l: "떳다떳다 비행기" }, { n: 64, b: 1, l: "떳다떳다 비행기" }, { n: 64, b: 2, l: "떳다떳다 비행기" },
+                    { n: 62, b: 1, l: "날아라 날아라" }, { n: 62, b: 1, l: "날아라 날아라" }, { n: 62, b: 2, l: "날아라 날아라" }, { n: 64, b: 1, l: "날아라 날아라" }, { n: 67, b: 1, l: "날아라 날아라" }, { n: 67, b: 2, l: "날아라 날아라" },
+                    { n: 64, b: 1, l: "높이높이 날아라" }, { n: 62, b: 1, l: "높이높이 날아라" }, { n: 60, b: 1, l: "높이높이 날아라" }, { n: 62, b: 1, l: "높이높이 날아라" }, { n: 64, b: 1, l: "높이높이 날아라" }, { n: 64, b: 1, l: "높이높이 날아라" }, { n: 64, b: 2, l: "높이높이 날아라" },
+                    { n: 62, b: 1, l: "우리 비행기" }, { n: 62, b: 1, l: "우리 비행기" }, { n: 64, b: 1, l: "우리 비행기" }, { n: 62, b: 1, l: "우리 비행기" }, { n: 60, b: 4, l: "우리 비행기" }
+                ],
+                // 1절 당 32박자 화음 패턴 (C코드, G코드)
+                chords: Array(3).fill("C,C,C,C,C,C,C,C,G,G,G,G,C,C,C,C,C,C,C,C,C,C,C,C,G,G,G,G,C,C,C,C".split(',')).flat()
+            },
+            song2: {
+                title: "나비야",
+                bpm: 120,
+                melody: [
+                    // 1절
+                    { n: 67, b: 1, l: "나비야 나비야" }, { n: 64, b: 1, l: "나비야 나비야" }, { n: 64, b: 2, l: "나비야 나비야" }, { n: 65, b: 1, l: "나비야 나비야" }, { n: 62, b: 1, l: "나비야 나비야" }, { n: 62, b: 2, l: "나비야 나비야" },
+                    { n: 60, b: 1, l: "이리 날아 오너라" }, { n: 62, b: 1, l: "이리 날아 오너라" }, { n: 64, b: 1, l: "이리 날아 오너라" }, { n: 65, b: 1, l: "이리 날아 오너라" }, { n: 67, b: 1, l: "이리 날아 오너라" }, { n: 67, b: 1, l: "이리 날아 오너라" }, { n: 67, b: 2, l: "이리 날아 오너라" },
+                    { n: 67, b: 1, l: "노랑나비 흰 나비" }, { n: 64, b: 1, l: "노랑나비 흰 나비" }, { n: 64, b: 2, l: "노랑나비 흰 나비" }, { n: 65, b: 1, l: "노랑나비 흰 나비" }, { n: 62, b: 1, l: "노랑나비 흰 나비" }, { n: 62, b: 2, l: "노랑나비 흰 나비" },
+                    { n: 60, b: 1, l: "춤을 추며 오너라" }, { n: 64, b: 1, l: "춤을 추며 오너라" }, { n: 67, b: 1, l: "춤을 추며 오너라" }, { n: 67, b: 1, l: "춤을 추며 오너라" }, { n: 64, b: 1, l: "춤을 추며 오너라" }, { n: 64, b: 1, l: "춤을 추며 오너라" }, { n: 64, b: 2, l: "춤을 추며 오너라" },
+                    // 2절
+                    { n: 62, b: 1, l: "봄 바람에 꽃 잎도" }, { n: 62, b: 1, l: "봄 바람에 꽃 잎도" }, { n: 62, b: 1, l: "봄 바람에 꽃 잎도" }, { n: 62, b: 1, l: "봄 바람에 꽃 잎도" }, { n: 62, b: 1, l: "봄 바람에 꽃 잎도" }, { n: 64, b: 1, l: "봄 바람에 꽃 잎도" }, { n: 65, b: 2, l: "봄 바람에 꽃 잎도" },
+                    { n: 64, b: 1, l: "방긋 방긋 웃으며" }, { n: 64, b: 1, l: "방긋 방긋 웃으며" }, { n: 64, b: 1, l: "방긋 방긋 웃으며" }, { n: 64, b: 1, l: "방긋 방긋 웃으며" }, { n: 64, b: 1, l: "방긋 방긋 웃으며" }, { n: 65, b: 1, l: "방긋 방긋 웃으며" }, { n: 67, b: 2, l: "방긋 방긋 웃으며" },
+                    { n: 67, b: 1, l: "참새도 짹짹짹" }, { n: 64, b: 1, l: "참새도 짹짹짹" }, { n: 64, b: 2, l: "참새도 짹짹짹" }, { n: 65, b: 1, l: "참새도 짹짹짹" }, { n: 62, b: 1, l: "참새도 짹짹짹" }, { n: 62, b: 2, l: "참새도 짹짹짹" },
+                    { n: 60, b: 1, l: "노래 하며 춤춘다" }, { n: 64, b: 1, l: "노래 하며 춤춘다" }, { n: 67, b: 1, l: "노래 하며 춤춘다" }, { n: 67, b: 1, l: "노래 하며 춤춘다" }, { n: 64, b: 1, l: "노래 하며 춤춘다" }, { n: 64, b: 1, l: "노래 하며 춤춘다" }, { n: 64, b: 2, l: "노래 하며 춤춘다" },
+                    // 3절 (1절 반복)
+                    { n: 67, b: 1, l: "나비야 나비야" }, { n: 64, b: 1, l: "나비야 나비야" }, { n: 64, b: 2, l: "나비야 나비야" }, { n: 65, b: 1, l: "나비야 나비야" }, { n: 62, b: 1, l: "나비야 나비야" }, { n: 62, b: 2, l: "나비야 나비야" },
+                    { n: 60, b: 1, l: "이리 날아 오너라" }, { n: 62, b: 1, l: "이리 날아 오너라" }, { n: 64, b: 1, l: "이리 날아 오너라" }, { n: 65, b: 1, l: "이리 날아 오너라" }, { n: 67, b: 1, l: "이리 날아 오너라" }, { n: 67, b: 1, l: "이리 날아 오너라" }, { n: 67, b: 2, l: "이리 날아 오너라" },
+                    { n: 67, b: 1, l: "노랑나비 흰 나비" }, { n: 64, b: 1, l: "노랑나비 흰 나비" }, { n: 64, b: 2, l: "노랑나비 흰 나비" }, { n: 65, b: 1, l: "노랑나비 흰 나비" }, { n: 62, b: 1, l: "노랑나비 흰 나비" }, { n: 62, b: 2, l: "노랑나비 흰 나비" },
+                    { n: 60, b: 1, l: "춤을 추며 오너라" }, { n: 64, b: 1, l: "춤을 추며 오너라" }, { n: 67, b: 1, l: "춤을 추며 오너라" }, { n: 67, b: 1, l: "춤을 추며 오너라" }, { n: 64, b: 1, l: "춤을 추며 오너라" }, { n: 64, b: 1, l: "춤을 추며 오너라" }, { n: 64, b: 2, l: "춤을 추며 오너라" },
+                    // 4절 (2절 반복)
+                    { n: 62, b: 1, l: "봄바람에 꽃잎도" }, { n: 62, b: 1, l: "봄바람에 꽃잎도" }, { n: 62, b: 1, l: "봄바람에 꽃잎도" }, { n: 62, b: 1, l: "봄바람에 꽃잎도" }, { n: 62, b: 1, l: "봄바람에 꽃잎도" }, { n: 64, b: 1, l: "봄바람에 꽃잎도" }, { n: 65, b: 2, l: "봄바람에 꽃잎도" },
+                    { n: 64, b: 1, l: "방긋 방긋 웃으며" }, { n: 64, b: 1, l: "방긋 방긋 웃으며" }, { n: 64, b: 1, l: "방긋 방긋 웃으며" }, { n: 64, b: 1, l: "방긋 방긋 웃으며" }, { n: 64, b: 1, l: "방긋 방긋 웃으며" }, { n: 65, b: 1, l: "방긋 방긋 웃으며" }, { n: 67, b: 2, l: "방긋 방긋 웃으며" },
+                    { n: 67, b: 1, l: "참새도 짹짹짹" }, { n: 64, b: 1, l: "참새도 짹짹짹" }, { n: 64, b: 2, l: "참새도 짹짹짹" }, { n: 65, b: 1, l: "참새도 짹짹짹" }, { n: 62, b: 1, l: "참새도 짹짹짹" }, { n: 62, b: 2, l: "참새도 짹짹짹" },
+                    { n: 60, b: 1, l: "노래 하며 춤춘다" }, { n: 64, b: 1, l: "노래 하며 춤춘다" }, { n: 67, b: 1, l: "노래 하며 춤춘다" }, { n: 67, b: 1, l: "노래 하며 춤춘다" }, { n: 64, b: 1, l: "노래 하며 춤춘다" }, { n: 64, b: 1, l: "노래 하며 춤춘다" }, { n: 64, b: 2, l: "노래 하며 춤춘다" }
+                ],
+                // 1절 당 64박자 화음 패턴
+                chords: [
+                    ..."C,C,C,C,G,G,G,G,C,C,C,C,C,C,C,C,C,C,C,C,G,G,G,G,C,C,C,C,C,C,C,C,G,G,G,G,G,G,G,G,C,C,C,C,C,C,C,C,C,C,C,C,G,G,G,G,C,C,C,C,C,C,C,C".split(','), // 1절 (64박)
+                    ..."C,C,C,C,G,G,G,G,C,C,C,C,C,C,C,C,C,C,C,C,G,G,G,G,C,C,C,C,C,C,C,C,G,G,G,G,G,G,G,G,C,C,C,C,C,C,C,C,C,C,C,C,G,G,G,G,C,C,C,C,C,C,C,C".split(','), // 2절
+                    ..."C,C,C,C,G,G,G,G,C,C,C,C,C,C,C,C,C,C,C,C,G,G,G,G,C,C,C,C,C,C,C,C,G,G,G,G,G,G,G,G,C,C,C,C,C,C,C,C,C,C,C,C,G,G,G,G,C,C,C,C,C,C,C,C".split(','), // 3절
+                    ..."C,C,C,C,G,G,G,G,C,C,C,C,C,C,C,C,C,C,C,C,G,G,G,G,C,C,C,C,C,C,C,C,G,G,G,G,G,G,G,G,C,C,C,C,C,C,C,C,C,C,C,C,G,G,G,G,C,C,C,C,C,C,C,C".split(',')  // 4절
+                ]
+            },
+            song3: {
+                title: "반짝반짝 작은 별",
+                bpm: 100,
+                melody: [
+                    // 1절
+                    { n: 60, b: 1, l: "반짝반짝 작은 별" }, { n: 60, b: 1, l: "반짝반짝 작은 별" }, { n: 67, b: 1, l: "반짝반짝 작은 별" }, { n: 67, b: 1, l: "반짝반짝 작은 별" }, { n: 69, b: 1, l: "반짝반짝 작은 별" }, { n: 69, b: 1, l: "반짝반짝 작은 별" }, { n: 67, b: 2, l: "반짝반짝 작은 별" },
+                    { n: 65, b: 1, l: "아름답게 빛나네" }, { n: 65, b: 1, l: "아름답게 빛나네" }, { n: 64, b: 1, l: "아름답게 빛나네" }, { n: 64, b: 1, l: "아름답게 빛나네" }, { n: 62, b: 1, l: "아름답게 빛나네" }, { n: 62, b: 1, l: "아름답게 빛나네" }, { n: 60, b: 2, l: "아름답게 빛나네" },
+                    { n: 67, b: 1, l: "동쪽 하늘에서도" }, { n: 67, b: 1, l: "동쪽 하늘에서도" }, { n: 65, b: 1, l: "동쪽 하늘에서도" }, { n: 65, b: 1, l: "동쪽 하늘에서도" }, { n: 64, b: 1, l: "동쪽 하늘에서도" }, { n: 64, b: 1, l: "동쪽 하늘에서도" }, { n: 62, b: 2, l: "동쪽 하늘에서도" },
+                    { n: 67, b: 1, l: "서쪽 하늘에서도" }, { n: 67, b: 1, l: "서쪽 하늘에서도" }, { n: 65, b: 1, l: "서쪽 하늘에서도" }, { n: 65, b: 1, l: "서쪽 하늘에서도" }, { n: 64, b: 1, l: "서쪽 하늘에서도" }, { n: 64, b: 1, l: "서쪽 하늘에서도" }, { n: 62, b: 2, l: "서쪽 하늘에서도" },
+                    { n: 60, b: 1, l: "반짝반짝 작은 별" }, { n: 60, b: 1, l: "반짝반짝 작은 별" }, { n: 67, b: 1, l: "반짝반짝 작은 별" }, { n: 67, b: 1, l: "반짝반짝 작은 별" }, { n: 69, b: 1, l: "반짝반짝 작은 별" }, { n: 69, b: 1, l: "반짝반짝 작은 별" }, { n: 67, b: 2, l: "반짝반짝 작은 별" },
+                    { n: 65, b: 1, l: "아름답게 빛나네" }, { n: 65, b: 1, l: "아름답게 빛나네" }, { n: 64, b: 1, l: "아름답게 빛나네" }, { n: 64, b: 1, l: "아름답게 빛나네" }, { n: 62, b: 1, l: "아름답게 빛나네" }, { n: 62, b: 1, l: "아름답게 빛나네" }, { n: 60, b: 2, l: "아름답게 빛나네" },
+                    // 2절
+                    { n: 60, b: 1, l: "반짝반짝 작은 별" }, { n: 60, b: 1, l: "반짝반짝 작은 별" }, { n: 67, b: 1, l: "반짝반짝 작은 별" }, { n: 67, b: 1, l: "반짝반짝 작은 별" }, { n: 69, b: 1, l: "반짝반짝 작은 별" }, { n: 69, b: 1, l: "반짝반짝 작은 별" }, { n: 67, b: 2, l: "반짝반짝 작은 별" },
+                    { n: 65, b: 1, l: "아름답게 빛나네" }, { n: 65, b: 1, l: "아름답게 빛나네" }, { n: 64, b: 1, l: "아름답게 빛나네" }, { n: 64, b: 1, l: "아름답게 빛나네" }, { n: 62, b: 1, l: "아름답게 빛나네" }, { n: 62, b: 1, l: "아름답게 빛나네" }, { n: 60, b: 2, l: "아름답게 빛나네" },
+                    { n: 67, b: 1, l: "동쪽 하늘에서도" }, { n: 67, b: 1, l: "동쪽 하늘에서도" }, { n: 65, b: 1, l: "동쪽 하늘에서도" }, { n: 65, b: 1, l: "동쪽 하늘에서도" }, { n: 64, b: 1, l: "동쪽 하늘에서도" }, { n: 64, b: 1, l: "동쪽 하늘에서도" }, { n: 62, b: 2, l: "동쪽 하늘에서도" },
+                    { n: 67, b: 1, l: "서쪽 하늘에서도" }, { n: 67, b: 1, l: "서쪽 하늘에서도" }, { n: 65, b: 1, l: "서쪽 하늘에서도" }, { n: 65, b: 1, l: "서쪽 하늘에서도" }, { n: 64, b: 1, l: "서쪽 하늘에서도" }, { n: 64, b: 1, l: "서쪽 하늘에서도" }, { n: 62, b: 2, l: "서쪽 하늘에서도" },
+                    { n: 60, b: 1, l: "반짝반짝 작은 별" }, { n: 60, b: 1, l: "반짝반짝 작은 별" }, { n: 67, b: 1, l: "반짝반짝 작은 별" }, { n: 67, b: 1, l: "반짝반짝 작은 별" }, { n: 69, b: 1, l: "반짝반짝 작은 별" }, { n: 69, b: 1, l: "반짝반짝 작은 별" }, { n: 67, b: 2, l: "반짝반짝 작은 별" },
+                    { n: 65, b: 1, l: "아름답게 빛나네" }, { n: 65, b: 1, l: "아름답게 빛나네" }, { n: 64, b: 1, l: "아름답게 빛나네" }, { n: 64, b: 1, l: "아름답게 빛나네" }, { n: 62, b: 1, l: "아름답게 빛나네" }, { n: 62, b: 1, l: "아름답게 빛나네" }, { n: 60, b: 2, l: "아름답게 빛나네" }
+                ],
+                // 1절 당 48박자 화음 패턴
+                chords: Array(2).fill("C,C,C,C,F,F,C,C,F,F,C,C,G,G,C,C,C,C,F,F,C,C,G,G,C,C,F,F,C,C,G,G,C,C,C,C,F,F,C,C,F,F,C,C,G,G,C,C".split(',')).flat()
+            }
+        };
+
+        const SPEED_OPTIONS = {
+            x075: 0.75,
+            slow: 0.9,
+            normal: 1.0,
+            fast: 1.15,
+            faster: 1.3,
+            turbo: 1.5
+        };
+
+        function expandChordBars(barChords) {
+            const beats = [];
+            barChords.forEach(chord => {
+                for (let i = 0; i < 4; i++) beats.push(chord);
+            });
+            return beats;
+        }
+
+        // 곡별 실제 진행을 반영한 반주 시그니처
+        const SONG_SIGNATURES = {
+            song1: {
+                chordsByBeat: expandChordBars(['C', 'C', 'G7', 'C', 'C', 'C', 'G7', 'C']),
+                motif: [
+                    // [1절] E-D-C-D | E-E-E-rest | D-D-D-rest | E-G-G-rest
+                    64, 62, 60, 62, 64, 64, 64, null, 62, 62, 62, null, 64, 67, 67, null,
+                    // [2절] E-D-C-D | E-E-E-rest | D-D-E-D | C-rest-rest-rest
+                    64, 62, 60, 62, 64, 64, 64, null, 62, 62, 64, 62, 60, null, null, null
+                ],
+                bassPattern: ['root', 'fifth', 'root', 'fifth'],
+                drumStyle: 'airplane',
+                leadTone: 'xylo'
+            },
+            song2: {
+                chordsByBeat: expandChordBars(['C', 'G7', 'C', 'C', 'C', 'G7', 'C', 'C', 'C', 'F', 'C', 'G7', 'C', 'G7', 'C', 'C']),
+                motif: [
+                    // 도입부
+                    67, 64, 64, null, 65, 62, 62, null, 60, 62, 64, 65, 67, 67, 67, null,
+                    // 연결부
+                    67, 64, 64, 64, 65, 62, 62, 62, 60, 64, 67, 67, 64, 64, 64, null,
+                    // 후렴
+                    67, 67, 67, 67, 69, 69, 69, null, 67, 67, 67, 67, 65, 65, 65, null,
+                    // 종결부
+                    67, 64, 64, null, 65, 62, 62, null, 60, 64, 67, 67, 60, 60, 60, null
+                ],
+                bassPattern: ['root', 'fifth', 'root', 'fifth'],
+                drumStyle: 'butterfly',
+                leadTone: 'xylo'
+            },
+            song3: {
+                chordsByBeat: expandChordBars(['C', 'F', 'C', 'F', 'C', 'G7', 'C', 'C', 'G7', 'C', 'G7', 'C', 'F', 'C', 'G7', 'C']),
+                motif: [
+                    // A
+                    60, 60, 67, 67, 69, 69, 67, null, 65, 65, 64, 64, 62, 62, 60, null,
+                    // B
+                    67, 67, 65, 65, 64, 64, 62, null, 67, 67, 65, 65, 64, 64, 62, null,
+                    // A'
+                    60, 60, 67, 67, 69, 69, 67, null, 65, 65, 64, 64, 62, 62, 60, null,
+                    // 마무리
+                    60, 60, 67, 67, 69, 69, 67, null, 65, 65, 64, 64, 62, 62, 60, null
+                ],
+                bassPattern: ['root', 'fifth', 'root', 'fifth'],
+                drumStyle: 'twinkle',
+                leadTone: 'bell'
+            }
+        };
+
+        const CHORD_LIBRARY = {
+            C: { tones: [60, 64, 67], bassRoot: 36, bassFifth: 43, passing: 40 },
+            F: { tones: [65, 69, 72], bassRoot: 41, bassFifth: 48, passing: 45 },
+            G7: { tones: [67, 71, 74, 77], bassRoot: 43, bassFifth: 50, passing: 41 }
+        };
+
+        function normalizeChordName(name) {
+            if (!name) return 'C';
+            return name === 'G' ? 'G7' : name;
+        }
+
+        function buildLeadBeatMap(melody) {
+            const beatMap = [];
+            (melody || []).forEach((item) => {
+                const beats = Math.max(1, Math.floor(item.b || 1));
+                beatMap.push(item.n);
+                for (let i = 1; i < beats; i++) beatMap.push(null);
+            });
+            return beatMap;
+        }
+
+        const SONG_LEAD_BEAT_MAPS = Object.fromEntries(
+            Object.entries(SONGS).map(([songId, song]) => [songId, buildLeadBeatMap(song.melody)])
+        );
+
+        const FEEDBACK_BANK = {
+            perfect: [
+                "정말 대단해요! 완벽한 연주입니다.",
+                "선생님도 깜짝 놀랐어요! 백점 만점이에요.",
+                "피아니스트가 연주하는 줄 알았어요! 최고예요.",
+                "리듬감이 정말 뛰어나네요! 완벽 그 자체입니다.",
+                "우와, 정말 멋진 연주였어요! 박수 짝짝짝!",
+                "음표들이 춤을 추는 것 같아요. 완벽했어요!",
+                "단 하나의 실수도 없는 멋진 연주! 훌륭해요."
+            ],
+            early: [
+                "조금 급하게 치는 경향이 있네요. 반주를 들으며 박자를 맞춰보세요.",
+                "손가락이 조금 빨랐어요! 천천히 여유를 가져볼까요?",
+                "음표가 판정선에 닿을 때까지 조금만 더 기다려주세요.",
+                "음악은 기다림도 중요해요. 반주 박자에 귀기울여봐요."
+            ],
+            late: [
+                "조금 늦게 치고 있어요. 음표가 다가오는 속도에 집중해 볼까요?",
+                "앗, 음표가 지나가버렸네요! 조금 더 빨리 눌러주세요.",
+                "음표가 판정선에 올 때 쏙! 하고 눌러주세요.",
+                "조금 늦었네요. 마음속으로 하나, 둘, 셋, 넷 세어보세요."
+            ],
+            wrong: [
+                "음표의 위치와 건반을 헷갈린 것 같아요. 천천히 다시 확인해봐요.",
+                "앗, 다른 건반을 눌렀네요! 위치를 다시 볼까요?",
+                "오선보의 줄과 칸을 잘 보고 맞는 건반을 찾아보세요.",
+                "처음엔 누구나 다 틀려요. 포기하지 말고 다시 도전해봐요!"
+            ],
+            miss: [
+                "끝까지 포기하지 말고 다가오는 음표를 눌러보세요. 할 수 있어요!",
+                "음표를 그냥 보내주면 안 돼요! 끝까지 집중해서 연주해봐요.",
+                "놓친 음표들이 아쉬워하고 있어요. 다음엔 꼭 잡아주세요!",
+                "연주는 끝까지 해내는 게 중요해요. 다음번엔 완주해봐요!"
+            ],
+            good: [
+                "수고했어요! 노래에 맞춰 건반을 누르는 감각이 참 좋아요.",
+                "점점 발전하고 있네요! 조금만 더 연습하면 멋질 거예요.",
+                "오늘도 열심히 연습했군요. 참 잘했어요!",
+                "잘했어요! 반복해서 연습하면 금방 피아니스트가 될 거예요."
+            ]
+        };
+
+        let gameState = 'intro';
+        let pausedReturnState = 'playing';
+        let selectedSongId = 'song1';
+        let selectedSpeed = 'normal';
+        let midiAccess = null;
+        let isMidiConnected = false;
+        let hasIntroTtsPlayed = false;
+        let isIntroTtsPlaying = false;
+        let hasAutoMidiTried = false;
+
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+
+        let stats = { perfect: 0, early: 0, late: 0, wrong: 0, miss: 0 };
+        let totalNotes = 0;
+
+        let particles = [];
+        let activeNotes = [];
+        let bgEntities = [];
+        let animationFrameId;
+        let ctx = null;
+        let countdownTimers = [];
+
+        // 동기화 & 반주 엔진 변수
+        let musicStartTime = 0;
+        let lastScheduledBeat = -5;
+        let pauseTime = 0;
+
+        const TRAVEL_SPEED = 200; // 1초당 200px 이동
+        const START_DELAY_BEATS = 3; // 3,2,1 카운트 후 곡 시작
+        const MELODY_ENTRY_BEATS = START_DELAY_BEATS + 2; // 시작 직후 첫 음표를 더 오른쪽에서 진입
+
+        let lineSpacing = 30;
+        let staffTopY = 0;
+        let hitZoneX = 150;
+        let clefFontSize = 120;
+        let noteRadiusX = 16;
+        let noteRadiusY = 12;
+        let stemHeight = 45;
+        let noteLabelSize = 14;
+        let ledgerHalfWidth = 25;
+        let hitGuideHalfWidth = 30;
+        let hitGuideLineWidth = 4;
+        let staffLineWidth = 2;
+
+        function updateNotationScale(width, height) {
+            const baseScale = Math.min(width / 1240, height / 660);
+            const deviceBoost = width <= 1100 ? 1.18 : 1.08;
+            const compactGuard = width < 560 ? 0.94 : 1;
+            const scale = Math.max(0.96, Math.min(1.75, baseScale * deviceBoost * compactGuard));
+            lineSpacing = Math.round(34 * scale);
+            clefFontSize = Math.round(132 * scale);
+            noteRadiusX = Math.round(19 * scale);
+            noteRadiusY = Math.round(14 * scale);
+            stemHeight = Math.round(52 * scale);
+            noteLabelSize = Math.round(15 * scale);
+            ledgerHalfWidth = Math.round(28 * scale);
+            hitGuideHalfWidth = Math.round(34 * scale);
+            hitGuideLineWidth = Math.max(4, Math.round(4 * scale));
+            staffLineWidth = Math.max(2, Math.round(2.4 * scale));
+        }
+
+        function syncViewportHeight() {
+            const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+            const appHeight = Math.max(320, Math.floor(viewportHeight));
+            const pianoHeight = Math.max(112, Math.min(220, Math.round(appHeight * 0.24)));
+            const lyricsBottom = pianoHeight + 12;
+            document.documentElement.style.setProperty('--app-height', `${appHeight}px`);
+            document.documentElement.style.setProperty('--piano-height', `${pianoHeight}px`);
+            document.documentElement.style.setProperty('--lyrics-bottom', `${lyricsBottom}px`);
+        }
+
+        function clearCountdownTimers() {
+            countdownTimers.forEach((id) => clearTimeout(id));
+            countdownTimers = [];
+        }
+
+        function hideCountdownOverlay() {
+            const overlay = document.getElementById('countdown-overlay');
+            const number = document.getElementById('countdown-number');
+            if (!overlay || !number) return;
+            overlay.classList.add('hidden');
+            number.classList.remove('countdown-pop');
+        }
+
+        function popCountdownNumber(value) {
+            const overlay = document.getElementById('countdown-overlay');
+            const number = document.getElementById('countdown-number');
+            if (!overlay || !number) return;
+            overlay.classList.remove('hidden');
+            number.textContent = value;
+            number.classList.remove('countdown-pop');
+            void number.offsetWidth;
+            number.classList.add('countdown-pop');
+        }
+
+        function startPrePlayCountdown(beatDuration, onFinished) {
+            clearCountdownTimers();
+            ['3', '2', '1'].forEach((value, idx) => {
+                const timer = setTimeout(() => {
+                    popCountdownNumber(value);
+                }, idx * beatDuration * 1000);
+                countdownTimers.push(timer);
+            });
+
+            const finalizeTimer = setTimeout(() => {
+                hideCountdownOverlay();
+                if (gameState === 'countdown' && typeof onFinished === 'function') onFinished();
+            }, START_DELAY_BEATS * beatDuration * 1000);
+            countdownTimers.push(finalizeTimer);
+        }
+
+        function triggerKeyBeam(index, keyEl) {
+            const beamLayer = document.getElementById('beam-layer');
+            const mainContainer = document.getElementById('main-container');
+            if (!beamLayer || !mainContainer || !keyEl) return;
+
+            const keyRect = keyEl.getBoundingClientRect();
+            const containerRect = mainContainer.getBoundingClientRect();
+            const beam = document.createElement('div');
+            const note = NOTES[index];
+            const ratio = NOTES.length <= 1 ? 0 : (index / (NOTES.length - 1));
+            const riseCurve = Math.pow(ratio, 1.35);
+            const minRise = Math.max(72, Math.round(containerRect.height * 0.14));
+            const maxRise = Math.max(minRise + 180, Math.round(containerRect.height * 0.74));
+            const beamRise = Math.round(minRise + ((maxRise - minRise) * riseCurve));
+            const beamHeight = beamRise + Math.max(48, Math.round(containerRect.height * 0.18));
+            const centerX = (keyRect.left - containerRect.left) + (keyRect.width / 2);
+            const beamBottom = Math.max(0, containerRect.bottom - keyRect.top - 4);
+
+            beam.className = 'key-press-beam';
+            beam.style.setProperty('--beam-color', note ? note.color : '#60a5fa');
+            beam.style.setProperty('--beam-rise', `${beamRise}px`);
+            beam.style.width = `${Math.max(12, Math.round(keyRect.width * 0.4))}px`;
+            beam.style.height = `${beamHeight}px`;
+            beam.style.left = `${centerX}px`;
+            beam.style.bottom = `${beamBottom}px`;
+
+            beamLayer.appendChild(beam);
+            beam.addEventListener('animationend', () => beam.remove(), { once: true });
+        }
+
+        function triggerKeyPressVisual(index) {
+            const keyEl = document.getElementById(`key-${index}`);
+            if (!keyEl) return;
+
+            keyEl.classList.remove('active');
+            void keyEl.offsetWidth;
+            keyEl.classList.add('active');
+            setTimeout(() => keyEl.classList.remove('active'), 110);
+            triggerKeyBeam(index, keyEl);
+        }
+
+        function autoConnectMidiOnce() {
+            if (hasAutoMidiTried) return;
+            hasAutoMidiTried = true;
+            checkMidiSupport();
+        }
+
+        function clampNumber(value, min, max, fallback) {
+            const parsed = Number(value);
+            if (!Number.isFinite(parsed)) return fallback;
+            return Math.max(min, Math.min(max, parsed));
+        }
+
+        function splitTtsText(text, maxLen = 120) {
+            const normalized = (text || '').replace(/\s+/g, ' ').trim();
+            if (!normalized) return [];
+
+            const sentenceChunks = (normalized.match(/[^.!?。！？]+[.!?。！？]?/g) || [normalized])
+                .map((chunk) => chunk.trim())
+                .filter(Boolean);
+            const chunks = [];
+
+            sentenceChunks.forEach((sentence) => {
+                if (sentence.length <= maxLen) {
+                    chunks.push(sentence);
+                    return;
+                }
+
+                const words = sentence.split(' ');
+                let current = '';
+
+                words.forEach((word) => {
+                    if (!word) return;
+                    if (word.length > maxLen) {
+                        if (current) {
+                            chunks.push(current.trim());
+                            current = '';
+                        }
+                        for (let i = 0; i < word.length; i += maxLen) {
+                            chunks.push(word.slice(i, i + maxLen));
+                        }
+                        return;
+                    }
+                    const next = current ? `${current} ${word}` : word;
+                    if (next.length > maxLen) {
+                        if (current) chunks.push(current.trim());
+                        current = word;
+                    } else {
+                        current = next;
+                    }
+                });
+
+                if (current) chunks.push(current.trim());
+            });
+
+            return chunks.filter(Boolean);
+        }
+
+        function getGoogleTtsLang(lang) {
+            const normalized = String(lang || 'ko-KR').toLowerCase();
+            if (normalized.startsWith('ko')) return 'ko';
+            if (normalized.startsWith('en')) return 'en';
+            return normalized.split('-')[0] || 'ko';
+        }
+
+        function buildGoogleTtsUrl(text, lang) {
+            const params = new URLSearchParams({
+                ie: 'UTF-8',
+                client: 'tw-ob',
+                tl: lang,
+                q: text
+            });
+            return `https://translate.google.com/translate_tts?${params.toString()}`;
+        }
+
+        async function playGoogleTtsChunks(chunks, options, requestToken) {
+            const audioEl = ensureTtsAudioEl();
+            if (!audioEl) throw new Error('google-tts-unavailable');
+
+            const lang = getGoogleTtsLang(options.lang || 'ko-KR');
+            const playbackRate = clampNumber(options.rate, 0.75, 1.2, 1.0);
+
+            for (const chunk of chunks) {
+                if (requestToken !== ttsRequestToken || isMuted) throw new Error('tts-cancelled');
+
+                await new Promise((resolve, reject) => {
+                    let settled = false;
+
+                    const clear = () => {
+                        clearTimeout(timeoutId);
+                        audioEl.removeEventListener('ended', onEnded);
+                        audioEl.removeEventListener('error', onError);
+                        audioEl.removeEventListener('abort', onError);
+                        audioEl.removeEventListener('stalled', onError);
+                    };
+
+                    const finishResolve = () => {
+                        if (settled) return;
+                        settled = true;
+                        clear();
+                        resolve(true);
+                    };
+
+                    const finishReject = (err) => {
+                        if (settled) return;
+                        settled = true;
+                        clear();
+                        reject(err);
+                    };
+
+                    const onEnded = () => finishResolve();
+                    const onError = () => finishReject(new Error('google-tts-failed'));
+                    const timeoutId = setTimeout(() => finishReject(new Error('google-tts-timeout')), 12000);
+
+                    audioEl.addEventListener('ended', onEnded);
+                    audioEl.addEventListener('error', onError);
+                    audioEl.addEventListener('abort', onError);
+                    audioEl.addEventListener('stalled', onError);
+
+                    audioEl.pause();
+                    audioEl.currentTime = 0;
+                    audioEl.playbackRate = playbackRate;
+                    audioEl.src = buildGoogleTtsUrl(chunk, lang);
+
+                    const playPromise = audioEl.play();
+                    if (playPromise && typeof playPromise.catch === 'function') {
+                        playPromise.catch(() => finishReject(new Error('google-tts-play-blocked')));
+                    }
+                });
+            }
+        }
+
+        async function playBrowserTtsChunks(chunks, options, requestToken) {
+            if (!window.speechSynthesis) throw new Error('browser-tts-unavailable');
+            window.speechSynthesis.cancel();
+
+            const rate = clampNumber(options.rate, 0.75, 1.4, 1.0);
+            const pitch = clampNumber(options.pitch, 0.6, 1.4, 1.05);
+            const lang = options.lang || 'ko-KR';
+
+            for (const chunk of chunks) {
+                if (requestToken !== ttsRequestToken || isMuted) throw new Error('tts-cancelled');
+
+                await new Promise((resolve, reject) => {
+                    const utterance = new SpeechSynthesisUtterance(chunk);
+                    utterance.lang = lang;
+                    utterance.rate = rate;
+                    utterance.pitch = pitch;
+                    utterance.onend = () => resolve(true);
+                    utterance.onerror = () => reject(new Error('browser-tts-failed'));
+                    window.speechSynthesis.speak(utterance);
+                });
+            }
+        }
+
+        async function speakText(text, options = {}) {
+            if (isMuted || !text) return false;
+            const chunks = splitTtsText(text);
+            if (!chunks.length) return false;
+
+            stopAllTts();
+            const requestToken = ttsRequestToken;
+
+            try {
+                await playGoogleTtsChunks(chunks, options, requestToken);
+                return true;
+            } catch (err) {
+                if (requestToken !== ttsRequestToken || isMuted) return false;
+                try {
+                    await playBrowserTtsChunks(chunks, options, requestToken);
+                    return true;
+                } catch (fallbackErr) {
+                    return false;
+                }
+            }
+        }
+
+        function speakIntroGuide() {
+            if (isMuted || hasIntroTtsPlayed || isIntroTtsPlaying) return;
+            isIntroTtsPlaying = true;
+            speakText(
+                '힌트입니다. 먼저 곡과 속도를 고른 뒤 연주 시작하기를 눌러주세요. 도움말 버튼을 누르면 어떻게 연주하는지 자세히 들을 수 있어요.',
+                { rate: 0.98, pitch: 1.06 }
+            ).then((played) => {
+                if (played) hasIntroTtsPlayed = true;
+            }).finally(() => {
+                isIntroTtsPlaying = false;
+            });
+        }
+
+        function speakHelpModalGuide() {
+            if (isMuted) return;
+            const modal = document.getElementById('modal-help');
+            if (!modal) return;
+
+            const title = modal.querySelector('h3')?.innerText?.trim() || '어떻게 연주하나요';
+            const guideLines = Array.from(modal.querySelectorAll('ul li'))
+                .map((li, idx) => {
+                    const text = li.innerText.replace(/\s+/g, ' ').trim();
+                    return text ? `${idx + 1}번. ${text}` : '';
+                })
+                .filter(Boolean);
+
+            const speech = [title, ...guideLines].join(' ');
+            speakText(speech, { rate: 0.96, pitch: 1.05 });
+        }
+
+        window.onload = function () {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            syncViewportHeight();
+            initPianoKeys();
+            applySongLayoutFix(selectedSongId);
+            resizeCanvas();
+            window.addEventListener('resize', () => {
+                syncViewportHeight();
+                resizeCanvas();
+            });
+            window.addEventListener('orientationchange', () => {
+                syncViewportHeight();
+                resizeCanvas();
+            });
+
+            document.getElementById('intro-screen').classList.remove('hidden');
+            const cvs = document.getElementById('game-canvas');
+            if (cvs) ctx = cvs.getContext('2d', { alpha: true });
+            const introScreen = document.getElementById('intro-screen');
+            if (introScreen) {
+                introScreen.addEventListener('click', () => {
+                    if (gameState === 'intro') speakIntroGuide();
+                });
+            }
+
+            document.body.addEventListener('click', () => {
+                if (gameState === 'intro') resumeAudioContext();
+            }, { once: true });
+
+            // 페이지 최초 진입 시 MIDI 자동 연결 1회 시도
+            setTimeout(autoConnectMidiOnce, 150);
+        };
+
+        function resizeCanvas() {
+            const container = document.getElementById('main-container');
+            const wrapper = document.querySelector('.piano-wrapper');
+            const cvs = document.getElementById('game-canvas');
+            if (!container || !cvs) return;
+            const dpr = window.devicePixelRatio || 1;
+            const width = container.offsetWidth;
+            const height = container.offsetHeight - (wrapper ? wrapper.offsetHeight : 100);
+            cvs.width = width * dpr;
+            cvs.height = height * dpr;
+            cvs.style.width = `${width}px`;
+            cvs.style.height = `${height}px`;
+            if (ctx) {
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                ctx.textBaseline = 'middle';
+                ctx.textAlign = 'center';
+            }
+
+            updateNotationScale(width, height);
+            hitZoneX = Math.max(95, Math.min(170, Math.round(width * 0.145)));
+
+            // 오선보 위치를 위로 올려 가사 공간 확보
+            staffTopY = Math.max(24, (height * 0.30) - (lineSpacing * 1.2));
+        }
+
+        function initPianoKeys() {
+            const keysContainer = document.getElementById('piano-keys');
+            if (!keysContainer) return;
+            keysContainer.innerHTML = '';
+            NOTES.forEach((note, index) => {
+                const key = document.createElement('div');
+                key.className = 'piano-key';
+                key.id = `key-${index}`;
+                key.style.setProperty('--key-color', note.color);
+                key.innerHTML = `
+                    <div class="key-color-bar"></div>
+                    <span class="key-label">${note.name}</span>
+                `;
+                keysContainer.appendChild(key);
+
+                const hitKey = () => {
+                    resumeAudioContext();
+                    if (gameState === 'playing') handleInput(note.note);
+                };
+                key.addEventListener('mousedown', hitKey);
+                key.addEventListener('touchstart', (e) => { e.preventDefault(); hitKey(); });
+            });
+        }
+
+        function selectSong(songId) {
+            selectedSongId = songId;
+            document.getElementById('btn-song1').classList.remove('selected');
+            document.getElementById('btn-song2').classList.remove('selected');
+            document.getElementById('btn-song3').classList.remove('selected');
+            const btn = document.getElementById(`btn-${songId}`);
+            if (btn) btn.classList.add('selected');
+            applySongLayoutFix(songId);
+            syncViewportHeight();
+            resizeCanvas();
+        }
+
+        function applySongLayoutFix(songId) {
+            const keysContainer = document.getElementById('piano-keys');
+            if (!keysContainer) return;
+            keysContainer.style.gap = 'clamp(1.5px, 0.4vw, 5px)';
+        }
+
+        function selectSpeed(speed) {
+            selectedSpeed = speed;
+            document.querySelectorAll('[id^="btn-speed-"]').forEach((el) => el.classList.remove('selected'));
+            const btn = document.getElementById(`btn-speed-${speed}`);
+            if (btn) btn.classList.add('selected');
+        }
+
+        function checkMidiSupport() {
+            const statusEl = document.getElementById('midi-status-intro');
+            statusEl.innerHTML = `<i data-lucide="loader" class="w-5 h-5 animate-spin"></i><span>피아노 연결 확인 중...</span>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            if (navigator.requestMIDIAccess) navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
+            else updateMidiStatus(false);
+        }
+
+        function onMIDISuccess(midi) { midiAccess = midi; midi.onstatechange = checkConnection; checkConnection(); }
+        function onMIDIFailure() { updateMidiStatus(false); }
+        function checkConnection() {
+            if (!midiAccess) return;
+            let connected = false;
+            for (let input of midiAccess.inputs.values()) { connected = true; input.onmidimessage = onMIDIMessage; }
+            isMidiConnected = connected;
+            updateMidiStatus(connected);
+        }
+        function updateMidiStatus(connected) {
+            const statusEl = document.getElementById('midi-status-intro');
+            if (!statusEl) return;
+            if (connected) {
+                statusEl.className = "flex items-center gap-2 px-6 py-4 rounded-full bg-emerald-50 text-emerald-600 font-bold border border-emerald-200 transition-all cursor-pointer";
+                statusEl.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i><span>피아노 연결 완료! 실제 피아노로 연주하세요.</span>`;
+            } else {
+                statusEl.className = "flex items-center gap-2 px-6 py-4 rounded-full bg-white text-slate-500 font-bold border border-slate-200 mt-4 cursor-pointer hover:bg-slate-50";
+                statusEl.innerHTML = `<i data-lucide="plug-zap" class="w-5 h-5"></i><span>피아노가 없나요? 화면을 터치해서 연습하세요.</span>`;
+            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function onMIDIMessage(event) {
+            if (gameState !== 'playing') return;
+            const [status, note, velocity] = event.data;
+            const command = status & 0xf0;
+            if (command === 144 && velocity > 0) handleInput(note);
+            else if (command === 128 || (command === 144 && velocity === 0)) {
+                const index = NOTES.findIndex(n => n.note === note);
+                if (index !== -1) {
+                    const key = document.getElementById(`key-${index}`);
+                    if (key) key.classList.remove('active', 'hit-fail');
+                }
+            }
+        }
+
+        function getNoteYPosition(noteCode) {
+            const baseIndex = { 60: 5, 62: 4.5, 64: 4, 65: 3.5, 67: 3, 69: 2.5, 71: 2, 72: 1.5 };
+            return staffTopY + (baseIndex[noteCode] * lineSpacing);
+        }
+
+        function initBackgroundEntities(songId) {
+            bgEntities = [];
+            const cvs = document.getElementById('game-canvas');
+            if (!cvs) return;
+            const w = cvs.width / (window.devicePixelRatio || 1);
+            const h = cvs.height / (window.devicePixelRatio || 1);
+
+            document.getElementById('game-canvas').className = `theme-${songId}`;
+
+            if (songId === 'song1') {
+                for (let i = 0; i < 6; i++) {
+                    bgEntities.push({
+                        type: i % 2 === 0 ? '✈️' : '☁️',
+                        x: Math.random() * w,
+                        y: Math.random() * (h * 0.4),
+                        speed: (Math.random() * 30 + 20) * (i % 2 === 0 ? 1 : 0.5),
+                        size: i % 2 === 0 ? 40 : 60,
+                        alpha: i % 2 === 0 ? 0.3 : 0.4
+                    });
+                }
+            } else if (songId === 'song2') {
+                for (let i = 0; i < 8; i++) {
+                    bgEntities.push({
+                        type: i % 3 === 0 ? '🌸' : '🦋',
+                        x: Math.random() * w,
+                        y: Math.random() * h,
+                        vx: (Math.random() - 0.5) * 20,
+                        vy: -Math.random() * 20 - 10,
+                        size: i % 3 === 0 ? 30 : 40,
+                        phase: Math.random() * Math.PI * 2,
+                        alpha: 0.3
+                    });
+                }
+            } else if (songId === 'song3') {
+                for (let i = 0; i < 15; i++) {
+                    bgEntities.push({
+                        type: i === 0 ? '🌙' : (i % 2 === 0 ? '⭐' : '✨'),
+                        x: Math.random() * w,
+                        y: Math.random() * h,
+                        size: i === 0 ? 80 : Math.random() * 20 + 10,
+                        pulseSpeed: Math.random() * 2 + 1,
+                        phase: Math.random() * Math.PI * 2,
+                        alpha: 0.2
+                    });
+                }
+            }
+        }
+
+        function drawBackground(delta, currentTime) {
+            if (!ctx) return;
+            const cvs = document.getElementById('game-canvas');
+            const w = cvs.width / (window.devicePixelRatio || 1);
+            const h = cvs.height / (window.devicePixelRatio || 1);
+
+            bgEntities.forEach(ent => {
+                ctx.save();
+                if (selectedSongId === 'song1') {
+                    ent.x -= ent.speed * delta;
+                    if (ent.x < -100) { ent.x = w + 100; ent.y = Math.random() * (h * 0.4); }
+                    ctx.globalAlpha = ent.alpha; ctx.font = `${ent.size}px serif`; ctx.fillText(ent.type, ent.x, ent.y);
+                } else if (selectedSongId === 'song2') {
+                    ent.y += ent.vy * delta;
+                    if (ent.type === '🦋') ent.x += Math.sin(currentTime * 2 + ent.phase) * 1.5;
+                    if (ent.y < -50) { ent.y = h + 50; ent.x = Math.random() * w; }
+                    ctx.globalAlpha = ent.alpha; ctx.font = `${ent.size}px serif`;
+                    if (ent.type === '🦋') {
+                        ctx.translate(ent.x, ent.y); ctx.rotate(Math.sin(currentTime * 5 + ent.phase) * 0.2); ctx.fillText(ent.type, 0, 0);
+                    } else { ctx.fillText(ent.type, ent.x, ent.y); }
+                } else if (selectedSongId === 'song3') {
+                    ent.x -= 5 * delta;
+                    if (ent.x < -50) ent.x = w + 50;
+                    let currentAlpha = ent.alpha;
+                    if (ent.type !== '🌙') currentAlpha = ent.alpha + Math.sin(currentTime * ent.pulseSpeed + ent.phase) * 0.15;
+                    ctx.globalAlpha = Math.max(0.05, currentAlpha); ctx.font = `${ent.size}px serif`; ctx.fillText(ent.type, ent.x, ent.y);
+                }
+                ctx.restore();
+            });
+            ctx.globalAlpha = 1.0;
+        }
+
+        // ==========================================
+        // 실제 동요 진행 기반 자동 반주 엔진
+        // ==========================================
+        function midiToHz(note) {
+            return 440 * Math.pow(2, (note - 69) / 12);
+        }
+
+        function connectToBgmBus(node) {
+            const bus = ensureBgmBus();
+            if (!bus || !node) return false;
+            node.connect(bus);
+            return true;
+        }
+
+        function getSongSignature(songId) {
+            return SONG_SIGNATURES[songId] || SONG_SIGNATURES.song1;
+        }
+
+        function getSongStep(songId, beatIndex) {
+            const signature = getSongSignature(songId);
+            const patternLength = signature.chordsByBeat.length || 1;
+            return ((Math.max(0, beatIndex) % patternLength) + patternLength) % patternLength;
+        }
+
+        function getAccompanimentChord(songId, beatIndex) {
+            const song = SONGS[songId];
+            const songBeat = Math.max(0, beatIndex);
+            if (song && Array.isArray(song.chords) && songBeat < song.chords.length) {
+                return normalizeChordName(song.chords[songBeat]);
+            }
+
+            const signature = getSongSignature(songId);
+            const step = getSongStep(songId, beatIndex);
+            return normalizeChordName(signature.chordsByBeat[step] || 'C');
+        }
+
+        function getMotifNote(songId, beatIndex) {
+            const leadBeatMap = SONG_LEAD_BEAT_MAPS[songId];
+            const songBeat = Math.max(0, beatIndex);
+            if (leadBeatMap && songBeat < leadBeatMap.length) {
+                return leadBeatMap[songBeat];
+            }
+
+            const motif = getSongSignature(songId).motif;
+            if (!motif || !motif.length) return null;
+            const idx = ((Math.max(0, beatIndex) % motif.length) + motif.length) % motif.length;
+            return motif[idx];
+        }
+
+        function getDrumNoiseBuffer() {
+            if (!audioCtx) return null;
+            if (drumNoiseBuffer && drumNoiseBuffer.sampleRate === audioCtx.sampleRate) return drumNoiseBuffer;
+            const length = Math.floor(audioCtx.sampleRate * 0.35);
+            const buffer = audioCtx.createBuffer(1, length, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * 0.9;
+            drumNoiseBuffer = buffer;
+            return drumNoiseBuffer;
+        }
+
+        function scheduleNoiseHit(startTime, duration, peakGain, highpassFreq, lowpassFreq) {
+            if (!audioCtx || isMuted) return;
+            const noiseBuffer = getDrumNoiseBuffer();
+            if (!noiseBuffer) return;
+
+            const t = Math.max(0, startTime);
+            const src = audioCtx.createBufferSource();
+            const hp = audioCtx.createBiquadFilter();
+            const lp = audioCtx.createBiquadFilter();
+            const gain = audioCtx.createGain();
+
+            src.buffer = noiseBuffer;
+            hp.type = 'highpass';
+            hp.frequency.setValueAtTime(highpassFreq, t);
+            lp.type = 'lowpass';
+            lp.frequency.setValueAtTime(lowpassFreq, t);
+
+            gain.gain.setValueAtTime(0.0001, t);
+            gain.gain.linearRampToValueAtTime(peakGain, t + 0.004);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + Math.max(0.03, duration));
+
+            src.connect(hp);
+            hp.connect(lp);
+            lp.connect(gain);
+            if (!connectToBgmBus(gain)) return;
+
+            src.start(t);
+            src.stop(t + Math.max(0.05, duration + 0.02));
+        }
+
+        function scheduleKick(startTime, beatDuration, peakGain = 0.35) {
+            if (!audioCtx || isMuted) return;
+            const t = Math.max(0, startTime);
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(145, t);
+            osc.frequency.exponentialRampToValueAtTime(52, t + 0.08);
+            gain.gain.setValueAtTime(0.0001, t);
+            gain.gain.linearRampToValueAtTime(peakGain, t + 0.005);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + beatDuration * 0.26);
+            osc.connect(gain);
+            if (!connectToBgmBus(gain)) return;
+            osc.start(t);
+            osc.stop(t + beatDuration * 0.3);
+        }
+
+        function scheduleSnare(startTime, beatDuration, peakGain = 0.24) {
+            scheduleNoiseHit(startTime, beatDuration * 0.22, peakGain, 1300, 7600);
+            if (!audioCtx || isMuted) return;
+            const t = Math.max(0, startTime);
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(220, t);
+            osc.frequency.exponentialRampToValueAtTime(150, t + 0.06);
+            gain.gain.setValueAtTime(0.0001, t);
+            gain.gain.linearRampToValueAtTime(0.05, t + 0.004);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + beatDuration * 0.18);
+            osc.connect(gain);
+            if (!connectToBgmBus(gain)) return;
+            osc.start(t);
+            osc.stop(t + beatDuration * 0.2);
+        }
+
+        function scheduleHiHat(startTime, beatDuration, peakGain = 0.12) {
+            scheduleNoiseHit(startTime, beatDuration * 0.12, peakGain, 5200, 12000);
+        }
+
+        function scheduleRide(startTime, beatDuration, peakGain = 0.095) {
+            scheduleNoiseHit(startTime, beatDuration * 0.3, peakGain, 3600, 11000);
+        }
+
+        function scheduleCrash(startTime, beatDuration, peakGain = 0.14) {
+            scheduleNoiseHit(startTime, beatDuration * 0.85, peakGain, 1800, 9000);
+        }
+
+        function scheduleBassHit(note, startTime, beatDuration, peakGain, cutoff) {
+            if (!audioCtx || isMuted) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+            const t = Math.max(0, startTime);
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(midiToHz(note), t);
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(cutoff, t);
+            gain.gain.setValueAtTime(0.0001, t);
+            gain.gain.linearRampToValueAtTime(peakGain, t + 0.018);
+            gain.gain.exponentialRampToValueAtTime(0.008, t + beatDuration * 0.45);
+            osc.connect(filter);
+            filter.connect(gain);
+            if (!connectToBgmBus(gain)) return;
+            osc.start(t);
+            osc.stop(t + beatDuration * 0.5);
+        }
+
+        function schedulePianoHit(chordTones, startTime, beatDuration, peakGain, songId) {
+            if (!audioCtx || isMuted || !chordTones || !chordTones.length) return;
+            const t = Math.max(0, startTime);
+            const strumStep = songId === 'song2' ? 0.02 : (songId === 'song3' ? 0.015 : 0.012);
+            chordTones.forEach((note, idx) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const filter = audioCtx.createBiquadFilter();
+                const noteTime = t + (idx * strumStep);
+                osc.type = songId === 'song2' ? 'triangle' : 'sine';
+                osc.frequency.setValueAtTime(midiToHz(note), noteTime);
+                filter.type = 'highpass';
+                filter.frequency.setValueAtTime(songId === 'song3' ? 320 : 210, noteTime);
+                gain.gain.setValueAtTime(0.0001, noteTime);
+                gain.gain.linearRampToValueAtTime(peakGain, noteTime + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.002, noteTime + beatDuration * 0.58);
+                osc.connect(filter);
+                filter.connect(gain);
+                if (!connectToBgmBus(gain)) return;
+                osc.start(noteTime);
+                osc.stop(noteTime + beatDuration * 0.62);
+            });
+        }
+
+        function scheduleLeadHit(note, startTime, beatDuration, peakGain, tone = 'xylo') {
+            if (!audioCtx || isMuted || note == null) return;
+            const t = Math.max(0, startTime);
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const high = audioCtx.createBiquadFilter();
+
+            osc.type = tone === 'bell' ? 'sine' : 'triangle';
+            osc.frequency.setValueAtTime(midiToHz(note), t);
+            high.type = 'highpass';
+            high.frequency.setValueAtTime(tone === 'bell' ? 900 : 620, t);
+            gain.gain.setValueAtTime(0.0001, t);
+            gain.gain.linearRampToValueAtTime(peakGain, t + 0.004);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + beatDuration * (tone === 'bell' ? 0.4 : 0.24));
+
+            osc.connect(high);
+            high.connect(gain);
+            if (!connectToBgmBus(gain)) return;
+            osc.start(t);
+            osc.stop(t + beatDuration * (tone === 'bell' ? 0.45 : 0.26));
+
+            if (tone === 'bell') {
+                const overtone = audioCtx.createOscillator();
+                const overtoneGain = audioCtx.createGain();
+                overtone.type = 'sine';
+                overtone.frequency.setValueAtTime(midiToHz(note) * 2, t);
+                overtoneGain.gain.setValueAtTime(0.0001, t);
+                overtoneGain.gain.linearRampToValueAtTime(peakGain * 0.45, t + 0.004);
+                overtoneGain.gain.exponentialRampToValueAtTime(0.001, t + beatDuration * 0.28);
+                overtone.connect(overtoneGain);
+                if (!connectToBgmBus(overtoneGain)) return;
+                overtone.start(t);
+                overtone.stop(t + beatDuration * 0.32);
+            }
+        }
+
+        function scheduleDrums(songId, beatInBar, barIndex, t, beatDuration) {
+            if (songId === 'song1') {
+                // 비행기: 쿵-치-딱-치
+                if (beatInBar === 0) scheduleKick(t, beatDuration, 0.36);
+                if (beatInBar === 2) scheduleSnare(t, beatDuration, 0.26);
+                if (beatInBar === 1 || beatInBar === 3) scheduleHiHat(t, beatDuration, 0.12);
+                scheduleHiHat(t + beatDuration * 0.5, beatDuration, 0.07);
+                return;
+            }
+
+            // 나비야/작은별: 심플 8비트 킥-스네어
+            if (beatInBar === 0 || beatInBar === 2) scheduleKick(t, beatDuration, songId === 'song3' ? 0.24 : 0.3);
+            if (beatInBar === 1 || beatInBar === 3) scheduleSnare(t, beatDuration, songId === 'song3' ? 0.17 : 0.23);
+
+            scheduleHiHat(t, beatDuration, songId === 'song3' ? 0.08 : 0.1);
+            scheduleHiHat(t + beatDuration * 0.5, beatDuration, songId === 'song3' ? 0.065 : 0.085);
+
+            // 나비야 후렴 진입부 분위기 강조
+            if (songId === 'song2' && barIndex % 16 === 8 && beatInBar === 0) {
+                scheduleCrash(t, beatDuration, 0.13);
+            }
+
+            // 작은별 후반부 라이드 심벌 느낌
+            if (songId === 'song3' && barIndex >= 8) {
+                scheduleRide(t + beatDuration * 0.48, beatDuration, 0.08);
+            }
+        }
+
+        function playMetronomeTick(time) {
+            if (!audioCtx || isMuted) return;
+            const t = Math.max(0, time);
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(800, t);
+            gain.gain.setValueAtTime(0.05, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(t); osc.stop(t + 0.1);
+        }
+
+        function playRichChord(songId, chordName, beatDuration, timeToPlay, beatIndex) {
+            if (!audioCtx || !chordName || isMuted) return;
+
+            const signature = getSongSignature(songId);
+            const chordInfo = CHORD_LIBRARY[chordName] || CHORD_LIBRARY.C;
+            if (!chordInfo) return;
+
+            const step = getSongStep(songId, beatIndex);
+            const beatInBar = step % 4;
+            const barIndex = Math.floor(step / 4);
+            const t = Math.max(0, timeToPlay);
+
+            // Drum: 곡별 리듬 패턴
+            scheduleDrums(songId, beatInBar, barIndex, t, beatDuration);
+
+            // Bass: 얼터네이트 베이스 (도-솔-도-솔 계열)
+            const bassStep = signature.bassPattern[beatInBar % signature.bassPattern.length];
+            let bassMain = chordInfo.bassRoot;
+            if (bassStep === 'fifth') bassMain = chordInfo.bassFifth;
+            if (bassStep === 'rootOct') bassMain = chordInfo.bassRoot + 12;
+            scheduleBassHit(bassMain, t, beatDuration, songId === 'song3' ? 0.22 : 0.3, 460);
+
+            const offbeatBass = beatInBar % 2 === 0 ? chordInfo.bassFifth : chordInfo.passing;
+            scheduleBassHit(offbeatBass, t + beatDuration * 0.52, beatDuration * 0.9, songId === 'song3' ? 0.1 : 0.16, 580);
+
+            // Piano Chord: 코드 진행 강조
+            const chordUpper = chordInfo.tones.map(n => n + 12);
+            if (songId === 'song1') {
+                schedulePianoHit(chordUpper, t + beatDuration * 0.18, beatDuration, 0.12, songId);
+                if (beatInBar === 1 || beatInBar === 3) {
+                    schedulePianoHit(chordUpper.slice(0, 3), t + beatDuration * 0.7, beatDuration * 0.82, 0.08, songId);
+                }
+            } else if (songId === 'song2') {
+                schedulePianoHit(chordUpper, t + beatDuration * 0.08, beatDuration, 0.11, songId);
+                schedulePianoHit(chordUpper.slice(0, 3), t + beatDuration * 0.56, beatDuration * 0.86, 0.072, songId);
+            } else {
+                schedulePianoHit(chordUpper, t + beatDuration * 0.08, beatDuration, 0.095, songId);
+                if (beatInBar === 2 || beatInBar === 3) {
+                    schedulePianoHit(chordUpper.slice(0, 3), t + beatDuration * 0.6, beatDuration * 0.9, 0.055, songId);
+                }
+            }
+
+            // Lead Motif: 반주만으로 곡이 식별되도록 실제 멜로디 핵심 구간 반영
+            const motifNow = getMotifNote(songId, beatIndex);
+            const leadShift = songId === 'song3' ? 24 : 12;
+            const hasSongLeadMap = SONG_LEAD_BEAT_MAPS[songId] && SONG_LEAD_BEAT_MAPS[songId].length > 0;
+            const fallbackNow = chordInfo.tones[beatInBar % chordInfo.tones.length] + leadShift;
+            const leadNow = motifNow == null ? (hasSongLeadMap ? null : fallbackNow) : motifNow + leadShift;
+            const tone = signature.leadTone || 'xylo';
+
+            scheduleLeadHit(leadNow, t + beatDuration * 0.03, beatDuration, songId === 'song3' ? 0.12 : 0.145, tone);
+        }
+
+        function startGame() {
+            initAudio(); resumeAudioContext(); checkConnection();
+            stopAllTts();
+            clearCountdownTimers();
+            hideCountdownOverlay();
+
+            document.getElementById('intro-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            syncViewportHeight();
+            applySongLayoutFix(selectedSongId);
+            resizeCanvas();
+            initBackgroundEntities(selectedSongId);
+
+            gameState = 'countdown';
+            score = 0; combo = 0; maxCombo = 0;
+            stats = { perfect: 0, early: 0, late: 0, wrong: 0, miss: 0 };
+            particles = [];
+            activeNotes = [];
+
+            document.getElementById('current-lyric-line').innerText = "3, 2, 1 준비!";
+
+            const currentSong = SONGS[selectedSongId];
+            const actualBpm = currentSong.bpm * SPEED_OPTIONS[selectedSpeed];
+            const beatDuration = 60 / actualBpm;
+
+            let currentBeat = MELODY_ENTRY_BEATS;
+
+            activeNotes = currentSong.melody.map(m => {
+                const noteData = NOTES.find(n => n.note === m.n);
+                const targetTime = currentBeat * beatDuration;
+                currentBeat += m.b;
+                return {
+                    data: noteData,
+                    lyricLine: m.l,
+                    targetTime: targetTime,
+                    spawned: false,
+                    hit: false,
+                    missed: false,
+                    x: 0,
+                    y: getNoteYPosition(m.n)
+                };
+            });
+
+            totalNotes = activeNotes.length;
+            musicStartTime = 0;
+            lastScheduledBeat = -1;
+            updateHUD();
+            startPrePlayCountdown(beatDuration, () => {
+                musicStartTime = audioCtx.currentTime;
+                lastScheduledBeat = -1;
+                gameState = 'playing';
+                const lyricEl = document.getElementById('current-lyric-line');
+                if (lyricEl) lyricEl.innerText = "시작!";
+            });
+
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function openExitModal() {
+            if (gameState === 'playing' || gameState === 'countdown') {
+                pausedReturnState = gameState;
+                if (gameState === 'countdown') {
+                    clearCountdownTimers();
+                    hideCountdownOverlay();
+                }
+                gameState = 'paused';
+                if (audioCtx && audioCtx.state === 'running') {
+                    audioCtx.suspend().catch(() => { });
+                }
+            }
+            toggleModal('modal-exit', true);
+        }
+
+        function closeExitModal() {
+            toggleModal('modal-exit', false);
+            if (gameState === 'paused') {
+                gameState = pausedReturnState || 'playing';
+                if (audioCtx && audioCtx.state === 'suspended') {
+                    audioCtx.resume().catch(() => { });
+                }
+                if (gameState === 'countdown') {
+                    const currentSong = SONGS[selectedSongId];
+                    const actualBpm = currentSong.bpm * SPEED_OPTIONS[selectedSpeed];
+                    const beatDuration = 60 / actualBpm;
+                    startPrePlayCountdown(beatDuration, () => {
+                        musicStartTime = audioCtx.currentTime;
+                        lastScheduledBeat = -1;
+                        gameState = 'playing';
+                        const lyricEl = document.getElementById('current-lyric-line');
+                        if (lyricEl) lyricEl.innerText = "시작!";
+                    });
+                }
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function confirmExit() {
+            toggleModal('modal-exit', false);
+            exitToIntro();
+        }
+
+        function openExitIntroModal() {
+            toggleModal('modal-exit-intro', true);
+        }
+
+        function confirmExitToBack() {
+            toggleModal('modal-exit-intro', false);
+            stopAllTts();
+            stopAllBgm();
+            history.back();
+        }
+
+        function exitToIntro() {
+            gameState = 'intro';
+            cancelAnimationFrame(animationFrameId);
+            lastScheduledBeat = -1;
+            activeNotes = [];
+            clearCountdownTimers();
+            hideCountdownOverlay();
+            // 예약된 반주 이벤트까지 즉시 끊기도록 오디오 컨텍스트를 종료한다.
+            if (audioCtx && audioCtx.state !== 'closed') {
+                audioCtx.close().catch(() => { });
+                audioCtx = null;
+                bgmBus = null;
+                drumNoiseBuffer = null;
+            }
+            stopAllTts();
+            hasIntroTtsPlayed = false;
+            isIntroTtsPlaying = false;
+
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('intro-screen').classList.remove('hidden');
+        }
+
+        function gameLoop() {
+            if (gameState !== 'playing' && gameState !== 'countdown') return;
+
+            const currentSong = SONGS[selectedSongId];
+            const actualBpm = currentSong.bpm * SPEED_OPTIONS[selectedSpeed];
+            const beatDuration = 60 / actualBpm;
+
+            if (gameState === 'countdown') {
+                drawScene(0, 0);
+                updateAndDrawParticles();
+                animationFrameId = requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            // AudioContext 시간에 완벽하게 의존하여 오차 없는 동기화 구현
+            const currentTime = audioCtx.currentTime - musicStartTime;
+
+            // ====== Look-ahead 오디오 예약 스케줄링 ======
+            const lookaheadTime = 0.5;
+            const scheduleAheadTime = currentTime + lookaheadTime;
+
+            while ((lastScheduledBeat + 1) * beatDuration < scheduleAheadTime) {
+                lastScheduledBeat++;
+                const playTime = musicStartTime + lastScheduledBeat * beatDuration;
+                const chord = getAccompanimentChord(selectedSongId, lastScheduledBeat);
+                playRichChord(selectedSongId, chord, beatDuration, playTime, lastScheduledBeat);
+            }
+
+            const cvs = document.getElementById('game-canvas');
+            const w = cvs.width / (window.devicePixelRatio || 1);
+            const startX = w + 50;
+            const travelTime = (startX - hitZoneX) / TRAVEL_SPEED;
+
+            let activeCount = 0;
+            let processedCount = 0;
+            let firstActiveLyric = "";
+
+            for (let i = 0; i < activeNotes.length; i++) {
+                let note = activeNotes[i];
+
+                if (!note.spawned && currentTime >= note.targetTime - travelTime) {
+                    note.spawned = true;
+                }
+
+                if (note.spawned && !note.hit && !note.missed) {
+                    activeCount++;
+                    note.x = hitZoneX + (note.targetTime - currentTime) * TRAVEL_SPEED;
+
+                    if (firstActiveLyric === "") {
+                        firstActiveLyric = note.lyricLine;
+                    }
+
+                    if (note.x < hitZoneX - 60) {
+                        note.missed = true;
+                        stats.miss++;
+                        combo = 0;
+                        showEffect('miss', '놓침!');
+                        updateHUD();
+                    }
+                }
+
+                if (note.hit || note.missed) {
+                    processedCount++;
+                }
+            }
+
+            const lyricEl = document.getElementById('current-lyric-line');
+            if (lyricEl && firstActiveLyric !== "") {
+                lyricEl.innerText = firstActiveLyric;
+            }
+
+            const lastNoteTime = activeNotes[activeNotes.length - 1].targetTime + 2;
+            const progress = Math.min(100, Math.max(0, Math.floor((currentTime / lastNoteTime) * 100)));
+            const timeDisplay = document.getElementById('time-display');
+            if (timeDisplay) timeDisplay.innerText = progress + '%';
+
+            const delta = 1 / 60 * SPEED_OPTIONS[selectedSpeed];
+            drawScene(delta, currentTime);
+            updateAndDrawParticles();
+
+            // 노래 종료
+            if (processedCount === activeNotes.length && activeCount === 0) {
+                endGame();
+                return;
+            }
+
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function drawScene(delta, currentTime) {
+            if (!ctx) return;
+            const cvs = document.getElementById('game-canvas');
+            const w = cvs.width / (window.devicePixelRatio || 1);
+            const h = cvs.height / (window.devicePixelRatio || 1);
+            const laneWidth = w / NOTES.length;
+
+            ctx.clearRect(0, 0, w, h);
+
+            drawBackground(delta, currentTime);
+
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = staffLineWidth;
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                const y = staffTopY + (i * lineSpacing);
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+            }
+            ctx.stroke();
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = `${clefFontSize}px serif`;
+            ctx.fillText('𝄞', Math.max(46, noteRadiusX * 3), staffTopY + lineSpacing * 2.5);
+
+            ctx.strokeStyle = 'rgba(16, 185, 129, 0.5)';
+            ctx.lineWidth = hitGuideLineWidth;
+            ctx.beginPath();
+            ctx.moveTo(hitZoneX, staffTopY - lineSpacing * 2);
+            ctx.lineTo(hitZoneX, staffTopY + lineSpacing * 7);
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.05)';
+            ctx.fillRect(hitZoneX - hitGuideHalfWidth, staffTopY - lineSpacing * 2, hitGuideHalfWidth * 2, lineSpacing * 9);
+
+            activeNotes.forEach(note => {
+                if (!note.spawned || note.hit || note.missed) return;
+
+                const nx = note.x;
+                const ny = note.y;
+
+                if (note.data.note === 60) {
+                    ctx.strokeStyle = '#94a3b8';
+                    ctx.lineWidth = Math.max(2, staffLineWidth);
+                    ctx.beginPath();
+                    ctx.moveTo(nx - ledgerHalfWidth, ny);
+                    ctx.lineTo(nx + ledgerHalfWidth, ny);
+                    ctx.stroke();
+                }
+
+                ctx.fillStyle = note.data.color;
+                ctx.beginPath();
+                ctx.ellipse(nx, ny, noteRadiusX, noteRadiusY, -Math.PI / 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = note.data.color;
+                ctx.lineWidth = Math.max(2, staffLineWidth);
+                ctx.beginPath();
+                ctx.moveTo(nx + Math.max(8, noteRadiusX - 2), ny);
+                ctx.lineTo(nx + Math.max(8, noteRadiusX - 2), ny - stemHeight);
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${noteLabelSize}px "Jua"`;
+                ctx.fillText(note.data.name, nx, ny + 1);
+            });
+        }
+
+        function handleInput(noteCode) {
+            const index = NOTES.findIndex(n => n.note === noteCode);
+            if (index === -1) return;
+
+            triggerKeyPressVisual(index);
+
+            playTone(noteCode);
+
+            let closestNoteIndex = -1;
+            let minDistance = 9999;
+            let distanceSigned = 0;
+
+            for (let i = 0; i < activeNotes.length; i++) {
+                if (!activeNotes[i].spawned || activeNotes[i].hit || activeNotes[i].missed) continue;
+
+                const dist = Math.abs(activeNotes[i].x - hitZoneX);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    closestNoteIndex = i;
+                    distanceSigned = activeNotes[i].x - hitZoneX;
+                }
+            }
+
+            if (closestNoteIndex !== -1 && minDistance <= 80) {
+                const target = activeNotes[closestNoteIndex];
+
+                if (target.data.note === noteCode) {
+                    target.hit = true;
+                    createExplosion(target.x, target.y, target.data.color);
+                    combo++;
+                    if (combo > maxCombo) maxCombo = combo;
+
+                    if (minDistance <= 25) {
+                        stats.perfect++;
+                        score += 100 + (combo * 10);
+                        showEffect('perfect', '정확해요!');
+                    } else if (distanceSigned > 25) {
+                        stats.early++;
+                        score += 50 + (combo * 5);
+                        showEffect('early', '조금 빨라요');
+                    } else {
+                        stats.late++;
+                        score += 50 + (combo * 5);
+                        showEffect('late', '조금 늦었어요');
+                    }
+
+                    if (combo > 1 && combo % 5 === 0) showEffect('combo', `${combo} 콤보!`);
+
+                } else {
+                    stats.wrong++;
+                    score = Math.max(0, score - 20);
+                    combo = 0;
+                    if (keyEl) keyEl.classList.add('hit-fail');
+                    showEffect('miss', '다른 건반이에요!');
+                }
+            } else {
+                stats.wrong++;
+                score = Math.max(0, score - 10);
+                combo = 0;
+                if (keyEl) keyEl.classList.add('hit-fail');
+            }
+
+            updateHUD();
+        }
+
+        function showEffect(type, text) {
+            const main = document.getElementById('effect-main');
+            const sub = document.getElementById('effect-sub');
+            if (!main || !sub) return;
+
+            main.classList.remove('effect-pop');
+            sub.classList.remove('effect-pop');
+            void main.offsetWidth;
+
+            if (type === 'miss') {
+                main.innerText = text;
+                main.className = 'effect-text text-miss effect-pop';
+                sub.innerText = '';
+            } else if (type === 'combo') {
+                sub.innerText = text;
+                sub.className = 'effect-text text-combo effect-pop';
+            } else if (type === 'perfect') {
+                main.innerText = text;
+                main.className = 'effect-text text-perfect effect-pop';
+            } else if (type === 'early' || type === 'late') {
+                main.innerText = text;
+                main.className = 'effect-text text-early effect-pop';
+            }
+        }
+
+        function createExplosion(x, y, color) {
+            if (particles.length > 50) particles.splice(0, 10);
+            for (let i = 0; i < 15; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 15, vy: (Math.random() - 0.5) * 15,
+                    life: 1.0, color: color, size: Math.random() * 6 + 3
+                });
+            }
+        }
+
+        function updateAndDrawParticles() {
+            if (!ctx) return;
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx; p.y += p.vy; p.life -= 0.05;
+                if (p.life <= 0) { particles.splice(i, 1); continue; }
+
+                ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function updateHUD() {
+            const s = document.getElementById('score-display');
+            const c = document.getElementById('combo-display');
+            if (s) s.innerText = score.toLocaleString();
+            if (c) c.innerText = combo;
+        }
+
+        // 사용자가 연주할 때 나는 메인 피아노 소리
+        function playTone(note) {
+            if (!audioCtx) return;
+            const t = Math.max(0, audioCtx.currentTime);
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440 * Math.pow(2, (note - 69) / 12), t);
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.5, t + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.05, t + 0.3);
+            gain.gain.linearRampToValueAtTime(0, t + 1.0);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(t); osc.stop(t + 1.0);
+
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.type = 'triangle';
+            osc2.frequency.setValueAtTime(440 * Math.pow(2, (note - 69) / 12), t);
+            gain2.gain.setValueAtTime(0, t);
+            gain2.gain.linearRampToValueAtTime(0.3, t + 0.01);
+            gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+            osc2.connect(gain2); gain2.connect(audioCtx.destination);
+            osc2.start(t); osc2.stop(t + 0.15);
+        }
+
+        function generateFeedback() {
+            const hitSum = stats.perfect + stats.early + stats.late;
+            let category = "good";
+
+            if (stats.perfect > hitSum * 0.8 && stats.miss === 0 && stats.wrong === 0) {
+                category = "perfect";
+            } else if (stats.early > stats.late && stats.early > stats.perfect) {
+                category = "early";
+            } else if (stats.late > stats.early && stats.late > stats.perfect) {
+                category = "late";
+            } else if (stats.wrong >= 3) {
+                category = "wrong";
+            } else if (stats.miss >= 3) {
+                category = "miss";
+            }
+
+            const messages = FEEDBACK_BANK[category];
+            const randomIndex = Math.floor(Math.random() * messages.length);
+            return messages[randomIndex];
+        }
+
+        function speakFeedback(text) {
+            speakText(text, { lang: 'ko-KR', rate: 1.0, pitch: 1.1 });
+        }
+
+        function endGame() {
+            gameState = 'result';
+            clearCountdownTimers();
+            hideCountdownOverlay();
+            stopAllTts();
+
+            document.getElementById('final-score').innerText = score.toLocaleString();
+            document.getElementById('final-combo').innerText = maxCombo;
+
+            document.getElementById('stat-perfect').innerText = stats.perfect;
+            document.getElementById('stat-early').innerText = stats.early;
+            document.getElementById('stat-late').innerText = stats.late;
+            document.getElementById('stat-wrong').innerText = stats.wrong;
+            document.getElementById('stat-miss').innerText = stats.miss;
+
+            const feedbackMsg = generateFeedback();
+            document.getElementById('feedback-message').innerText = feedbackMsg;
+            speakFeedback(feedbackMsg);
+
+            const modal = document.getElementById('modal-result');
+            if (modal) {
+                modal.classList.remove('hidden');
+                const scoreStage = document.getElementById('result-stage-score');
+                if (scoreStage) scoreStage.classList.remove('hidden');
+            }
+        }
+
+        function restartGame() {
+            toggleModal('modal-result', false);
+            stopAllTts();
+            startGame();
+        }
+
+        function goHome() {
+            toggleModal('modal-result', false);
+            exitToIntro();
+        }
+
+        function toggleModal(id, show) {
+            const el = document.getElementById(id);
+            if (!el) return;
+
+            const isHidden = el.classList.contains('hidden');
+            const shouldShow = show === undefined ? isHidden : !!show;
+            el.classList.toggle('hidden', !shouldShow);
+
+            if (id === 'modal-help') {
+                if (shouldShow) speakHelpModalGuide();
+                else stopAllTts();
+            }
+        }
+    </script>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-07" defer></script>
+    <script src="../../js/web-learning-midi-status.js?v=20260618-04" data-instrument="piano" defer></script>
+</body>
+
+</html>

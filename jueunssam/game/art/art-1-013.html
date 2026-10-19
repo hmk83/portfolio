@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>마법의 3D 미술 연구소</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --gnb-height: 60px;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Jua', sans-serif;
+            background-color: #0f172a;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #gnb {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: var(--gnb-height);
+            background-color: #FEE500;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        #game-wrapper {
+            position: absolute;
+            top: var(--gnb-height);
+            left: 0;
+            width: 100vw;
+            height: calc(100vh - var(--gnb-height));
+            overflow: hidden;
+            position: relative;
+        }
+
+        #game-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .top-bar {
+            padding: 2vmin;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: auto;
+        }
+
+        .info-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 2vmin 4vmin;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            border: 3px solid #cbd5e1;
+            color: #334155;
+            max-width: 60%;
+        }
+
+        .info-title {
+            font-size: 3.5vmin;
+            color: #2563eb;
+            margin-bottom: 1vmin;
+            display: flex;
+            align-items: center;
+            gap: 1vmin;
+        }
+
+        .info-desc {
+            font-size: 2.5vmin;
+            line-height: 1.4;
+        }
+
+        .info-desc strong {
+            color: #ec4899;
+        }
+
+        /* 하단 탭 메뉴 */
+        .bottom-tabs {
+            padding: 2vmin;
+            display: flex;
+            justify-content: center;
+            gap: 2vmin;
+            pointer-events: auto;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+        }
+
+        .tab-btn {
+            background: rgba(255, 255, 255, 0.8);
+            border: 3px solid transparent;
+            padding: 1.5vmin 4vmin;
+            border-radius: 30px;
+            font-size: 3vmin;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 1vmin;
+        }
+
+        .tab-btn.active {
+            background: #ffffff;
+            border-color: #3b82f6;
+            color: #2563eb;
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .control-title {
+            font-size: 2.5vmin;
+            color: #1e293b;
+            text-align: center;
+            margin-bottom: 1vmin;
+            border-bottom: 2px dashed #cbd5e1;
+            padding-bottom: 1vmin;
+        }
+
+        /* 컨트롤 영역 내부 크기 초과 방지 */
+        .side-controls {
+            position: absolute;
+            right: 2vmin;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 2vmin;
+            pointer-events: auto;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 3vmin;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            border: 2px solid #e2e8f0;
+            min-width: 25vmin;
+            max-height: 75vh;
+            overflow-y: auto;
+        }
+
+        .side-controls::-webkit-scrollbar {
+            display: none;
+        }
+
+        .side-controls {
+            -ms-overflow-style: none;
+            /* IE and Edge */
+            scrollbar-width: none;
+            /* Firefox */
+        }
+
+        .apple-color-btn {
+            width: 6vmin;
+            height: 6vmin;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            border: 3px solid transparent;
+        }
+
+        .apple-color-btn:active {
+            transform: scale(0.9);
+        }
+
+        .apple-color-btn.selected {
+            transform: scale(1.1);
+            border-color: white;
+            box-shadow: 0 0 10px white;
+        }
+
+        .toggle-btn {
+            padding: 2vmin;
+            border-radius: 15px;
+            font-size: 2.5vmin;
+            color: white;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 4px solid transparent;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            opacity: 0.5;
+            filter: grayscale(80%);
+        }
+
+        .toggle-btn.on {
+            opacity: 1;
+            filter: grayscale(0%);
+            border-color: white;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px currentColor;
+        }
+
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 1vmin;
+            margin-bottom: 2vmin;
+        }
+
+        .slider-label {
+            font-size: 2.2vmin;
+            color: #334155;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: #3b82f6;
+        }
+
+        .result-toast {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: #facc15;
+            padding: 2vmin 5vmin;
+            border-radius: 30px;
+            font-size: 4vmin;
+            border: 2px solid #facc15;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        /* Tablet & Desktop Layout (1024px+) 강제 비율 조정 */
+        @media (min-width: 1024px) {
+            .side-controls {
+                min-width: 280px;
+                padding: 2vmin;
+                max-height: calc(100vh - var(--gnb-height) - 15vmin);
+                bottom: 10vmin;
+                transform: none;
+                top: auto;
+            }
+
+            .bottom-tabs {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                justify-content: center;
+                padding: 1.5vmin;
+            }
+
+            #ui-layer {
+                display: block;
+            }
+
+            .apple-color-btn {
+                width: 4vmin;
+                height: 4vmin;
+                min-width: 30px;
+                min-height: 30px;
+            }
+
+            .info-panel {
+                max-width: 45%;
+                padding: 1.5vmin 3vmin;
+            }
+
+            .tab-btn {
+                padding: 1vmin 3vmin;
+                font-size: 2.5vmin;
+            }
+
+            .slider-group {
+                margin-bottom: 1.5vmin;
+            }
+        }
+
+        /* 인트로 화면 스타일 */
+        #intro-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #e0f2fe, #fdf4ff);
+            z-index: 15000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 4vmin;
+            transition: opacity 0.5s, visibility 0.5s;
+            pointer-events: auto;
+        }
+
+        .intro-title {
+            font-size: 8vmin;
+            color: #2563eb;
+            margin-bottom: 2vmin;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .intro-desc {
+            font-size: 4vmin;
+            color: #475569;
+            margin-bottom: 6vmin;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+
+        .intro-btn-group {
+            display: flex;
+            gap: 3vmin;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .btn-start {
+            background: #3b82f6;
+            color: white;
+            font-size: 3.5vmin;
+            padding: 2vmin 5vmin;
+            border-radius: 50px;
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+            border: 3px solid white;
+        }
+
+        .btn-start:active {
+            transform: scale(0.95);
+            background: #2563eb;
+        }
+
+        .btn-help-intro {
+            background: #22c55e;
+            color: white;
+            font-size: 3.5vmin;
+            padding: 2vmin 5vmin;
+            border-radius: 50px;
+            box-shadow: 0 8px 20px rgba(34, 197, 94, 0.4);
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+            border: 3px solid white;
+        }
+
+        .btn-help-intro:active {
+            transform: scale(0.95);
+            background: #16a34a;
+        }
+
+        #loading {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            width: 100%;
+            height: calc(100% - 60px);
+            background: #fdf4ff;
+            z-index: 16000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #3b82f6;
+            font-size: 4vmin;
+            transition: opacity 0.5s;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(59, 130, 246, 0.2);
+            border-radius: 50%;
+            border-top-color: #3b82f6;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 2vmin;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 공통 모달(도움말, 종료) 애니메이션 */
+        .modal-enter {
+            animation: modalFadeIn 0.3s forwards;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .btn-press:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+
+<body>
+    <nav id="gnb">
+        <div class="flex items-center gap-2">
+            <h1
+                class="text-xl md:text-2xl font-bold text-gray-800 whitespace-nowrap overflow-hidden text-ellipsis max-w-[50vw]">
+                🎨 <span id="ui-gnb-title">마법의 3D 미술 연구소</span>
+            </h1>
+        </div>
+        <div class="flex gap-2">
+            <button id="btn-lang"
+                class="bg-blue-500 text-white rounded-full px-4 py-1 text-sm font-bold shadow-sm hover:bg-blue-600 transition btn-press"
+                onclick="toggleLanguage()">EN</button>
+            <button id="btn-help"
+                class="bg-green-500 text-white rounded-full px-4 py-1 text-sm font-bold shadow-sm hover:bg-green-600 transition btn-press"
+                onclick="showHelp()">설명보기</button>
+            <button id="btn-exit"
+                class="bg-gray-600 text-white rounded-full px-4 py-1 text-sm font-bold shadow-sm hover:bg-gray-700 transition btn-press"
+                onclick="showExit()">종료</button>
+        </div>
+    </nav>
+
+    <div id="game-wrapper">
+        <div id="loading">
+            <div class="spinner"></div>
+            <div>화면을 터치하면 안내가 시작됩니다!</div>
+        </div>
+
+        <!-- 인트로 화면 -->
+        <div id="intro-screen">
+            <i data-lucide="palette" style="width: 15vmin; height: 15vmin; color: #ec4899; margin-bottom: 3vmin;"></i>
+            <div class="intro-title" id="ui-intro-title">마법의 3D 미술 연구소</div>
+            <div class="intro-desc" id="ui-intro-desc">
+                빛이 합쳐지면 무슨 색이 될까요?<br>조명을 이리저리 움직이면 사과의 색깔이 어떻게 보일까요?<br>지금 바로 신기한 미술 실험을 시작해봐요!
+            </div>
+            <div class="intro-btn-group">
+                <button class="btn-help-intro" id="ui-btn-intro-help" onclick="showHelp()">설명보기</button>
+                <button class="btn-start" id="ui-btn-start" onclick="startGame()">연구소 들어가기</button>
+            </div>
+        </div>
+
+        <div id="ui-layer">
+            <div class="top-bar">
+                <div class="info-panel">
+                    <div class="info-title" id="info-title"></div>
+                    <div class="info-desc" id="info-desc"></div>
+                </div>
+            </div>
+
+            <div id="result-toast" class="result-toast"></div>
+
+            <div class="side-controls" id="controls-area">
+                <!-- 동적으로 생성될 컨트롤 영역 -->
+            </div>
+
+            <div class="bottom-tabs">
+                <div class="tab-btn active" onclick="setMode(1)" id="tab-btn-1">
+                    <i data-lucide="sun"></i> <span id="ui-tab-1">빛 합치기 놀이</span>
+                </div>
+                <div class="tab-btn" onclick="setMode(2)" id="tab-btn-2">
+                    <i data-lucide="contrast"></i> <span id="ui-tab-2">빛과 색깔 놀이</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-container"></div>
+    </div>
+
+    <!-- 도움말 모달 -->
+    <div id="modal-help" class="hidden fixed inset-0 bg-black/50 z-[20000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 w-[80%] max-w-lg shadow-xl relative modal-enter text-center">
+            <h3 class="text-3xl font-bold text-gray-800 mb-4" id="ui-help-title">연구소 이용 안내</h3>
+            <p class="text-lg text-gray-600 mb-8 leading-relaxed text-left" id="ui-help-desc">
+                1. 하단의 메뉴를 눌러 실험 주제를 선택해요.<br>
+                2. 우측 조작반을 이용해 빛을 켜고 사과의 색과 조명 위치를 바꿔보세요.<br>
+                3. 화면을 마우스나 손가락으로 밀어서 3D 공간을 자유롭게 둘러보세요!
+            </p>
+            <div class="flex justify-center">
+                <button
+                    class="bg-blue-500 text-white text-xl px-8 py-3 rounded-full hover:bg-blue-600 transition btn-press"
+                    id="ui-btn-close-help" onclick="hideHelp()">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 종료 확인 모달 -->
+    <div id="modal-exit" class="hidden fixed inset-0 bg-black/50 z-[20000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 w-[80%] max-w-lg shadow-xl relative modal-enter text-center">
+            <h3 class="text-3xl font-bold text-gray-800 mb-4" id="ui-exit-title">정말 나갈까요?</h3>
+            <p class="text-xl text-gray-500 mb-8" id="ui-exit-desc">재미있는 실험 내용이 모두 초기화됩니다.</p>
+            <div class="flex justify-center gap-4">
+                <button
+                    class="bg-gray-200 text-gray-700 text-xl px-6 py-3 rounded-full hover:bg-gray-300 transition btn-press"
+                    id="ui-btn-no" onclick="hideExit()">아니요</button>
+                <button
+                    class="bg-red-500 text-white text-xl px-6 py-3 rounded-full hover:bg-red-600 transition btn-press"
+                    id="ui-btn-yes" onclick="doExit()">네, 나갈래요</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 다국어 데이터 (i18n) ---
+        const i18n = {
+            ko: {
+                gnbTitle: "마법의 3D 미술 연구소",
+                langBtn: "EN",
+                helpBtn: "설명보기",
+                exitBtn: "종료",
+                introTitle: "마법의 3D 미술 연구소",
+                introDesc: "빛이 합쳐지면 무슨 색이 될까요?<br>조명을 이리저리 움직이면 사과의 색깔이 어떻게 보일까요?<br>지금 바로 신기한 미술 실험을 시작해봐요!",
+                introFullText: "마법의 3D 미술 연구소. 빛이 합쳐지면 무슨 색이 될까요? 조명을 이리저리 움직이면 사과의 색깔이 어떻게 보일까요? 지금 바로 신기한 미술 실험을 시작해봐요!",
+                btnStart: "연구소 들어가기",
+                helpModalTitle: "연구소 이용 안내",
+                helpModalDesc: "1. 하단의 메뉴를 눌러 실험 주제를 선택해요.<br>2. 우측 조작반을 이용해 빛을 켜고 사과의 색과 조명 위치를 바꿔보세요.<br>3. 화면을 마우스나 손가락으로 밀어서 3D 공간을 자유롭게 둘러보세요!",
+                btnClose: "닫기",
+                exitConfirmTitle: "정말 나갈까요?",
+                exitConfirmDesc: "재미있는 실험 내용이 모두 초기화됩니다.",
+                btnNo: "아니요",
+                btnYes: "네, 나갈래요",
+                tab1: "빛 합치기 놀이",
+                tab2: "빛과 색깔 놀이",
+
+                // Mode 1
+                m1Title: "빛 합치기 놀이",
+                m1Desc: "빨강, 초록, 파랑 조명을 켜서 빛을 섞어보세요!<br>빛은 합칠수록 점점 밝아져서 나중에는 <strong>하얀색</strong>이 된답니다.",
+                m1ControlTitle: "조명 스위치",
+                btnRedLight: "빨간 조명",
+                btnGreenLight: "초록 조명",
+                btnBlueLight: "파란 조명",
+
+                // Mode 2
+                m2Title: "빛과 색깔 놀이",
+                m2Desc: "사과의 색깔을 바꾸고, 슬라이더로 조명을 움직여보세요.<br>빛을 잘 받으면 <strong>밝고 맑아지고</strong>, 그림자가 지면 <strong>어둡고 탁해지는</strong> 모습을 관찰해봐요!",
+                m2ControlColor: "물건 색깔 바꾸기",
+                m2ControlLight: "조명 움직이기",
+                sliderX: "<span>왼쪽</span><b>좌우로 이동</b><span>오른쪽</span>",
+                sliderY: "<span>아래로</span><b>위아래로 이동</b><span>위로</span>",
+                sliderZ: "<span>뒤로</span><b>앞뒤로 이동</b><span>앞으로</span>",
+
+                // TTS & Messages
+                ttsIntro: "안녕! 나는 미술 연구소의 인공지능 요정이야. 화면 아래의 버튼을 눌러서 재미있는 빛과 색깔 놀이를 해보자!",
+                ttsWhite: "빨강 초록 파랑 빛이 모두 모여서 아주 밝은 하얀색이 되었어요!",
+                ttsYellow: "빨간 빛과 초록 빛이 만나 노란색 빛이 되었어요.",
+                ttsCyan: "초록 빛과 파란 빛이 만나 청록색 빛이 되었어요.",
+                ttsMagenta: "빨간 빛과 파란 빛이 만나 자홍색 빛이 되었어요.",
+                ttsRedOn: "빨간색 빛을 켰어요.",
+                ttsGreenOn: "초록색 빛을 켰어요.",
+                ttsBlueOn: "파란색 빛을 켰어요.",
+                msgWhite: "✨ 빛이 모두 모여 눈부신 '하얀색'이 되었어요!",
+                msgYellow: "빨강 조명 + 초록 조명 = 노란색 빛",
+                msgCyan: "초록 조명 + 파랑 조명 = 청록색 빛",
+                msgMagenta: "빨강 조명 + 파랑 조명 = 자홍색 빛",
+
+                appleRed: "빨간색", appleGreen: "초록색", appleBlue: "파란색", appleYellow: "노란색",
+                appleChangedMsg: "사과가 {color}으로 변신했어요!",
+                appleChangedTts: "{color} 사과로 바뀌었어요.",
+
+                lightFar: "조명이 멀어져서 어둡고 탁해졌어요.",
+                lightNear: "조명이 가까워서 색깔이 밝고 맑게 빛나요!",
+                lightBottom: "아래에서 빛을 비추니 그림자가 커졌어요."
+            },
+            en: {
+                gnbTitle: "Magic 3D Art Lab",
+                langBtn: "KO",
+                helpBtn: "Help",
+                exitBtn: "Exit",
+                introTitle: "Magic 3D Art Lab",
+                introDesc: "What color do we get when we mix light?<br>How does the apple's color change when we move the light?<br>Let's start the amazing art experiment now!",
+                introFullText: "Magic 3D Art Lab. What color do we get when we mix light? How does the apple's color change when we move the light? Let's start the amazing art experiment now!",
+                btnStart: "Enter Lab",
+                helpModalTitle: "How to Use the Lab",
+                helpModalDesc: "1. Choose an experiment from the bottom menu.<br>2. Use the right panel to turn on lights or move them around the apple.<br>3. Drag the screen to look around the 3D space freely!",
+                btnClose: "Close",
+                exitConfirmTitle: "Are you sure you want to exit?",
+                exitConfirmDesc: "All your fun experiments will be reset.",
+                btnNo: "No",
+                btnYes: "Yes, Exit",
+                tab1: "Mixing Light",
+                tab2: "Light and Color",
+
+                // Mode 1
+                m1Title: "Mixing Light",
+                m1Desc: "Turn on the red, green, and blue lights to mix them!<br>As you mix more light, it gets brighter and eventually becomes <strong>White</strong>.",
+                m1ControlTitle: "Light Switches",
+                btnRedLight: "Red Light",
+                btnGreenLight: "Green Light",
+                btnBlueLight: "Blue Light",
+
+                // Mode 2
+                m2Title: "Light and Color",
+                m2Desc: "Change the apple's color and move the light with sliders.<br>Observe how it gets <strong>bright and clear</strong> under direct light, and <strong>dark and dull</strong> in shadows!",
+                m2ControlColor: "Change Object Color",
+                m2ControlLight: "Move Light",
+                sliderX: "<span>Left</span><b>Move X</b><span>Right</span>",
+                sliderY: "<span>Down</span><b>Move Y</b><span>Up</span>",
+                sliderZ: "<span>Back</span><b>Move Z</b><span>Front</span>",
+
+                // TTS & Messages
+                ttsIntro: "Hello! I'm your AI fairy in the Art Lab. Tap the buttons below to play with fun light and color experiments!",
+                ttsWhite: "Red, green, and blue lights combined to make a very bright white light!",
+                ttsYellow: "Red and green lights met to create yellow light.",
+                ttsCyan: "Green and blue lights met to create cyan light.",
+                ttsMagenta: "Red and blue lights met to create magenta light.",
+                ttsRedOn: "Turned on the red light.",
+                ttsGreenOn: "Turned on the green light.",
+                ttsBlueOn: "Turned on the blue light.",
+                msgWhite: "✨ All lights gathered to become dazzling 'White'!",
+                msgYellow: "Red + Green = Yellow Light",
+                msgCyan: "Green + Blue = Cyan Light",
+                msgMagenta: "Red + Blue = Magenta Light",
+
+                appleRed: "Red", appleGreen: "Green", appleBlue: "Blue", appleYellow: "Yellow",
+                appleChangedMsg: "The apple transformed into {color}!",
+                appleChangedTts: "Changed to a {color} apple.",
+
+                lightFar: "The light is far away, so it looks dark and dull.",
+                lightNear: "The light is close, so the color shines bright and clear!",
+                lightBottom: "Lighting from below creates a large shadow."
+            }
+        };
+
+        // --- 상태 관리 ---
+        let state = {
+            lang: 'ko',
+            mode: 1,
+            ttsEnabled: false,
+            introTtsPlayed: false,
+            lightState: { r: false, g: false, b: false },
+            movableLightPos: { x: 10, y: 15, z: 10 },
+            appleColor: '#ef4444',
+            isDragging: false,
+            camLon: 0,
+            camLat: 20
+        };
+
+        // --- 언어 및 UI 업데이트 ---
+        function toggleLanguage() {
+            state.lang = state.lang === 'ko' ? 'en' : 'ko';
+            updateUI();
+        }
+
+        function updateUI() {
+            const t = i18n[state.lang];
+
+            document.getElementById('ui-gnb-title').innerText = t.gnbTitle;
+            document.getElementById('btn-lang').innerText = t.langBtn;
+            document.getElementById('btn-help').innerText = t.helpBtn;
+            document.getElementById('btn-exit').innerText = t.exitBtn;
+
+            document.getElementById('ui-intro-title').innerText = t.introTitle;
+            document.getElementById('ui-intro-desc').innerHTML = t.introDesc;
+            document.getElementById('ui-btn-start').innerText = t.btnStart;
+            document.getElementById('ui-btn-intro-help').innerText = t.helpBtn;
+
+            document.getElementById('ui-help-title').innerText = t.helpModalTitle;
+            document.getElementById('ui-help-desc').innerHTML = t.helpModalDesc;
+            document.getElementById('ui-btn-close-help').innerText = t.btnClose;
+
+            document.getElementById('ui-exit-title').innerText = t.exitConfirmTitle;
+            document.getElementById('ui-exit-desc').innerText = t.exitConfirmDesc;
+            document.getElementById('ui-btn-no').innerText = t.btnNo;
+            document.getElementById('ui-btn-yes').innerText = t.btnYes;
+
+            document.getElementById('ui-tab-1').innerText = t.tab1;
+            document.getElementById('ui-tab-2').innerText = t.tab2;
+
+            updateModeInfo();
+            renderControls();
+        }
+
+        // --- TTS 시스템 ---
+        let availableVoices = [];
+        window.speechSynthesis.onvoiceschanged = () => {
+            availableVoices = window.speechSynthesis.getVoices();
+        };
+
+        function speak(textKey, isDirectText = false) {
+            if (!state.ttsEnabled) return;
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+
+                let textToSpeak = "";
+                if (isDirectText) {
+                    textToSpeak = textKey;
+                } else {
+                    const rawText = i18n[state.lang][textKey];
+                    if (rawText) {
+                        // HTML 태그를 제거하고 순수 텍스트만 추출하여 읽기
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = rawText;
+                        textToSpeak = tempDiv.textContent || tempDiv.innerText;
+                    }
+                }
+
+                if (!textToSpeak) return;
+
+                const utterance = new SpeechSynthesisUtterance(textToSpeak);
+                const langCode = state.lang === 'ko' ? 'ko-KR' : 'en-US';
+                utterance.lang = langCode;
+                utterance.rate = state.lang === 'ko' ? 1.0 : 0.9;
+                utterance.pitch = 1.2;
+
+                if (availableVoices.length === 0) {
+                    availableVoices = window.speechSynthesis.getVoices();
+                }
+
+                const langPrefix = state.lang === 'ko' ? 'ko' : 'en';
+                // 구글 API 연동(브라우저 내장 구글 음성 최우선 선택)
+                const googleVoice = availableVoices.find(v => v.lang.includes(langPrefix) && v.name.toLowerCase().includes('google'));
+
+                if (googleVoice) {
+                    utterance.voice = googleVoice;
+                } else {
+                    // 구글 음성이 없을 경우 브라우저 자체 기본 음성으로 폴백
+                    const defaultVoice = availableVoices.find(v => v.lang.includes(langPrefix));
+                    if (defaultVoice) {
+                        utterance.voice = defaultVoice;
+                    }
+                }
+
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function playIntroTTS() {
+            if (!state.introTtsPlayed) {
+                state.introTtsPlayed = true;
+                state.ttsEnabled = true;
+                const loading = document.getElementById('loading');
+                if (loading) {
+                    loading.style.opacity = 0;
+                    setTimeout(() => loading.remove(), 500);
+                }
+                speak('introFullText');
+            }
+        }
+
+        function startGame() {
+            const intro = document.getElementById('intro-screen');
+            intro.style.opacity = '0';
+            setTimeout(() => { intro.style.visibility = 'hidden'; }, 500);
+
+            state.ttsEnabled = true;
+            state.introTtsPlayed = true;
+            speak('ttsIntro');
+        }
+
+        function showHelp() {
+            document.getElementById('modal-help').classList.remove('hidden');
+            speak('helpModalDesc');
+        }
+        function hideHelp() {
+            document.getElementById('modal-help').classList.add('hidden');
+            window.speechSynthesis.cancel();
+        }
+
+        function showExit() { document.getElementById('modal-exit').classList.remove('hidden'); }
+        function hideExit() { document.getElementById('modal-exit').classList.add('hidden'); }
+        function doExit() { window.history.length > 1 ? window.history.back() : window.close(); }
+
+        // --- Three.js 글로벌 변수 ---
+        let scene, camera, renderer;
+        let exhibitGroup = new THREE.Group();
+        let targetLookAt = new THREE.Vector3(0, 5, 0);
+        let basePlatform;
+
+        // Mode 1 & 2 Objects
+        let lightSphere, spotR, spotG, spotB;
+        let appleModel, appleMaterial, movableLight, lightBulb;
+
+        function init() {
+            lucide.createIcons();
+            updateUI();
+
+            const container = document.getElementById('game-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#1e293b');
+
+            const wrapper = document.getElementById('game-wrapper');
+            camera = new THREE.PerspectiveCamera(45, wrapper.clientWidth / wrapper.clientHeight, 0.1, 1000);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
+            scene.add(ambientLight);
+
+            createLabEnvironment();
+            setupMode1();
+            setupMode2();
+
+            setMode(1);
+
+            container.addEventListener('mousedown', onPointerDown);
+            container.addEventListener('mousemove', onPointerMove);
+            document.addEventListener('mouseup', onPointerUp);
+            container.addEventListener('touchstart', onPointerDown, { passive: false });
+            container.addEventListener('touchmove', onPointerMove, { passive: false });
+            document.addEventListener('touchend', onPointerUp);
+
+            // 첫 클릭/터치 시 안내 시작
+            document.addEventListener('click', playIntroTTS, { once: true });
+            document.addEventListener('touchstart', playIntroTTS, { once: true, passive: true });
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function createLabEnvironment() {
+            scene.add(exhibitGroup);
+            const geo = new THREE.CylinderGeometry(15, 18, 2, 32);
+            const mat = new THREE.MeshStandardMaterial({ color: '#334155', roughness: 0.6, metalness: 0.2 });
+            basePlatform = new THREE.Mesh(geo, mat);
+            basePlatform.position.y = -1;
+            basePlatform.receiveShadow = true;
+            scene.add(basePlatform);
+
+            const grid = new THREE.GridHelper(100, 20, '#475569', '#1e293b');
+            grid.position.y = -2;
+            scene.add(grid);
+        }
+
+        function setupMode1() {
+            lightSphere = new THREE.Mesh(
+                new THREE.SphereGeometry(6, 32, 32),
+                new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0, metalness: 0.0 })
+            );
+            lightSphere.position.set(0, 6, 0);
+            lightSphere.castShadow = true;
+            lightSphere.receiveShadow = true;
+
+            const createSpotLight = (color, x, z) => {
+                const light = new THREE.SpotLight(color, 0);
+                light.position.set(x, 15, z); light.angle = Math.PI / 4;
+                light.penumbra = 0.5; light.castShadow = true; light.target = lightSphere;
+
+                const lampGeo = new THREE.CylinderGeometry(1, 2, 3, 16);
+                const lampMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+                const lamp = new THREE.Mesh(lampGeo, lampMat);
+                lamp.position.copy(light.position); lamp.lookAt(lightSphere.position); lamp.rotation.x -= Math.PI / 2;
+                return { light, lamp };
+            };
+
+            const rData = createSpotLight(0xff0000, -10, 10);
+            const gData = createSpotLight(0x00ff00, 0, 10);
+            const bData = createSpotLight(0x0000ff, 10, 10);
+            spotR = rData.light; spotG = gData.light; spotB = bData.light;
+
+            lightSphere.userData.group = new THREE.Group();
+            lightSphere.userData.group.add(lightSphere, rData.light, rData.lamp, gData.light, gData.lamp, bData.light, bData.lamp);
+            lightSphere.userData.group.visible = false;
+            exhibitGroup.add(lightSphere.userData.group);
+        }
+
+        function setupMode2() {
+            appleModel = new THREE.Group();
+            const bodyGeo = new THREE.SphereGeometry(5, 32, 32); bodyGeo.scale(1, 0.9, 1);
+            appleMaterial = new THREE.MeshStandardMaterial({ color: state.appleColor, roughness: 0.5, metalness: 0.1 });
+            const body = new THREE.Mesh(bodyGeo, appleMaterial);
+            body.position.y = 5; body.castShadow = true; body.receiveShadow = true;
+
+            const stemGeo = new THREE.CylinderGeometry(0.2, 0.4, 2);
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x5c4033 });
+            const stem = new THREE.Mesh(stemGeo, stemMat);
+            stem.position.set(0, 10, 0);
+
+            appleModel.add(body, stem);
+
+            movableLight = new THREE.PointLight(0xffffff, 2.5, 100);
+            movableLight.position.set(state.movableLightPos.x, state.movableLightPos.y, state.movableLightPos.z);
+            movableLight.castShadow = true;
+
+            const bulbGeo = new THREE.SphereGeometry(1, 16, 16);
+            const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            lightBulb = new THREE.Mesh(bulbGeo, bulbMat);
+            lightBulb.position.copy(movableLight.position);
+
+            appleModel.add(movableLight, lightBulb);
+            appleModel.visible = false;
+            exhibitGroup.add(appleModel);
+        }
+
+        function setMode(newMode) {
+            state.mode = newMode;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-btn-${newMode}`).classList.add('active');
+
+            lightSphere.userData.group.visible = (newMode === 1);
+            appleModel.visible = (newMode === 2);
+
+            resetCamera();
+            renderControls();
+            updateModeInfo();
+        }
+
+        function updateModeInfo() {
+            const t = i18n[state.lang];
+            const titleEl = document.getElementById('info-title');
+            const descEl = document.getElementById('info-desc');
+
+            if (state.mode === 1) {
+                titleEl.innerHTML = `<i data-lucide="sun" style="width: 4vmin; height: 4vmin;"></i> ${t.m1Title}`;
+                descEl.innerHTML = t.m1Desc;
+            } else if (state.mode === 2) {
+                titleEl.innerHTML = `<i data-lucide="contrast" style="width: 4vmin; height: 4vmin;"></i> ${t.m2Title}`;
+                descEl.innerHTML = t.m2Desc;
+            }
+            lucide.createIcons();
+        }
+
+        function renderControls() {
+            const t = i18n[state.lang];
+            const cArea = document.getElementById('controls-area');
+            cArea.innerHTML = '';
+
+            if (state.mode === 1) {
+                cArea.innerHTML = `
+                    <div class="control-title">${t.m1ControlTitle}</div>
+                    <div class="toggle-btn ${state.lightState.r ? 'on' : ''}" style="background-color: #ef4444; border-color: #ef4444; box-shadow: ${state.lightState.r ? '0 0 20px #ef4444' : 'none'}" onclick="toggleLight('r')">${t.btnRedLight}</div>
+                    <div class="toggle-btn ${state.lightState.g ? 'on' : ''}" style="background-color: #22c55e; border-color: #22c55e; box-shadow: ${state.lightState.g ? '0 0 20px #22c55e' : 'none'}" onclick="toggleLight('g')">${t.btnGreenLight}</div>
+                    <div class="toggle-btn ${state.lightState.b ? 'on' : ''}" style="background-color: #3b82f6; border-color: #3b82f6; box-shadow: ${state.lightState.b ? '0 0 20px #3b82f6' : 'none'}" onclick="toggleLight('b')">${t.btnBlueLight}</div>
+                `;
+            } else if (state.mode === 2) {
+                cArea.innerHTML = `
+                    <div class="control-title">${t.m2ControlColor}</div>
+                    <div style="display: flex; gap: 1.5vmin; justify-content: center; margin-bottom: 3vmin; padding: 1vmin;">
+                        <div class="apple-color-btn ${state.appleColor === '#ef4444' ? 'selected' : ''}" style="background: #ef4444;" onclick="changeAppleColor('#ef4444', 'appleRed')"></div>
+                        <div class="apple-color-btn ${state.appleColor === '#22c55e' ? 'selected' : ''}" style="background: #22c55e;" onclick="changeAppleColor('#22c55e', 'appleGreen')"></div>
+                        <div class="apple-color-btn ${state.appleColor === '#3b82f6' ? 'selected' : ''}" style="background: #3b82f6;" onclick="changeAppleColor('#3b82f6', 'appleBlue')"></div>
+                        <div class="apple-color-btn ${state.appleColor === '#facc15' ? 'selected' : ''}" style="background: #facc15;" onclick="changeAppleColor('#facc15', 'appleYellow')"></div>
+                    </div>
+                    <div class="control-title">${t.m2ControlLight}</div>
+                    <div class="slider-group">
+                        <div class="slider-label">${t.sliderX}</div>
+                        <input type="range" min="-25" max="25" value="${state.movableLightPos.x}" oninput="updateLightPosition('x', this.value)">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label">${t.sliderY}</div>
+                        <input type="range" min="2" max="30" value="${state.movableLightPos.y}" oninput="updateLightPosition('y', this.value)">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label">${t.sliderZ}</div>
+                        <input type="range" min="-25" max="25" value="${state.movableLightPos.z}" oninput="updateLightPosition('z', this.value)">
+                    </div>
+                `;
+            }
+        }
+
+        // --- 상호작용 로직 ---
+        function toggleLight(color) {
+            state.lightState[color] = !state.lightState[color];
+            renderControls();
+
+            const intensity = 200;
+            spotR.intensity = state.lightState.r ? intensity : 0;
+            spotG.intensity = state.lightState.g ? intensity : 0;
+            spotB.intensity = state.lightState.b ? intensity : 0;
+
+            checkLightResult();
+        }
+
+        function checkLightResult() {
+            const { r, g, b } = state.lightState;
+            let msgKey = "", ttsKey = "";
+
+            if (r && g && b) { msgKey = 'msgWhite'; ttsKey = 'ttsWhite'; }
+            else if (r && g) { msgKey = 'msgYellow'; ttsKey = 'ttsYellow'; }
+            else if (g && b) { msgKey = 'msgCyan'; ttsKey = 'ttsCyan'; }
+            else if (r && b) { msgKey = 'msgMagenta'; ttsKey = 'ttsMagenta'; }
+            else if (r) { ttsKey = 'ttsRedOn'; }
+            else if (g) { ttsKey = 'ttsGreenOn'; }
+            else if (b) { ttsKey = 'ttsBlueOn'; }
+
+            if (msgKey) showToast(i18n[state.lang][msgKey]);
+            if (ttsKey) speak(ttsKey);
+        }
+
+        function changeAppleColor(hexColor, colorKey) {
+            state.appleColor = hexColor;
+            appleMaterial.color.setHex(parseInt(hexColor.replace('#', '0x')));
+            renderControls();
+
+            const t = i18n[state.lang];
+            const colorName = t[colorKey];
+
+            const msg = t.appleChangedMsg.replace('{color}', colorName);
+            const tts = t.appleChangedTts.replace('{color}', colorName);
+
+            showToast(msg);
+            speak(tts, true);
+        }
+
+        function updateLightPosition(axis, value) {
+            const numVal = parseFloat(value);
+            state.movableLightPos[axis] = numVal;
+
+            movableLight.position[axis] = numVal;
+            lightBulb.position[axis] = numVal;
+
+            const distance = movableLight.position.distanceTo(new THREE.Vector3(0, 5, 0));
+            const t = i18n[state.lang];
+
+            if (distance > 30) {
+                showToast(t.lightFar);
+            } else if (distance < 15) {
+                showToast(t.lightNear);
+            } else if (axis === 'y' && numVal < 5) {
+                showToast(t.lightBottom);
+            }
+        }
+
+        function showToast(text) {
+            const toast = document.getElementById('result-toast');
+            toast.innerText = text;
+            toast.style.opacity = 1;
+
+            if (window.toastTimer) clearTimeout(window.toastTimer);
+            window.toastTimer = setTimeout(() => {
+                toast.style.opacity = 0;
+            }, 3000);
+        }
+
+        // --- 카메라 컨트롤 ---
+        function resetCamera() { state.camLon = 0; state.camLat = 20; }
+        function updateCamera() {
+            const dist = 35;
+            const phi = THREE.MathUtils.degToRad(90 - state.camLat);
+            const theta = THREE.MathUtils.degToRad(state.camLon);
+            const cx = dist * Math.sin(phi) * Math.cos(theta);
+            const cy = dist * Math.cos(phi) + targetLookAt.y;
+            const cz = dist * Math.sin(phi) * Math.sin(theta);
+            camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.1);
+            camera.lookAt(targetLookAt);
+        }
+
+        function onPointerDown(e) {
+            if (e.target.closest('.side-controls') || e.target.closest('.bottom-tabs') || e.target.closest('.top-bar') || e.target.closest('#intro-screen') || e.target.closest('#modal-help') || e.target.closest('#modal-exit')) return;
+            state.isDragging = true;
+            lastMouseX = e.clientX || e.touches[0].clientX;
+            lastMouseY = e.clientY || e.touches[0].clientY;
+        }
+
+        function onPointerMove(e) {
+            if (!state.isDragging) return;
+            const x = e.clientX || e.touches[0].clientX;
+            const y = e.clientY || e.touches[0].clientY;
+            state.camLon -= (x - lastMouseX) * 0.5;
+            state.camLat += (y - lastMouseY) * 0.5;
+            state.camLat = Math.max(5, Math.min(80, state.camLat));
+            lastMouseX = x;
+            lastMouseY = y;
+        }
+        function onPointerUp() { state.isDragging = false; }
+
+        function onWindowResize() {
+            const wrapper = document.getElementById('game-wrapper');
+            camera.aspect = wrapper.clientWidth / wrapper.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updateCamera();
+            renderer.render(scene, camera);
+        }
+
+        window.onload = init;
+    </script>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-03" defer></script>
+</body>
+
+</html>

@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>마법의 약 만들기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --gnb-height: 60px;
+            --app-bg: #f3e8ff;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Jua', sans-serif;
+            background-color: var(--app-bg);
+            background-image: radial-gradient(circle at 10% 20%, rgba(216, 180, 254, 0.4) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(192, 132, 252, 0.4) 0%, transparent 20%);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #gnb {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: var(--gnb-height);
+            background-color: #FEE500;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        #game-container {
+            position: absolute;
+            top: var(--gnb-height);
+            left: 0;
+            width: 100%;
+            height: calc(100vh - var(--gnb-height));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        #scalable-wrapper {
+            width: 100%;
+            height: 100%;
+            max-width: 1600px;
+            max-height: 1000px;
+            padding: 1vmin;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+        }
+
+        .canvas-area {
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            border: 4px solid #e9d5ff;
+        }
+
+        /* Animations */
+        .bounce-normal {
+            animation: bounceNormal 2s infinite;
+        }
+
+        @keyframes bounceNormal {
+
+            0%,
+            20%,
+            50%,
+            80%,
+            100% {
+                transform: translateY(0);
+            }
+
+            40% {
+                transform: translateY(-1.5vmin);
+            }
+
+            60% {
+                transform: translateY(-0.75vmin);
+            }
+        }
+
+        .btn-press {
+            transition: transform 0.1s;
+        }
+
+        .btn-press:active {
+            transform: scale(0.95);
+        }
+
+        .modal-enter {
+            animation: modalFadeIn 0.3s forwards;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        #confetti {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 100;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Game Specific CSS */
+        .tube-board {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3vmin;
+            /* 간격 축소 */
+            justify-content: center;
+            align-items: center;
+            padding: 2vmin;
+            width: 100%;
+            height: 100%;
+            align-content: center;
+            transition: padding 0.3s ease;
+        }
+
+        /* 튜토리얼 모드일 때만 여백 확장 */
+        .tube-board.tutorial-active {
+            padding-top: 5vmin;
+            padding-bottom: 25vmin;
+        }
+
+        /* 튜토리얼 시 병 크기를 더 줄여서 UI 침범 및 잘림 방지 */
+        .tube-board.tutorial-active .tube-wrapper {
+            max-height: 25vh;
+        }
+
+        .tube-wrapper {
+            height: 38vmin;
+            /* 기본적으로 큼직하게 */
+            max-height: 33vh;
+            /* ★ 핵심: 2줄이 되어도 세로 스크롤이 생기지 않도록 창 높이 비례 최대치 제한 */
+            width: auto;
+            aspect-ratio: 1 / 3.5;
+            /* 높이에 비례해서 너비가 자동으로 조절됨 */
+            min-height: 120px;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.1));
+        }
+
+        .tube-wrapper.selected {
+            transform: translateY(-15%) scale(1.05);
+            /* 상대적 수치로 변경 */
+            z-index: 10;
+        }
+
+        .tube {
+            width: 100%;
+            height: 100%;
+            border: 0.6vmin solid #cbd5e1;
+            border-top: none;
+            border-bottom-left-radius: 4vmin;
+            border-bottom-right-radius: 4vmin;
+            background-color: rgba(255, 255, 255, 0.4);
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.7);
+        }
+
+        .tube::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -0.6vmin;
+            right: -0.6vmin;
+            height: 1.5vmin;
+            background-color: #cbd5e1;
+            border-radius: 1vmin;
+            z-index: 20;
+        }
+
+        .liquid-layer {
+            width: 100%;
+            position: absolute;
+            left: 0;
+            transition: height 0.4s ease-in-out, bottom 0.4s ease-in-out, background-color 0.4s;
+            box-shadow: inset -5px 0 10px rgba(0, 0, 0, 0.1), inset 5px 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .liquid-layer::after {
+            content: '';
+            position: absolute;
+            top: 10%;
+            right: 15%;
+            width: 20%;
+            height: 80%;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 1vmin;
+            pointer-events: none;
+        }
+
+        .shake {
+            animation: shake 0.4s cubic-bezier(.36, .07, .19, .97) both;
+        }
+
+        @keyframes shake {
+
+            10%,
+            90% {
+                transform: translateX(-2px);
+            }
+
+            20%,
+            80% {
+                transform: translateX(4px);
+            }
+
+            30%,
+            50%,
+            70% {
+                transform: translateX(-6px);
+            }
+
+            40%,
+            60% {
+                transform: translateX(6px);
+            }
+        }
+
+        .hint-pulse {
+            animation: hintPulse 1s infinite;
+            border-color: #eab308 !important;
+            border-radius: 4vmin;
+        }
+
+        @keyframes hintPulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 1.5vmin rgba(234, 179, 8, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(234, 179, 8, 0);
+            }
+        }
+
+        /* 튜토리얼 지시 손가락 애니메이션 */
+        .tutorial-hand {
+            position: absolute;
+            top: -40%;
+            /* 비율을 적용하여 병의 높이에 따라 자연스럽게 위치 고정 */
+            left: 50%;
+            transform: translateX(-50%);
+            animation: fingerPoint 0.6s infinite alternate ease-in-out;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        @keyframes fingerPoint {
+            from {
+                transform: translateX(-50%) translateY(0);
+            }
+
+            to {
+                transform: translateX(-50%) translateY(10%);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- [1. GNB] -->
+    <nav id="gnb">
+        <div class="flex items-center gap-2">
+            <h1
+                class="text-xl md:text-2xl font-bold text-gray-800 whitespace-nowrap overflow-hidden text-ellipsis max-w-[50vw]">
+                🧪 <span data-i18n="appTitle">마법의 약 만들기</span>
+            </h1>
+        </div>
+        <div class="flex gap-2">
+            <button id="btn-lang"
+                class="bg-white border-2 border-gray-200 rounded-full px-4 py-1 text-sm font-bold shadow-sm hover:bg-gray-50 btn-press"
+                data-i18n="langBtn">English</button>
+            <button id="btn-restart"
+                class="hidden bg-purple-500 text-white rounded-full px-4 py-1 text-sm font-bold shadow-sm hover:bg-purple-600 btn-press"
+                data-i18n="restart">다시하기</button>
+            <button id="btn-exit"
+                class="bg-gray-600 text-white rounded-full px-4 py-1 text-sm font-bold shadow-sm hover:bg-gray-700 btn-press"
+                data-i18n="exit">종료</button>
+        </div>
+    </nav>
+
+    <!-- [2. Game Container] -->
+    <div id="game-container">
+        <div id="scalable-wrapper">
+            <canvas id="confetti"></canvas>
+
+            <!-- A. Intro Screen -->
+            <div id="intro-screen" class="w-full h-full flex flex-col items-center justify-center z-20 relative">
+                <i data-lucide="flask-conical" class="w-32 h-32 text-purple-500 mb-6 bounce-normal"></i>
+                <h1 class="text-6xl md:text-7xl font-bold text-purple-600 drop-shadow-lg mb-4 text-center"
+                    data-i18n="appTitle">마법의 약 만들기</h1>
+                <p class="text-xl md:text-2xl text-gray-600 mb-12 font-bold text-center" data-i18n="introDesc">같은 색의 마법
+                    물약을 하나의 병에 모아주세요!</p>
+                <div class="flex flex-col gap-4 w-full max-w-sm items-center">
+                    <button id="btn-start"
+                        class="bg-purple-500 hover:bg-purple-600 text-white text-3xl px-12 py-4 rounded-full shadow-lg btn-press flex items-center justify-center gap-2 w-full">
+                        <i data-lucide="play" class="w-8 h-8"></i>
+                        <span data-i18n="startBtn">시작하기</span>
+                    </button>
+                    <button id="btn-howto"
+                        class="text-purple-500 hover:text-purple-600 underline font-bold flex items-center gap-1 mt-2 btn-press text-xl">
+                        <i data-lucide="help-circle" class="w-6 h-6"></i>
+                        <span data-i18n="howToPlay">설명 보기</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- B. Main Game Content -->
+            <main id="app-content" class="hidden w-full h-full flex flex-col items-center justify-center p-0 md:p-2">
+                <div class="canvas-area">
+                    <!-- Header (Instruction & Tools) -->
+                    <div
+                        class="w-full p-[1.5vmin] px-[2vmin] bg-purple-50 border-b border-purple-100 flex justify-between items-center z-20 shrink-0">
+                        <div class="flex items-center gap-[2vmin] flex-1">
+                            <div class="bg-white p-[1vmin] rounded-full shrink-0 shadow-sm border border-purple-100">
+                                <i data-lucide="sparkles" class="w-[4vmin] h-[4vmin] text-purple-500"></i>
+                            </div>
+                            <div id="instruction-text"
+                                class="text-[2.5vmin] md:text-[2vmin] font-bold text-purple-800 break-keep leading-tight whitespace-pre-line">
+                                <!-- Dynamic Instruction -->
+                            </div>
+                        </div>
+
+                        <!-- Game Tools & Level -->
+                        <div class="flex items-center gap-[2vmin]" id="tools-container">
+                            <button id="btn-hint"
+                                class="bg-yellow-400 text-white px-[2vmin] py-[1vmin] rounded-full shadow-sm hover:bg-yellow-500 btn-press flex items-center gap-1 border border-yellow-500 font-bold">
+                                <i data-lucide="lightbulb" class="w-[3vmin] h-[3vmin]"></i>
+                                <span id="hint-count" class="text-[2vmin]">5</span>
+                            </button>
+                            <button id="btn-undo"
+                                class="bg-white text-gray-600 px-[2vmin] py-[1vmin] rounded-full shadow-sm hover:bg-gray-50 btn-press flex items-center gap-1 border border-gray-200 disabled:opacity-50">
+                                <i data-lucide="undo-2" class="w-[3vmin] h-[3vmin]"></i>
+                            </button>
+                            <button id="btn-reset-level"
+                                class="bg-white text-gray-600 px-[2vmin] py-[1vmin] rounded-full shadow-sm hover:bg-gray-50 btn-press flex items-center gap-1 border border-gray-200">
+                                <i data-lucide="rotate-ccw" class="w-[3vmin] h-[3vmin]"></i>
+                            </button>
+                            <div
+                                class="bg-purple-500 px-[3vmin] py-[1vmin] rounded-full shadow-sm border border-purple-600 shrink-0">
+                                <span id="level-display"
+                                    class="text-[2.5vmin] font-bold text-white whitespace-nowrap">LV. 1</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Play Area (Tubes) - overflow-hidden으로 스크롤 완전 차단 -->
+                    <div id="play-canvas" class="w-full flex-grow relative overflow-hidden bg-transparent">
+                        <div id="tube-board" class="tube-board">
+                            <!-- Tubes will be injected here via JS -->
+                        </div>
+
+                        <!-- 하단 튜토리얼 말풍선 (대화창) -->
+                        <div id="tutorial-bottom-dialog"
+                            class="absolute bottom-[5%] left-1/2 transform -translate-x-1/2 w-[90%] max-w-2xl bg-white/95 backdrop-blur-md border-[0.6vmin] border-purple-400 rounded-3xl p-[4vmin] shadow-2xl z-50 hidden flex-col items-center justify-center text-center fade-in">
+                            <p id="tutorial-bottom-text"
+                                class="text-[4vmin] md:text-[3.5vmin] font-bold text-purple-700 leading-snug break-keep whitespace-pre-line">
+                                약병을 클릭해보세요!
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Level Complete Overlay -->
+                    <div id="next-overlay"
+                        class="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm hidden flex flex-col items-center justify-center gap-[3vmin] fade-in">
+                        <h2 class="text-[6vmin] font-bold text-purple-600 animate-bounce" data-i18n="greatJob">마법의 약 완성!
+                        </h2>
+                        <div class="text-[12vmin]">🔮</div>
+                    </div>
+
+                    <!-- All Clear Overlay -->
+                    <div id="all-clear-overlay"
+                        class="absolute inset-0 z-50 bg-white/95 backdrop-blur-sm hidden flex flex-col items-center justify-center gap-[3vmin] fade-in text-center">
+                        <h2 class="text-[6vmin] font-bold text-yellow-500 animate-bounce" data-i18n="allClearTitle">위대한
+                            마법사 탄생!</h2>
+                        <div class="text-[12vmin]">🧙‍♀️</div>
+                        <p class="text-[3.5vmin] font-bold text-gray-600 px-4" data-i18n="allClearDesc">모든 마법의 약을 완벽하게
+                            만들었어요!</p>
+                        <button onclick="resetGame(false)"
+                            class="bg-purple-500 text-white text-[4vmin] font-bold px-[8vmin] py-[3vmin] rounded-full shadow-xl hover:bg-purple-600 transition mt-[2vmin] flex items-center gap-2 btn-press">
+                            <i data-lucide="rotate-ccw" class="w-[4vmin] h-[4vmin]"></i> <span
+                                data-i18n="playAgain">처음부터 다시하기</span>
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- [3. Modals] -->
+    <div id="modal-info" class="hidden fixed inset-0 bg-black/50 z-[20000] flex items-center justify-center p-4">
+        <div
+            class="bg-white rounded-3xl p-6 w-[80%] max-w-md shadow-2xl relative modal-enter border-4 border-purple-100">
+            <button class="btn-close-modal absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i data-lucide="x-circle" class="w-8 h-8"></i>
+            </button>
+            <h3 class="text-2xl font-bold text-purple-600 mb-4 flex items-center gap-2">
+                <i data-lucide="info" class="w-6 h-6"></i> <span data-i18n="howToPlay">설명 보기</span>
+            </h3>
+            <ul class="space-y-4 text-lg text-gray-700">
+                <li class="flex items-start gap-3">
+                    <span class="bg-purple-100 p-2 rounded-full text-purple-500 shrink-0"><i data-lucide="hand-pointing"
+                            class="w-6 h-6"></i></span>
+                    <div><strong data-i18n="guide1Title">병 선택하기</strong><br>
+                        <span class="text-base text-gray-500" data-i18n="guide1Desc">물약을 옮길 병을 먼저 눌러주세요.</span>
+                    </div>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="bg-blue-100 p-2 rounded-full text-blue-500 shrink-0"><i
+                            data-lucide="arrow-down-to-line" class="w-6 h-6"></i></span>
+                    <div><strong data-i18n="guide2Title">물약 옮기기</strong><br>
+                        <span class="text-base text-gray-500" data-i18n="guide2Desc">같은 색의 물약이 있는 곳이나 빈 병으로만 옮길 수
+                            있어요.</span>
+                    </div>
+                </li>
+            </ul>
+            <div class="mt-8 text-center">
+                <button
+                    class="btn-close-modal bg-purple-500 hover:bg-purple-600 text-white text-lg px-8 py-3 rounded-full shadow-md transition"
+                    data-i18n="ok">
+                    알겠어요!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-exit" class="hidden fixed inset-0 bg-black/50 z-[20000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 w-[80%] max-w-lg shadow-2xl relative modal-enter text-center">
+            <h3 class="text-3xl font-bold text-gray-800 mb-4" data-i18n="exitConfirm">정말 종료할까요?</h3>
+            <p class="text-xl text-gray-500 mb-8" data-i18n="exitDesc">진행 상황이 저장되지 않아요.</p>
+            <div class="flex justify-center gap-4">
+                <button id="btn-cancel-exit"
+                    class="bg-gray-200 text-gray-700 text-xl px-6 py-3 rounded-full hover:bg-gray-300 btn-press"
+                    data-i18n="cancel">아니요</button>
+                <button id="btn-confirm-exit"
+                    class="bg-red-500 text-white text-xl px-6 py-3 rounded-full hover:bg-red-600 btn-press"
+                    data-i18n="yes">네, 종료해요</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-restart" class="hidden fixed inset-0 bg-black/50 z-[20000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 w-[80%] max-w-lg shadow-2xl relative modal-enter text-center">
+            <h3 class="text-3xl font-bold text-gray-800 mb-4" data-i18n="restartConfirm">다시 시작할까요?</h3>
+            <p class="text-xl text-gray-500 mb-8" data-i18n="restartDesc">처음부터 다시 시작합니다.</p>
+            <div class="flex justify-center gap-4">
+                <button id="btn-cancel-restart"
+                    class="bg-gray-200 text-gray-700 text-xl px-6 py-3 rounded-full hover:bg-gray-300 btn-press"
+                    data-i18n="cancel">아니요</button>
+                <button id="btn-confirm-restart"
+                    class="bg-purple-500 text-white text-xl px-6 py-3 rounded-full hover:bg-purple-600 btn-press"
+                    data-i18n="yesRestart">네, 다시 시작해요</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- [1. Configuration & Data] ---
+        const GOOGLE_API_KEY = "AIzaSyAE0nnpOYZRfLkfM09O3NQjpWnN1kUqR3E";
+
+        const I18N_DATA = {
+            ko: {
+                langBtn: "English",
+                appTitle: "마법의 약 만들기",
+                introDesc: "같은 색의 마법 물약을 하나의 병에 모아주세요!",
+                startBtn: "시작하기",
+                howToPlay: "설명 보기",
+                restart: "다시하기",
+                exit: "종료",
+                guide1Title: "병 선택하기",
+                guide1Desc: "물약을 옮길 병을 먼저 눌러주세요.",
+                guide2Title: "물약 옮기기",
+                guide2Desc: "같은 색의 물약이 있는 곳이나 빈 병으로만 옮길 수 있어요.",
+                ok: "알겠어요!",
+                exitConfirm: "정말 종료할까요?",
+                exitDesc: "진행 상황이 저장되지 않아요.",
+                restartConfirm: "다시 시작할까요?",
+                restartDesc: "처음부터 다시 시작합니다.",
+                yes: "네, 종료해요",
+                yesRestart: "네, 다시 시작해요",
+                cancel: "아니요",
+                greatJob: "마법의 약 완성!",
+                allClearTitle: "위대한 마법사 탄생!",
+                allClearDesc: "모든 마법의 약을 완벽하게 만들었어요!",
+                playAgain: "처음부터 다시하기",
+                guideText: "같은 색깔의 물약을 모아서 병을 가득 채워보세요!",
+                invalidMove: "거기로는 옮길 수 없어요!",
+                hintEmpty: "힌트를 모두 사용했어요!",
+                noHintMove: "더 이상 옮길 수 없어요! 되돌리기나 다시하기를 눌러보세요!",
+                tutMsg1: "파란 물약을 빈 병으로 옮겨볼게요.\n첫 번째 약병을 클릭해보세요!",
+                tutMsg2: "이제 오른쪽 끝에 있는\n빈 약병을 클릭해보세요!",
+                tutMsg3: "잘했어요! 이번엔 빨간 물약을 합쳐볼까요?\n가운데 약병을 클릭해보세요!",
+                tutMsg4: "첫 번째 약병을 클릭해서\n빨간 물약을 완성해보세요!",
+                tutMsg5: "거의 다 왔어요!\n남은 파란 물약을 클릭해보세요!",
+                tutMsg6: "파란 물약이 있는 오른쪽 약병을 클릭해서\n완성해주세요!",
+                tutComplete: "완벽해요! 게임 방법을 모두 배웠습니다.\n본 게임을 시작합니다!",
+                tutInProgress: "튜토리얼 진행 중..."
+            },
+            en: {
+                langBtn: "한국어",
+                appTitle: "Magic Potion Maker",
+                introDesc: "Sort the magic potions by color into the flasks!",
+                startBtn: "Start",
+                howToPlay: "How to Play",
+                restart: "Restart",
+                exit: "Exit",
+                guide1Title: "Select Flask",
+                guide1Desc: "Tap the flask you want to pour from.",
+                guide2Title: "Pour Potion",
+                guide2Desc: "You can only pour into a flask with the same color on top or an empty one.",
+                ok: "Got it!",
+                exitConfirm: "Really Exit?",
+                exitDesc: "Progress will not be saved.",
+                restartConfirm: "Restart?",
+                restartDesc: "Start from the beginning.",
+                yes: "Yes, Exit",
+                yesRestart: "Yes, Restart",
+                cancel: "No",
+                greatJob: "Potion Complete!",
+                allClearTitle: "Great Wizard!",
+                allClearDesc: "You have successfully made all the magic potions!",
+                playAgain: "Play Again",
+                guideText: "Collect potions of the same color to fill the flasks!",
+                invalidMove: "You can't pour there!",
+                hintEmpty: "You have used all your hints!",
+                noHintMove: "No moves left! Try undo or restart!",
+                tutMsg1: "Let's move the blue potion.\nClick the first flask!",
+                tutMsg2: "Now click the empty flask\non the right!",
+                tutMsg3: "Great! Let's combine the red potions now.\nClick the middle flask!",
+                tutMsg4: "Click the first flask to\ncomplete the red potion!",
+                tutMsg5: "Almost done!\nClick the remaining blue potion!",
+                tutMsg6: "Click the right flask to\nfinish the blue potion!",
+                tutComplete: "Perfect! You've learned how to play.\nLet's start the real game!",
+                tutInProgress: "Tutorial in progress..."
+            }
+        };
+
+        const POTION_COLORS = {
+            red: '#ef4444',
+            blue: '#3b82f6',
+            yellow: '#eab308',
+            green: '#10b981',
+            purple: '#a855f7',
+            orange: '#f97316',
+            pink: '#ec4899',
+            cyan: '#06b6d4'
+        };
+
+        const MAX_LEVEL = 30;
+        const MAX_CAPACITY = 4;
+        const TOTAL_HINTS = 5;
+
+        // --- Tutorial Level Config (Super Simple: 3 Tubes, 2 Colors) ---
+        const TUTORIAL_TUBES = [
+            ['red', 'red', 'blue', 'blue'],
+            ['blue', 'blue', 'red', 'red'],
+            []
+        ];
+
+        const TUTORIAL_STEPS = [
+            { target: 0, msg: "tutMsg1" },
+            { target: 2, msg: "tutMsg2" },
+            { target: 1, msg: "tutMsg3" },
+            { target: 0, msg: "tutMsg4" },
+            { target: 1, msg: "tutMsg5" },
+            { target: 2, msg: "tutMsg6" }
+        ];
+
+        // --- [2. Global State] ---
+        let currentLang = 'ko';
+        let ttsAudio = null;
+        let googleTTSAvailable = true;
+
+        let gameState = {
+            levelIdx: 0,
+            tubes: [],
+            selectedTubeIdx: null,
+            history: [], // For Undo
+            isAnimating: false,
+            hintsLeft: TOTAL_HINTS,
+            isTutorial: false,
+            tutorialStep: 0
+        };
+
+        // --- [Voice Loader] ---
+        let availableVoices = [];
+        function loadVoices() { availableVoices = window.speechSynthesis.getVoices(); }
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        loadVoices();
+
+        // --- [3. System Functions (TTS)] ---
+        function stopTTS() {
+            if (ttsAudio) { ttsAudio.pause(); ttsAudio.currentTime = 0; ttsAudio = null; }
+            window.speechSynthesis.cancel();
+        }
+
+        async function speak(keyOrText, isRaw = false) {
+            stopTTS();
+            const text = isRaw ? keyOrText : (I18N_DATA[currentLang][keyOrText] || keyOrText);
+            if (!text) return;
+
+            if (!googleTTSAvailable) { fallbackSpeak(text); return; }
+
+            const langCode = currentLang === 'ko' ? 'ko-KR' : 'en-US';
+            const voiceName = currentLang === 'ko' ? 'ko-KR-Standard-A' : 'en-US-Standard-E';
+
+            try {
+                const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        input: { text: text },
+                        voice: { languageCode: langCode, name: voiceName },
+                        audioConfig: { audioEncoding: 'MP3' }
+                    })
+                });
+
+                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+
+                const data = await response.json();
+                if (data.audioContent) {
+                    const audioBlob = await fetch(`data:audio/mp3;base64,${data.audioContent}`).then(res => res.blob());
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    ttsAudio = new Audio(audioUrl);
+                    ttsAudio.play().catch(e => console.error("Audio Error:", e));
+                } else { fallbackSpeak(text); }
+            } catch (e) {
+                googleTTSAvailable = false;
+                fallbackSpeak(text);
+            }
+        }
+
+        function fallbackSpeak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            const isEnglish = currentLang !== 'ko';
+            utterance.lang = isEnglish ? 'en-US' : 'ko-KR';
+            if (availableVoices.length === 0) availableVoices = window.speechSynthesis.getVoices();
+            let voice = availableVoices.find(v => v.lang.startsWith(isEnglish ? 'en' : 'ko'));
+            if (voice) utterance.voice = voice;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // --- [4. Game Logic & Tutorial] ---
+
+        function startTutorial() {
+            gameState.isTutorial = true;
+            gameState.tutorialStep = 0;
+            gameState.tubes = JSON.parse(JSON.stringify(TUTORIAL_TUBES));
+            gameState.selectedTubeIdx = null;
+            gameState.history = [];
+            gameState.isAnimating = false;
+
+            // UI 제어 (도구 숨기기)
+            document.getElementById('btn-hint').classList.add('hidden');
+            document.getElementById('btn-undo').classList.add('hidden');
+            document.getElementById('btn-reset-level').classList.add('hidden');
+            document.getElementById('btn-restart').classList.add('hidden');
+
+            document.getElementById('level-display').innerText = currentLang === 'ko' ? "튜토리얼" : "Tutorial";
+
+            // 상단 안내문은 고정 텍스트로 변경 (중복 방지)
+            document.getElementById('instruction-text').innerText = I18N_DATA[currentLang].tutInProgress;
+
+            // 하단 튜토리얼 대화창 켜기 & 튜토리얼 패딩 적용
+            document.getElementById('tutorial-bottom-dialog').classList.remove('hidden');
+            document.getElementById('tutorial-bottom-dialog').classList.add('flex');
+            document.getElementById('tube-board').classList.add('tutorial-active');
+
+            renderTubes();
+            updateTutorialUI();
+        }
+
+        function advanceTutorial() {
+            gameState.tutorialStep++;
+            if (gameState.tutorialStep >= TUTORIAL_STEPS.length) {
+                // 튜토리얼 종료
+                gameState.isTutorial = false;
+                document.querySelectorAll('.tutorial-hand').forEach(e => e.remove());
+
+                setTimeout(() => {
+                    playSound('magic');
+                    fireConfetti();
+                    const endMsg = I18N_DATA[currentLang].tutComplete;
+                    document.getElementById('tutorial-bottom-text').innerText = endMsg;
+                    document.getElementById('instruction-text').innerText = endMsg;
+                    speak(endMsg, true);
+
+                    setTimeout(() => {
+                        startGameLevel1();
+                    }, 3000); // 메세지 확인 후 자동으로 본 게임(레벨1) 시작
+                }, 500); // 붓는 애니메이션 완료 대기
+            } else {
+                setTimeout(updateTutorialUI, 100);
+            }
+        }
+
+        function updateTutorialUI() {
+            if (!gameState.isTutorial) return;
+
+            document.querySelectorAll('.tutorial-hand').forEach(e => e.remove());
+            document.querySelectorAll('.tube-wrapper').forEach(w => w.classList.remove('hint-pulse'));
+
+            const step = TUTORIAL_STEPS[gameState.tutorialStep];
+            const msg = I18N_DATA[currentLang][step.msg];
+
+            // 하단 큰 대화창만 업데이트 (상단 텍스트는 '튜토리얼 진행 중...' 유지)
+            document.getElementById('tutorial-bottom-text').innerText = msg;
+            speak(msg, true);
+
+            const targetWrapper = document.getElementById(`tube-wrapper-${step.target}`);
+            if (targetWrapper) {
+                targetWrapper.classList.add('hint-pulse');
+
+                // 직관적인 손가락 모양 아이콘 (SVG 하드코딩으로 확실하게 렌더링)
+                const hand = document.createElement('div');
+                hand.className = 'tutorial-hand';
+                hand.innerHTML = `
+                    <svg viewBox="0 0 24 24" class="w-[10vmin] h-[10vmin]" style="transform: rotate(180deg); filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));" fill="white" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 8V4.5a2.5 2.5 0 0 0-5 0V11"></path>
+                        <path d="M9 11.5 5.5 8.5A1.5 1.5 0 0 0 3 9.5v2.8a2.5 2.5 0 0 0 .53 1.55l3.8 5.2a2.5 2.5 0 0 0 2 1h5.8a2.5 2.5 0 0 0 2.5-2.5V11.5a2.5 2.5 0 0 0-2.5-2.5h-1"></path>
+                    </svg>
+                `;
+                targetWrapper.appendChild(hand);
+            }
+        }
+
+        function startGameLevel1() {
+            gameState.isTutorial = false;
+            gameState.levelIdx = 0;
+            gameState.hintsLeft = TOTAL_HINTS;
+            document.getElementById('hint-count').innerText = gameState.hintsLeft;
+
+            // UI 원상복구 (도구 보이기 & 하단 대화창 끄기 & 여백 복구)
+            document.getElementById('tutorial-bottom-dialog').classList.add('hidden');
+            document.getElementById('tutorial-bottom-dialog').classList.remove('flex');
+            document.getElementById('btn-hint').classList.remove('hidden');
+            document.getElementById('btn-undo').classList.remove('hidden');
+            document.getElementById('btn-reset-level').classList.remove('hidden');
+            document.getElementById('btn-restart').classList.remove('hidden');
+            document.getElementById('tube-board').classList.remove('tutorial-active');
+
+            loadLevel(gameState.levelIdx);
+        }
+
+        function resetGame(fullReset = false) {
+            stopTTS();
+            document.getElementById('all-clear-overlay').classList.add('hidden');
+            document.getElementById('tube-board').classList.remove('tutorial-active');
+
+            if (fullReset) {
+                document.getElementById('intro-screen').classList.remove('hidden');
+                document.getElementById('app-content').classList.add('hidden');
+                document.getElementById('btn-restart').classList.add('hidden');
+            } else {
+                gameState.levelIdx = 0;
+                gameState.hintsLeft = TOTAL_HINTS;
+                document.getElementById('hint-count').innerText = gameState.hintsLeft;
+                loadLevel(0);
+            }
+        }
+
+        function generateLevel(idx) {
+            let colorCount = 2 + Math.floor(idx / 5);
+            if (colorCount > 8) colorCount = 8;
+            let emptyCount = 2; // 난이도 완화를 위해 항상 빈 병 2개 제공
+
+            let tubes = [];
+            let colorsToUse = Object.keys(POTION_COLORS).slice(0, colorCount);
+
+            for (let c of colorsToUse) tubes.push([c, c, c, c]);
+            for (let i = 0; i < emptyCount; i++) tubes.push([]);
+
+            let shuffleSteps = 10 + idx * 2;
+
+            let isComplete = true;
+            while (isComplete) {
+                for (let s = 0; s < shuffleSteps; s++) {
+                    let fromIdx = Math.floor(Math.random() * tubes.length);
+                    let toIdx = Math.floor(Math.random() * tubes.length);
+                    if (fromIdx !== toIdx && tubes[fromIdx].length > 0 && tubes[toIdx].length < MAX_CAPACITY) {
+                        let topColor = tubes[fromIdx][tubes[fromIdx].length - 1];
+                        let count = 0;
+                        for (let i = tubes[fromIdx].length - 1; i >= 0; i--) {
+                            if (tubes[fromIdx][i] === topColor) count++;
+                            else break;
+                        }
+                        let space = MAX_CAPACITY - tubes[toIdx].length;
+                        let moveAmount = Math.floor(Math.random() * Math.min(count, space)) + 1;
+                        for (let m = 0; m < moveAmount; m++) tubes[toIdx].push(tubes[fromIdx].pop());
+                    }
+                }
+
+                isComplete = true;
+                for (let tube of tubes) {
+                    if (tube.length === 0) continue;
+                    if (tube.length !== MAX_CAPACITY) { isComplete = false; break; }
+                    let firstColor = tube[0];
+                    for (let i = 1; i < MAX_CAPACITY; i++) {
+                        if (tube[i] !== firstColor) { isComplete = false; break; }
+                    }
+                    if (!isComplete) break;
+                }
+            }
+            return tubes;
+        }
+
+        function loadLevel(idx) {
+            if (idx >= MAX_LEVEL) { showAllClear(); return; }
+
+            gameState.tubes = generateLevel(idx);
+            gameState.selectedTubeIdx = null;
+            gameState.history = [];
+            gameState.isAnimating = false;
+
+            document.getElementById('next-overlay').classList.add('hidden');
+            document.getElementById('next-overlay').classList.remove('flex');
+            document.getElementById('level-display').innerText = `LV. ${idx + 1}`;
+            document.getElementById('btn-undo').disabled = true;
+
+            const hint = currentLang === 'ko' ? I18N_DATA.ko.guideText : I18N_DATA.en.guideText;
+            document.getElementById('instruction-text').innerText = hint;
+
+            // 레벨 1(idx 0)에서만 안내 음성 재생, 2단계부터는 음성 생략
+            if (idx === 0) {
+                speak(hint, true);
+            }
+
+            renderTubes();
+        }
+
+        function renderTubes() {
+            const board = document.getElementById('tube-board');
+            board.innerHTML = '';
+
+            gameState.tubes.forEach((tubeData, tIdx) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'tube-wrapper';
+                wrapper.id = `tube-wrapper-${tIdx}`;
+                wrapper.onclick = () => handleTubeClick(tIdx);
+
+                const tube = document.createElement('div');
+                tube.className = 'tube';
+
+                // Create exactly MAX_CAPACITY layers for smooth animation
+                for (let i = 0; i < MAX_CAPACITY; i++) {
+                    const layer = document.createElement('div');
+                    layer.className = 'liquid-layer';
+                    layer.id = `tube-${tIdx}-layer-${i}`;
+                    tube.appendChild(layer);
+                }
+
+                wrapper.appendChild(tube);
+                board.appendChild(wrapper);
+            });
+
+            updateTubeVisuals();
+        }
+
+        function updateTubeVisuals() {
+            gameState.tubes.forEach((tubeData, tIdx) => {
+                for (let i = 0; i < MAX_CAPACITY; i++) {
+                    const layer = document.getElementById(`tube-${tIdx}-layer-${i}`);
+                    if (i < tubeData.length) {
+                        layer.style.height = '25%';
+                        layer.style.bottom = `${i * 25}%`;
+                        layer.style.backgroundColor = POTION_COLORS[tubeData[i]];
+                    } else {
+                        layer.style.height = '0%';
+                        layer.style.bottom = `${i * 25}%`; // Stay at its slot position
+                    }
+                }
+
+                const wrapper = document.getElementById(`tube-wrapper-${tIdx}`);
+                // 튜토리얼일 경우 클래스 삭제는 updateTutorialUI에서 관리하므로 건드리지 않음
+                if (!gameState.isTutorial) {
+                    wrapper.classList.remove('hint-pulse');
+                }
+
+                if (tIdx === gameState.selectedTubeIdx) {
+                    wrapper.classList.add('selected');
+                } else {
+                    wrapper.classList.remove('selected');
+                }
+            });
+
+            if (!gameState.isTutorial) {
+                document.getElementById('btn-undo').disabled = gameState.history.length === 0;
+            }
+        }
+
+        function useHint() {
+            if (gameState.isTutorial) return;
+            if (gameState.hintsLeft <= 0) {
+                playSound('error');
+                speak('hintEmpty');
+                return;
+            }
+            if (gameState.isAnimating) return;
+
+            let move = getHintMove(gameState.tubes);
+            if (!move) {
+                playSound('error');
+                speak('noHintMove');
+                return;
+            }
+
+            gameState.hintsLeft--;
+            document.getElementById('hint-count').innerText = gameState.hintsLeft;
+            playSound('pop');
+
+            document.querySelectorAll('.tube-wrapper').forEach(el => el.classList.remove('hint-pulse'));
+            document.getElementById(`tube-wrapper-${move.from}`).classList.add('hint-pulse');
+            document.getElementById(`tube-wrapper-${move.to}`).classList.add('hint-pulse');
+
+            setTimeout(() => {
+                document.querySelectorAll('.tube-wrapper').forEach(el => el.classList.remove('hint-pulse'));
+            }, 2000);
+        }
+
+        function getHintMove(tubes) {
+            let possibleMoves = [];
+            for (let i = 0; i < tubes.length; i++) {
+                for (let j = 0; j < tubes.length; j++) {
+                    if (i === j) continue;
+                    if (tubes[i].length === 0) continue;
+                    if (tubes[j].length === MAX_CAPACITY) continue;
+
+                    let isSourceUniform = tubes[i].every(c => c === tubes[i][0]);
+                    let topColor = tubes[i][tubes[i].length - 1];
+
+                    if (tubes[j].length === 0) {
+                        if (!isSourceUniform) possibleMoves.push({ from: i, to: j, priority: 1 });
+                    } else {
+                        let targetTopColor = tubes[j][tubes[j].length - 1];
+                        if (topColor === targetTopColor) possibleMoves.push({ from: i, to: j, priority: 2 });
+                    }
+                }
+            }
+            possibleMoves.sort((a, b) => b.priority - a.priority);
+            return possibleMoves.length > 0 ? possibleMoves[0] : null;
+        }
+
+        function saveState() {
+            gameState.history.push(JSON.parse(JSON.stringify(gameState.tubes)));
+        }
+
+        function handleUndo() {
+            if (gameState.isTutorial) return;
+            if (gameState.isAnimating || gameState.history.length === 0) return;
+            gameState.tubes = gameState.history.pop();
+            gameState.selectedTubeIdx = null;
+            updateTubeVisuals();
+            playSound('tick');
+        }
+
+        function handleTubeClick(idx) {
+            if (gameState.isAnimating) return;
+
+            if (gameState.isTutorial) {
+                const targetIdx = TUTORIAL_STEPS[gameState.tutorialStep].target;
+                if (idx !== targetIdx) {
+                    playSound('error');
+                    const wrapper = document.getElementById(`tube-wrapper-${idx}`);
+                    wrapper.classList.add('shake');
+                    setTimeout(() => wrapper.classList.remove('shake'), 400);
+                    return;
+                }
+            }
+
+            if (gameState.selectedTubeIdx === null) {
+                // Select source tube
+                if (gameState.tubes[idx].length > 0) {
+                    gameState.selectedTubeIdx = idx;
+                    playSound('pop');
+                    updateTubeVisuals();
+
+                    if (gameState.isTutorial) advanceTutorial();
+                }
+            } else {
+                // Same tube clicked -> deselect
+                if (gameState.selectedTubeIdx === idx) {
+                    // 튜토리얼 모드에서는 취소하지 못하게 막음
+                    if (gameState.isTutorial) return;
+
+                    gameState.selectedTubeIdx = null;
+                    playSound('tick');
+                    updateTubeVisuals();
+                } else {
+                    // Try to pour
+                    let success = attemptPour(gameState.selectedTubeIdx, idx);
+                    if (success && gameState.isTutorial) advanceTutorial();
+                }
+            }
+        }
+
+        function attemptPour(fromIdx, toIdx) {
+            let fromTube = gameState.tubes[fromIdx];
+            let toTube = gameState.tubes[toIdx];
+
+            if (fromTube.length === 0) return false;
+
+            let topColor = fromTube[fromTube.length - 1];
+            let pourCount = 0;
+
+            // Count continuous colors on top
+            for (let i = fromTube.length - 1; i >= 0; i--) {
+                if (fromTube[i] === topColor) pourCount++;
+                else break;
+            }
+
+            let emptySpace = MAX_CAPACITY - toTube.length;
+
+            // Check valid move
+            if (emptySpace > 0 && (toTube.length === 0 || toTube[toTube.length - 1] === topColor)) {
+                let amountToPour = Math.min(pourCount, emptySpace);
+
+                if (!gameState.isTutorial) saveState();
+
+                // Process pour
+                for (let i = 0; i < amountToPour; i++) {
+                    fromTube.pop();
+                    toTube.push(topColor);
+                }
+
+                gameState.selectedTubeIdx = null;
+                gameState.isAnimating = true;
+
+                playSound('pour');
+                updateTubeVisuals();
+
+                setTimeout(() => {
+                    gameState.isAnimating = false;
+                    if (!gameState.isTutorial) checkWin();
+                }, 400); // Wait for CSS transition
+
+                return true;
+            } else {
+                // Invalid move
+                gameState.selectedTubeIdx = null;
+                updateTubeVisuals();
+
+                // Shake animation on target tube
+                const targetWrapper = document.getElementById(`tube-wrapper-${toIdx}`);
+                targetWrapper.classList.add('shake');
+                playSound('error');
+                setTimeout(() => targetWrapper.classList.remove('shake'), 400);
+
+                return false;
+            }
+        }
+
+        function checkWin() {
+            let isWin = true;
+            for (let tube of gameState.tubes) {
+                if (tube.length === 0) continue;
+                if (tube.length !== MAX_CAPACITY) { isWin = false; break; }
+                let firstColor = tube[0];
+                for (let i = 1; i < MAX_CAPACITY; i++) {
+                    if (tube[i] !== firstColor) { isWin = false; break; }
+                }
+            }
+
+            if (isWin) {
+                playSound('magic');
+                fireConfetti();
+                document.getElementById('next-overlay').classList.remove('hidden');
+                document.getElementById('next-overlay').classList.add('flex');
+
+                // 레벨 클리어 음성도 1단계에서만 재생
+                if (gameState.levelIdx === 0) {
+                    speak('greatJob');
+                }
+
+                setTimeout(() => {
+                    gameState.levelIdx++;
+                    loadLevel(gameState.levelIdx);
+                }, 2000);
+            }
+        }
+
+        function showAllClear() {
+            document.getElementById('play-canvas').innerHTML = '';
+            document.getElementById('all-clear-overlay').classList.remove('hidden');
+            document.getElementById('all-clear-overlay').classList.add('flex');
+            playSound('magic');
+            fireConfetti();
+            speak('allClearDesc');
+        }
+
+        // --- [5. UI & Event Listeners] ---
+        function updateTexts() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (I18N_DATA[currentLang][key]) {
+                    el.innerText = I18N_DATA[currentLang][key];
+                }
+            });
+            if (!document.getElementById('app-content').classList.contains('hidden') && !gameState.isTutorial) {
+                const hint = currentLang === 'ko' ? I18N_DATA.ko.guideText : I18N_DATA.en.guideText;
+                document.getElementById('instruction-text').innerText = hint;
+            }
+        }
+
+        document.getElementById('btn-lang').onclick = () => {
+            currentLang = currentLang === 'ko' ? 'en' : 'ko';
+            updateTexts();
+            speak(currentLang === 'ko' ? '한국어' : 'English', true);
+
+            if (gameState.isTutorial) {
+                const stepMsg = I18N_DATA[currentLang][TUTORIAL_STEPS[gameState.tutorialStep].msg];
+                document.getElementById('tutorial-bottom-text').innerText = stepMsg;
+                document.getElementById('instruction-text').innerText = I18N_DATA[currentLang].tutInProgress;
+            }
+        };
+
+        // 튜토리얼 진입 버튼
+        document.getElementById('btn-start').onclick = () => {
+            stopTTS();
+            document.getElementById('intro-screen').classList.add('hidden');
+            document.getElementById('app-content').classList.remove('hidden');
+            startTutorial();
+        };
+
+        document.getElementById('btn-hint').onclick = useHint;
+        document.getElementById('btn-undo').onclick = handleUndo;
+
+        document.getElementById('btn-reset-level').onclick = () => {
+            if (!gameState.isAnimating && !gameState.isTutorial) {
+                playSound('tick');
+                loadLevel(gameState.levelIdx);
+            }
+        };
+
+        document.getElementById('btn-restart').onclick = () => {
+            stopTTS();
+            document.getElementById('modal-restart').classList.remove('hidden');
+            speak('restartConfirm');
+        };
+
+        document.getElementById('btn-howto').onclick = () => {
+            stopTTS();
+            document.getElementById('modal-info').classList.remove('hidden');
+            speak('guide1Desc');
+        };
+
+        const infoModal = document.getElementById('modal-info');
+        const exitModal = document.getElementById('modal-exit');
+        const restartModal = document.getElementById('modal-restart');
+
+        document.querySelectorAll('.btn-close-modal').forEach(btn => {
+            btn.onclick = () => {
+                stopTTS();
+                infoModal.classList.add('hidden');
+            };
+        });
+
+        document.getElementById('btn-exit').onclick = () => {
+            stopTTS();
+            exitModal.classList.remove('hidden');
+            speak('exitConfirm');
+        };
+
+        document.getElementById('btn-cancel-exit').onclick = () => { stopTTS(); exitModal.classList.add('hidden'); };
+        document.getElementById('btn-confirm-exit').onclick = () => {
+            stopTTS();
+            if (window.history.length > 1) window.history.back(); else window.close();
+        };
+
+        document.getElementById('btn-cancel-restart').onclick = () => { stopTTS(); restartModal.classList.add('hidden'); };
+        document.getElementById('btn-confirm-restart').onclick = () => {
+            stopTTS();
+            restartModal.classList.add('hidden');
+            resetGame(true);
+        };
+
+        // --- Audio Engine ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+
+        document.body.addEventListener('click', () => {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }, { once: true });
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'pop') {
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'tick') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(300, now);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now); osc.stop(now + 0.05);
+            } else if (type === 'pour') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.linearRampToValueAtTime(600, now + 0.3);
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.1, now + 0.1);
+                gain.gain.linearRampToValueAtTime(0, now + 0.3);
+                osc.start(now); osc.stop(now + 0.3);
+            } else if (type === 'error') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now); osc.stop(now + 0.15);
+            } else if (type === 'magic') {
+                const notes = [523, 659, 783, 1046];
+                notes.forEach((f, i) => {
+                    const o = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    o.type = 'triangle';
+                    o.frequency.value = f;
+                    g.gain.setValueAtTime(0, now + i * 0.05);
+                    g.gain.linearRampToValueAtTime(0.1, now + i * 0.05 + 0.05);
+                    g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.05 + 0.3);
+                    o.connect(g); g.connect(audioCtx.destination);
+                    o.start(now + i * 0.05); o.stop(now + i * 0.05 + 0.3);
+                });
+            }
+        }
+
+        // --- Confetti Engine ---
+        const effectCanvas = document.getElementById("confetti");
+        const effectCtx = effectCanvas.getContext("2d");
+        let particles = [];
+
+        function resizeConfetti() {
+            effectCanvas.width = window.innerWidth;
+            effectCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeConfetti);
+        resizeConfetti();
+
+        function fireConfetti() {
+            const colors = Object.values(POTION_COLORS);
+            const cx = window.innerWidth / 2;
+            const cy = window.innerHeight / 2;
+            for (let i = 0; i < 50; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 12 + 5;
+                particles.push({
+                    x: cx, y: cy,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 2,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    life: 1.0,
+                    decay: Math.random() * 0.02 + 0.01,
+                    size: Math.random() * 8 + 4
+                });
+            }
+        }
+
+        function updateParticles() {
+            effectCtx.clearRect(0, 0, effectCanvas.width, effectCanvas.height);
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx; p.y += p.vy;
+                p.vy += 0.3; // Gravity
+                p.life -= p.decay;
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+                effectCtx.globalAlpha = p.life;
+                effectCtx.fillStyle = p.color;
+                effectCtx.beginPath();
+                effectCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                effectCtx.fill();
+            }
+            effectCtx.globalAlpha = 1.0;
+            requestAnimationFrame(updateParticles);
+        }
+
+        // --- Init ---
+        function init() {
+            lucide.createIcons();
+            resizeConfetti();
+            updateParticles();
+            if ('speechSynthesis' in window) window.speechSynthesis.getVoices();
+        }
+
+        window.onload = init;
+    </script>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-03" defer></script>
+</body>
+
+</html>

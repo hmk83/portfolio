@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>알록달록 물감 실험실</title>
+
+    <!-- GNB 및 기본 보안 스크립트 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Core Reset & Safe Area */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --gnb-height: 60px;
+        }
+
+        body {
+            font-family: 'Jua', sans-serif;
+            background-color: #fdf4ff;
+            background-image: radial-gradient(#fbcfe8 15%, transparent 16%), radial-gradient(#fbcfe8 15%, transparent 16%);
+            background-size: 60px 60px;
+            background-position: 0 0, 30px 30px;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* GNB */
+        #gnb {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: var(--gnb-height);
+            background-color: #FEE500;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Layout - 숨김 처리 우선순위 강제 적용 */
+        #game-wrapper.hidden,
+        #intro-screen.hidden {
+            display: none !important;
+        }
+
+        #game-wrapper {
+            position: absolute;
+            top: var(--gnb-height);
+            left: 0;
+            width: 100vw;
+            height: calc(100vh - var(--gnb-height));
+            display: flex;
+            flex-direction: column;
+            /* 모바일: 위아래 */
+            padding: 2vmin;
+            gap: 2vmin;
+        }
+
+        /* PC/태블릿 환경: 좌우 배치 */
+        @media (min-width: 768px) {
+            #game-wrapper {
+                flex-direction: row;
+                padding: 3vmin;
+                gap: 3vmin;
+            }
+        }
+
+        /* [수정] Palette Area (왼쪽) */
+        .palette-area {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 2rem;
+            border: 4px solid #f9a8d4;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            padding: 2.5vmin;
+            /* 패딩을 넉넉히 줌 */
+            max-height: 40vh;
+            overflow: hidden;
+            z-index: 20;
+            min-width: 250px;
+        }
+
+        @media (min-width: 768px) {
+            .palette-area {
+                max-height: 100%;
+            }
+        }
+
+        .palette-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            /* 4열로 고정하여 공간 확보 */
+            gap: 2.5vmin;
+            overflow-y: auto;
+            padding: 1vmin;
+            flex-grow: 1;
+            justify-items: center;
+            /* 원들을 중앙 정렬하여 잘림 방지 */
+            align-content: start;
+        }
+
+        /* 스크롤바 숨기기 */
+        .palette-grid::-webkit-scrollbar {
+            display: none;
+        }
+
+        .palette-grid {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .color-tube {
+            width: 100%;
+            max-width: 80px;
+            /* 너무 커지지 않도록 제한 */
+            aspect-ratio: 1;
+            border-radius: 50%;
+            cursor: pointer;
+            position: relative;
+            box-shadow: inset -3px -3px 6px rgba(0, 0, 0, 0.2), 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.1s;
+            border: 3px solid white;
+        }
+
+        .color-tube::after {
+            content: '';
+            position: absolute;
+            top: 15%;
+            left: 15%;
+            width: 30%;
+            height: 30%;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+        }
+
+        .color-tube.squeezing {
+            transform: scale(0.85);
+            box-shadow: inset -1px -1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        /* [수정] Paper Area (오른쪽 중앙 흰 도화지 영역) */
+        .paper-area {
+            flex: 2;
+            background: #f8fafc;
+            border-radius: 2rem;
+            border: 4px solid #cbd5e1;
+            box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.05);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 2vmin;
+            z-index: 10;
+        }
+
+        /* 실제 도화지 역할 */
+        .paper-container {
+            width: 85%;
+            height: 80%;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1), 0 5px 15px rgba(0, 0, 0, 0.05);
+            position: relative;
+            z-index: 10;
+            overflow: hidden;
+        }
+
+        /* 물감이 번지는 캔버스 */
+        #fluid-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 15;
+            border-radius: 12px;
+        }
+
+        /* 입자가 떨어지는 글로벌 캔버스 */
+        #particle-canvas {
+            position: absolute;
+            top: var(--gnb-height);
+            left: 0;
+            width: 100vw;
+            height: calc(100vh - var(--gnb-height));
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* UI Controls in Paper Area */
+        .paper-controls {
+            position: absolute;
+            top: 2vmin;
+            right: 2vmin;
+            display: flex;
+            gap: 1vmin;
+            z-index: 30;
+        }
+
+        .status-badge {
+            position: absolute;
+            top: 2vmin;
+            left: 2vmin;
+            background: white;
+            padding: 1vmin 2vmin;
+            border-radius: 20px;
+            font-size: 2.5vmin;
+            font-weight: bold;
+            color: #475569;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            border: 2px solid #e2e8f0;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            gap: 1vmin;
+        }
+
+        .color-result-text {
+            position: absolute;
+            bottom: 4vmin;
+            width: 90%;
+            text-align: center;
+            font-size: 3.5vmin;
+            font-weight: bold;
+            color: #1e293b;
+            text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff;
+            z-index: 30;
+            transition: opacity 0.3s;
+            opacity: 0;
+        }
+
+        .volume-bar-container {
+            width: 1.5vmin;
+            height: 50%;
+            background: #e2e8f0;
+            border-radius: 10px;
+            position: absolute;
+            right: 3%;
+            bottom: 25%;
+            z-index: 20;
+            overflow: hidden;
+            border: 1px solid #cbd5e1;
+        }
+
+        .volume-bar-fill {
+            width: 100%;
+            height: 0%;
+            background: #3b82f6;
+            position: absolute;
+            bottom: 0;
+            transition: height 0.1s;
+        }
+
+        /* Modals & Screens */
+        #intro-screen {
+            position: absolute;
+            top: var(--gnb-height);
+            left: 0;
+            width: 100%;
+            height: calc(100vh - var(--gnb-height));
+            background: linear-gradient(135deg, #e0f2fe, #fdf4ff);
+            z-index: 15000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 4vmin;
+        }
+
+        .modal-enter {
+            animation: modalFadeIn 0.3s forwards;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .btn-press:active {
+            transform: scale(0.95);
+        }
+
+        /* 꽉 찼을 때 깜빡임 */
+        @keyframes pulse-red {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 15px rgba(239, 68, 68, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+
+        .full-warning {
+            animation: pulse-red 1s infinite;
+            border-color: #ef4444 !important;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- [1. GNB] -->
+    <nav id="gnb">
+        <div class="flex items-center gap-2">
+            <h1
+                class="text-xl md:text-2xl font-bold text-gray-800 whitespace-nowrap overflow-hidden text-ellipsis max-w-[50vw]">
+                🎨 <span id="ui-gnb-title">알록달록 물감 실험실</span>
+            </h1>
+        </div>
+        <div class="flex gap-2">
+            <button id="btn-lang"
+                class="bg-blue-500 text-white rounded-full px-4 py-1 text-sm font-bold shadow-sm hover:bg-blue-600 transition btn-press"
+                onclick="toggleLanguage()">EN</button>
+            <button id="btn-help"
+                class="bg-green-500 text-white rounded-full px-4 py-1 text-sm font-bold shadow-sm hover:bg-green-600 transition btn-press"
+                onclick="showHelp()">설명보기</button>
+            <button id="btn-exit"
+                class="bg-gray-600 text-white rounded-full px-4 py-1 text-sm font-bold shadow-sm hover:bg-gray-700 transition btn-press"
+                onclick="showExit()">종료</button>
+        </div>
+    </nav>
+
+    <!-- [2. Intro Screen] -->
+    <div id="intro-screen">
+        <i data-lucide="palette" style="width: 15vmin; height: 15vmin; color: #ec4899; margin-bottom: 3vmin;"></i>
+        <h1 class="text-[8vmin] font-bold text-blue-600 mb-[2vmin] drop-shadow-sm" id="ui-intro-title">알록달록 물감 실험실</h1>
+        <p class="text-[3.5vmin] text-gray-600 mb-[6vmin] max-w-[80%] leading-relaxed" id="ui-intro-desc">
+            물감을 하얀 종이 위에 쭉~ 짜보세요!<br>여러 가지 색을 섞으면 어떤 색이 번져나갈까요?<br>나만의 예쁜 색깔을 만들어봐요!
+        </p>
+        <div class="flex gap-[3vmin]">
+            <button
+                class="bg-green-500 text-white text-[3.5vmin] font-bold px-[5vmin] py-[2vmin] rounded-full shadow-lg border-2 border-white hover:bg-green-600 btn-press"
+                id="ui-btn-intro-help" onclick="showHelp()">설명보기</button>
+            <button
+                class="bg-blue-500 text-white text-[3.5vmin] font-bold px-[5vmin] py-[2vmin] rounded-full shadow-lg border-2 border-white hover:bg-blue-600 btn-press"
+                id="ui-btn-start" onclick="startGame()">수업 시작</button>
+        </div>
+    </div>
+
+    <!-- [3. Main Game Wrapper] -->
+    <div id="game-wrapper" class="hidden">
+
+        <!-- Palette Area -->
+        <div class="palette-area">
+            <div class="text-[3vmin] font-bold text-pink-600 mb-[2vmin] flex items-center justify-between shrink-0">
+                <span id="ui-palette-title"><i data-lucide="palette" class="inline w-[3vmin] h-[3vmin]"></i> 물감
+                    파레트</span>
+                <span class="text-[2vmin] text-gray-400 font-normal" id="ui-palette-hint">물감을 꾹 눌러보세요</span>
+            </div>
+            <div class="palette-grid" id="palette-grid">
+                <!-- Colors injected here via JS -->
+            </div>
+        </div>
+
+        <!-- Paper Area -->
+        <div class="paper-area" id="paper-area">
+            <div class="status-badge">
+                <i data-lucide="droplet" class="w-[3vmin] h-[3vmin] text-blue-500"></i>
+                <span id="volume-text">0%</span>
+            </div>
+
+            <div class="paper-controls">
+                <button onclick="clearPaper()"
+                    class="bg-red-500 text-white p-[1.5vmin] rounded-xl shadow hover:bg-red-600 btn-press flex items-center gap-1">
+                    <i data-lucide="eraser" class="w-[3vmin] h-[3vmin]"></i> <span class="text-[2.5vmin] font-bold"
+                        id="ui-btn-clear">새 종이</span>
+                </button>
+            </div>
+
+            <!-- White Paper Container -->
+            <div class="paper-container" id="paper-target">
+                <!-- Fluid Canvas (Splat spreading) -->
+                <canvas id="fluid-canvas"></canvas>
+            </div>
+
+            <div class="color-result-text" id="color-result-text">어떤 색이 될까요?</div>
+
+            <div class="volume-bar-container">
+                <div class="volume-bar-fill" id="volume-bar-fill"></div>
+            </div>
+        </div>
+
+        <!-- Particle Canvas Overlay -->
+        <canvas id="particle-canvas"></canvas>
+
+    </div>
+
+    <!-- [4. Modals] -->
+    <!-- Help Modal -->
+    <div id="modal-help" class="hidden fixed inset-0 bg-black/50 z-[20000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 w-[80%] max-w-lg shadow-xl relative modal-enter text-center">
+            <h3 class="text-[4vmin] font-bold text-gray-800 mb-4" id="ui-help-title">실험실 이용 안내</h3>
+            <p class="text-[2.5vmin] text-gray-600 mb-8 leading-relaxed text-left" id="ui-help-desc">
+                1. 원하는 색상의 물감을 <b>꾹 누르고 있으면</b> 종이 위로 떨어집니다.<br>
+                2. 여러 가지 색깔을 넣으면 도화지 위에서 자연스럽게 번지며 섞여요.<br>
+                3. 물감이 섞인 후 어떤 색이 만들어졌는지 인공지능 요정이 알려줄 거예요!<br>
+                4. 종이가 물감으로 가득 차면 '새 종이' 버튼을 눌러주세요.
+            </p>
+            <div class="flex justify-center">
+                <button
+                    class="bg-blue-500 text-white text-[3vmin] font-bold px-8 py-3 rounded-full hover:bg-blue-600 transition btn-press"
+                    onclick="hideHelp()" id="ui-btn-close-help">알겠어요!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exit Modal -->
+    <div id="modal-exit" class="hidden fixed inset-0 bg-black/50 z-[20000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 w-[80%] max-w-lg shadow-xl relative modal-enter text-center">
+            <h3 class="text-[4vmin] font-bold text-gray-800 mb-4" id="ui-exit-title">정말 나갈까요?</h3>
+            <p class="text-[2.5vmin] text-gray-500 mb-8" id="ui-exit-desc">섞어둔 예쁜 색깔이 모두 사라져요.</p>
+            <div class="flex justify-center gap-4">
+                <button
+                    class="bg-gray-200 text-gray-700 text-[3vmin] font-bold px-6 py-3 rounded-full hover:bg-gray-300 transition btn-press"
+                    onclick="hideExit()" id="ui-btn-no">아니요</button>
+                <button
+                    class="bg-red-500 text-white text-[3vmin] font-bold px-6 py-3 rounded-full hover:bg-red-600 transition btn-press"
+                    onclick="doExit()" id="ui-btn-yes">네, 나갈래요</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Data & Configuration ---
+        const i18n = {
+            ko: {
+                gnbTitle: "알록달록 물감 실험실", langBtn: "EN", helpBtn: "설명보기", exitBtn: "종료",
+                introTitle: "알록달록 물감 실험실",
+                introDesc: "물감을 하얀 종이 위에 쭉~ 짜보세요!<br>여러 가지 색을 섞으면 어떤 색이 번져나갈까요?<br>나만의 예쁜 색깔을 만들어봐요!",
+                introTts: "안녕! 알록달록 물감 실험실에 온 걸 환영해. 파레트의 물감을 꾹 눌러서 도화지에 짜보자. 어떤 색이 될까?",
+                btnStart: "수업 시작", paletteTitle: "물감 파레트", paletteHint: "물감을 꾹 눌러보세요",
+                btnClear: "새 종이", helpTitle: "실험실 이용 안내",
+                helpDesc: "1. 원하는 색상의 물감을 <b>꾹 누르고 있으면</b> 종이 위로 떨어집니다.<br>2. 여러 가지 색깔을 넣으면 도화지 위에서 자연스럽게 번지며 섞여요.<br>3. 물감이 섞인 후 어떤 색이 만들어졌는지 인공지능 요정이 알려줄 거예요!<br>4. 물감을 계속 짜 넣으면 모양은 더 커지지 않고 색깔만 계속 변한답니다.",
+                btnClose: "알겠어요!", exitTitle: "정말 나갈까요?", exitDesc: "섞어둔 예쁜 색깔이 모두 사라져요.",
+                btnNo: "아니요", btnYes: "네, 나갈래요",
+                msgFull: "종이가 물감으로 가득 찼어요! 새 종이로 바꿔주세요.", msgEmpty: "어떤 색이 될까요?",
+                resColor: "우와! {color} 비슷한 색이 만들어졌어요!"
+            },
+            en: {
+                gnbTitle: "Colorful Paint Lab", langBtn: "KO", helpBtn: "Help", exitBtn: "Exit",
+                introTitle: "Colorful Paint Lab",
+                introDesc: "Squeeze the paint onto the white paper!<br>What color will it spread into when mixed?<br>Let's make your own beautiful colors!",
+                introTts: "Hello! Welcome to the colorful paint lab. Press and hold the paints to drop them on the paper. What color will it be?",
+                btnStart: "Start Class", paletteTitle: "Paint Palette", paletteHint: "Press & hold paints",
+                btnClear: "New Paper", helpTitle: "How to Use",
+                helpDesc: "1. <b>Press and hold</b> a color to drop paint.<br>2. Mix different colors to see them blend naturally on the paper.<br>3. The AI fairy will tell you what color you've made!<br>4. Keep adding paint to change the color without making the shape bigger.",
+                btnClose: "Got it!", exitTitle: "Really exit?", exitDesc: "Your beautiful mixed colors will be lost.",
+                btnNo: "No", btnYes: "Yes, Exit",
+                msgFull: "The paper is full of paint! Please get a new paper.", msgEmpty: "What color will it be?",
+                resColor: "Wow! You made a color similar to {color}!"
+            }
+        };
+
+        const COLORS = [
+            { hex: '#EF4444', ko: '빨강색', en: 'Red' },
+            { hex: '#F97316', ko: '주황색', en: 'Orange' },
+            { hex: '#F59E0B', ko: '귤색', en: 'Tangerine' },
+            { hex: '#EAB308', ko: '노랑색', en: 'Yellow' },
+            { hex: '#84CC16', ko: '연두색', en: 'Yellow-Green' },
+            { hex: '#22C55E', ko: '초록색', en: 'Green' },
+            { hex: '#10B981', ko: '청록색', en: 'Cyan-Green' },
+            { hex: '#06B6D4', ko: '하늘색', en: 'Sky Blue' },
+            { hex: '#3B82F6', ko: '파랑색', en: 'Blue' },
+            { hex: '#4F46E5', ko: '남색', en: 'Indigo' },
+            { hex: '#8B5CF6', ko: '보라색', en: 'Purple' },
+            { hex: '#D946EF', ko: '자주색', en: 'Magenta' },
+            { hex: '#EC4899', ko: '분홍색', en: 'Pink' },
+            { hex: '#FDA4AF', ko: '연분홍색', en: 'Light Pink' },
+            { hex: '#FDBA74', ko: '살구색', en: 'Peach' },
+            { hex: '#D97706', ko: '황토색', en: 'Ochre' },
+            { hex: '#A16207', ko: '갈색', en: 'Brown' },
+            { hex: '#451A03', ko: '고동색', en: 'Dark Brown' },
+            { hex: '#0F172A', ko: '검정색', en: 'Black' },
+            { hex: '#475569', ko: '진회색', en: 'Dark Gray' },
+            { hex: '#94A3B8', ko: '회색', en: 'Gray' },
+            { hex: '#E2E8F0', ko: '연회색', en: 'Light Gray' },
+            { hex: '#FFFFFF', ko: '하양색', en: 'White' },
+            { hex: '#BEF264', ko: '라임색', en: 'Lime' }
+        ];
+
+        const MAX_VOLUME = 1000;
+        const SQUEEZE_RATE = 5;
+
+        // --- 2. Global State ---
+        let state = {
+            lang: 'ko',
+            ttsEnabled: false,
+            introPlayed: false,
+            volumes: {}, // { '#hex': amount }
+            totalVolume: 0,
+            mixedColor: { r: 255, g: 255, b: 255 }, // Start empty
+            activeColor: null, // Currently squeezed color hex
+            particles: [],
+            fluidWaveOffset: 0,
+            lastAnnouncement: '',
+            announceTimeout: null
+        };
+
+        // --- 3. Audio & TTS ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        let availableVoices = [];
+
+        window.speechSynthesis.onvoiceschanged = () => { availableVoices = window.speechSynthesis.getVoices(); };
+
+        function initAudio() {
+            try {
+                if (!audioCtx) audioCtx = new AudioContext();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+            } catch (e) {
+                console.warn("Audio Context init failed:", e);
+            }
+        }
+
+        function speak(textKey, isDynamic = false, dynamicText = "") {
+            if (!state.ttsEnabled || !('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+
+            let text = isDynamic ? dynamicText : i18n[state.lang][textKey];
+            if (!text) return;
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = state.lang === 'ko' ? 'ko-KR' : 'en-US';
+            utterance.rate = state.lang === 'ko' ? 1.0 : 0.9;
+            utterance.pitch = 1.1;
+
+            if (availableVoices.length === 0) availableVoices = window.speechSynthesis.getVoices();
+            const prefix = state.lang === 'ko' ? 'ko' : 'en';
+            const voice = availableVoices.find(v => v.lang.includes(prefix) && v.name.toLowerCase().includes('google'))
+                || availableVoices.find(v => v.lang.includes(prefix));
+            if (voice) utterance.voice = voice;
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function playSqueezeSound() {
+            // 물감 짤 때 나는 효과음 삭제 요청으로 기능 비활성화
+        }
+
+        function playDropSound() {
+            // 물감 떨어질 때 나는 효과음 삭제 요청으로 기능 비활성화
+        }
+
+        // --- 4. Color Mixing Logic ---
+        function rgb2ryb(r, g, b) {
+            const w = Math.min(r, g, b);
+            r -= w; g -= w; b -= w;
+            const mg = Math.max(r, g, b);
+            let y = Math.min(r, g);
+            r -= y; g -= y;
+            if (b && g) { b /= 2.0; g /= 2.0; }
+            y += g; b += g;
+            const my = Math.max(r, y, b);
+            if (my) { const n = mg / my; r *= n; y *= n; b *= n; }
+            return { r, y, b, w };
+        }
+
+        function ryb2rgb(r, y, b, w) {
+            const my = Math.max(r, y, b);
+            let g = Math.min(y, b);
+            y -= g; b -= g;
+            if (b && g) { b *= 2.0; g *= 2.0; }
+            r += y; g += y;
+            const mg = Math.max(r, g, b);
+            if (mg) { const n = my / mg; r *= n; g *= n; b *= n; }
+            r += w; g += w; b += w;
+            return { r, g, b };
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        function updateMixedColor() {
+            if (state.totalVolume === 0) {
+                state.mixedColor = { r: 255, g: 255, b: 255 };
+                return;
+            }
+
+            let sumR = 0, sumY = 0, sumB = 0, sumW = 0;
+
+            for (let hex in state.volumes) {
+                const vol = state.volumes[hex];
+                if (vol <= 0) continue;
+
+                const rgb = hexToRgb(hex);
+                const ryb = rgb2ryb(rgb.r, rgb.g, rgb.b);
+
+                sumR += ryb.r * vol;
+                sumY += ryb.y * vol;
+                sumB += ryb.b * vol;
+                sumW += ryb.w * vol;
+            }
+
+            const r = sumR / state.totalVolume;
+            const y = sumY / state.totalVolume;
+            const b = sumB / state.totalVolume;
+            const w = sumW / state.totalVolume;
+
+            const finalRgb = ryb2rgb(r, y, b, w);
+            state.mixedColor = {
+                r: Math.min(255, Math.round(finalRgb.r)),
+                g: Math.min(255, Math.round(finalRgb.g)),
+                b: Math.min(255, Math.round(finalRgb.b))
+            };
+        }
+
+        function getClosestColorName() {
+            if (state.totalVolume === 0) return null;
+            const mr = state.mixedColor.r, mg = state.mixedColor.g, mb = state.mixedColor.b;
+            let minDist = Infinity;
+            let closest = null;
+
+            for (let c of COLORS) {
+                const rgb = hexToRgb(c.hex);
+                const dist = Math.sqrt(Math.pow(mr - rgb.r, 2) + Math.pow(mg - rgb.g, 2) + Math.pow(mb - rgb.b, 2));
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = c;
+                }
+            }
+            return closest;
+        }
+
+        // 한국어 받침 유무를 확인하여 '과' 또는 '와'를 반환하는 함수
+        function getParticleWaGwa(text) {
+            const lastChar = text.charCodeAt(text.length - 1);
+            // 한글 가~힣 사이가 아니면 기본값 '과' 반환
+            if (lastChar < 0xAC00 || lastChar > 0xD7A3) return '과';
+            // 종성(받침) 확인: (글자코드 - 0xAC00) % 28이 0보다 크면 받침 있음
+            return (lastChar - 0xAC00) % 28 > 0 ? '과' : '와';
+        }
+
+        function scheduleAnnouncement() {
+            if (state.announceTimeout) clearTimeout(state.announceTimeout);
+            state.announceTimeout = setTimeout(() => {
+                if (state.totalVolume > 0 && !state.activeColor) {
+                    const closest = getClosestColorName();
+                    if (closest && closest.hex !== state.lastAnnouncement) {
+                        state.lastAnnouncement = closest.hex;
+
+                        let msg = "";
+                        if (state.lang === 'ko') {
+                            const particle = getParticleWaGwa(closest.ko);
+                            msg = i18n.ko.resColor.replace('{color}', closest.ko + particle);
+                        } else {
+                            msg = i18n.en.resColor.replace('{color}', closest.en);
+                        }
+
+                        const textEl = document.getElementById('color-result-text');
+                        textEl.innerText = msg;
+                        textEl.style.color = closest.hex === '#FFFFFF' || closest.hex === '#E2E8F0' ? '#334155' : closest.hex;
+                        textEl.style.opacity = 1;
+
+                        // 결과 텍스트는 보여주되, 음성 출력(TTS)은 삭제 요청으로 제거
+                        // speak('resColor', true, msg); 
+                    }
+                }
+            }, 1000); // 1초 후 알림
+        }
+
+        // --- 5. Visuals & Rendering ---
+        const particleCanvas = document.getElementById('particle-canvas');
+        const pCtx = particleCanvas.getContext('2d');
+        const fluidCanvas = document.getElementById('fluid-canvas');
+        const fCtx = fluidCanvas.getContext('2d');
+
+        function resizeCanvases() {
+            particleCanvas.width = particleCanvas.offsetWidth;
+            particleCanvas.height = particleCanvas.offsetHeight;
+            fluidCanvas.width = fluidCanvas.offsetWidth;
+            fluidCanvas.height = fluidCanvas.offsetHeight;
+        }
+
+        function spawnParticle(hex) {
+            const btn = document.querySelector(`.color-tube[data-hex="${hex}"]`);
+            if (!btn) return;
+
+            const btnRect = btn.getBoundingClientRect();
+            const wrapperRect = document.getElementById('game-wrapper').getBoundingClientRect();
+
+            const startX = btnRect.left + btnRect.width / 2 - wrapperRect.left;
+            const startY = btnRect.top + btnRect.height / 2 - wrapperRect.top;
+
+            // 도화지 중앙으로 향하도록 좌표 계산
+            const targetEl = document.getElementById('paper-target');
+            const targetRect = targetEl.getBoundingClientRect();
+            const paperCenterX = targetRect.left + targetRect.width / 2 - wrapperRect.left;
+            const paperCenterY = targetRect.top + targetRect.height / 2 - wrapperRect.top;
+
+            // 약간 무작위로 흩어지게
+            const endX = paperCenterX + (Math.random() * 60 - 30);
+            const endY = paperCenterY + (Math.random() * 60 - 30);
+
+            state.particles.push({
+                x: startX, y: startY,
+                vx: (endX - startX) / 30 + (Math.random() * 2 - 1),
+                vy: (endY - startY) / 30 - 10 - Math.random() * 5,
+                color: hex,
+                size: 5 + Math.random() * 5,
+                life: 1.0,
+                targetY: endY
+            });
+        }
+
+        function renderLoop() {
+            // Logic Update
+            if (state.activeColor) {
+                if (state.totalVolume >= MAX_VOLUME) {
+                    const reduceFactor = (MAX_VOLUME - SQUEEZE_RATE) / MAX_VOLUME;
+                    let newTotal = 0;
+                    for (let hex in state.volumes) {
+                        state.volumes[hex] *= reduceFactor;
+                        newTotal += state.volumes[hex];
+                    }
+                    state.totalVolume = newTotal;
+                }
+
+                if (!state.volumes[state.activeColor]) state.volumes[state.activeColor] = 0;
+                state.volumes[state.activeColor] += SQUEEZE_RATE;
+                state.totalVolume += SQUEEZE_RATE;
+
+                spawnParticle(state.activeColor);
+
+                updateMixedColor();
+                updateFlaskUI();
+            }
+
+            // Particle Rendering
+            pCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+            for (let i = state.particles.length - 1; i >= 0; i--) {
+                let p = state.particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.8; // Gravity
+
+                pCtx.beginPath();
+                pCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                pCtx.fillStyle = p.color;
+                pCtx.fill();
+
+                if (p.y > p.targetY) {
+                    playDropSound();
+                    state.particles.splice(i, 1);
+                }
+            }
+
+            // Fluid Rendering (도화지 중앙에서 번지는 효과)
+            fCtx.clearRect(0, 0, fluidCanvas.width, fluidCanvas.height);
+            if (state.totalVolume > 0) {
+                state.fluidWaveOffset += 0.05;
+                const centerX = fluidCanvas.width / 2;
+                const centerY = fluidCanvas.height / 2;
+
+                // 도화지 최대 반경
+                const maxRadius = Math.min(centerX, centerY) * 0.9;
+                const baseRadius = (state.totalVolume / MAX_VOLUME) * maxRadius;
+
+                fCtx.beginPath();
+                // 꿀렁이는 유기적인 모양으로 퍼지게 하기
+                for (let angle = 0; angle < Math.PI * 2; angle += 0.1) {
+                    const noise = Math.sin(angle * 4 + state.fluidWaveOffset) * (baseRadius * 0.05) +
+                        Math.sin(angle * 7 - state.fluidWaveOffset * 0.5) * (baseRadius * 0.03);
+                    const r = baseRadius + noise;
+                    const x = centerX + Math.cos(angle) * r;
+                    const y = centerY + Math.sin(angle) * r;
+
+                    if (angle === 0) fCtx.moveTo(x, y);
+                    else fCtx.lineTo(x, y);
+                }
+                fCtx.closePath();
+
+                fCtx.fillStyle = `rgb(${state.mixedColor.r}, ${state.mixedColor.g}, ${state.mixedColor.b})`;
+                fCtx.fill();
+            }
+
+            requestAnimationFrame(renderLoop);
+        }
+
+        // --- 6. UI & Interaction ---
+        function updateFlaskUI() {
+            const percent = Math.min(100, Math.floor((state.totalVolume / MAX_VOLUME) * 100));
+            document.getElementById('volume-text').innerText = `${percent}%`;
+            document.getElementById('volume-bar-fill').style.height = `${percent}%`;
+        }
+
+        function clearPaper() {
+            state.volumes = {};
+            state.totalVolume = 0;
+            state.mixedColor = { r: 255, g: 255, b: 255 };
+            state.lastAnnouncement = '';
+            document.getElementById('paper-target').classList.remove('full-warning');
+
+            const textEl = document.getElementById('color-result-text');
+            textEl.innerText = i18n[state.lang].msgEmpty;
+            textEl.style.color = '#1e293b';
+            textEl.style.opacity = 0;
+
+            updateFlaskUI();
+        }
+
+        function handlePointerDown(e) {
+            if (e.target.closest('.color-tube')) {
+                e.preventDefault();
+                initAudio();
+                const btn = e.target.closest('.color-tube');
+                state.activeColor = btn.dataset.hex;
+                btn.classList.add('squeezing');
+                document.getElementById('color-result-text').style.opacity = 0;
+                if (state.announceTimeout) clearTimeout(state.announceTimeout);
+            }
+        }
+
+        function handlePointerUp(e) {
+            if (state.activeColor) {
+                const btn = document.querySelector(`.color-tube[data-hex="${state.activeColor}"]`);
+                if (btn) btn.classList.remove('squeezing');
+                state.activeColor = null;
+                scheduleAnnouncement();
+            }
+        }
+
+        function buildPalette() {
+            const grid = document.getElementById('palette-grid');
+            grid.innerHTML = '';
+            COLORS.forEach(c => {
+                const tube = document.createElement('div');
+                tube.className = 'color-tube';
+                tube.style.backgroundColor = c.hex;
+                tube.dataset.hex = c.hex;
+                tube.title = state.lang === 'ko' ? c.ko : c.en;
+                grid.appendChild(tube);
+            });
+        }
+
+        function toggleLanguage() {
+            state.lang = state.lang === 'ko' ? 'en' : 'ko';
+            updateStaticUI();
+            buildPalette();
+            if (state.lastAnnouncement) {
+                state.lastAnnouncement = '';
+                scheduleAnnouncement();
+            }
+        }
+
+        function updateStaticUI() {
+            const t = i18n[state.lang];
+            document.getElementById('ui-gnb-title').innerText = t.gnbTitle;
+            document.getElementById('btn-lang').innerText = t.langBtn;
+            document.getElementById('btn-help').innerText = t.helpBtn;
+            document.getElementById('btn-exit').innerText = t.exitBtn;
+
+            document.getElementById('ui-intro-title').innerText = t.introTitle;
+            document.getElementById('ui-intro-desc').innerHTML = t.introDesc;
+            document.getElementById('ui-btn-start').innerText = t.btnStart;
+            document.getElementById('ui-btn-intro-help').innerText = t.helpBtn;
+
+            document.getElementById('ui-palette-title').innerHTML = `<i data-lucide="palette" class="inline w-[3vmin] h-[3vmin] mr-1"></i> ${t.paletteTitle}`;
+            document.getElementById('ui-palette-hint').innerText = t.paletteHint;
+            document.getElementById('ui-btn-clear').innerText = t.btnClear;
+
+            document.getElementById('ui-help-title').innerText = t.helpTitle;
+            document.getElementById('ui-help-desc').innerHTML = t.helpDesc;
+            document.getElementById('ui-btn-close-help').innerText = t.btnClose;
+
+            document.getElementById('ui-exit-title').innerText = t.exitTitle;
+            document.getElementById('ui-exit-desc').innerText = t.exitDesc;
+            document.getElementById('ui-btn-no').innerText = t.btnNo;
+            document.getElementById('ui-btn-yes').innerText = t.btnYes;
+
+            if (state.totalVolume === 0) {
+                document.getElementById('color-result-text').innerText = t.msgEmpty;
+            }
+            lucide.createIcons();
+        }
+
+        // --- 7. Flow Control ---
+        function startGame() {
+            const intro = document.getElementById('intro-screen');
+            const wrapper = document.getElementById('game-wrapper');
+
+            // 화면 즉시 전환 (안전장치)
+            intro.style.display = 'none';
+            intro.classList.add('hidden');
+
+            wrapper.style.display = '';
+            wrapper.classList.remove('hidden');
+
+            // 전환 후 사이즈 리셋 및 재생 준비
+            setTimeout(() => {
+                resizeCanvases();
+                initAudio();
+
+                if (!state.introPlayed) {
+                    state.introPlayed = true;
+                    state.ttsEnabled = true;
+                    speak('introTts');
+                }
+            }, 10);
+        }
+
+        function showHelp() { document.getElementById('modal-help').classList.remove('hidden'); speak('helpDesc'); }
+        function hideHelp() { document.getElementById('modal-help').classList.add('hidden'); window.speechSynthesis.cancel(); }
+
+        function showExit() { document.getElementById('modal-exit').classList.remove('hidden'); }
+        function hideExit() { document.getElementById('modal-exit').classList.add('hidden'); }
+        function doExit() { window.history.length > 1 ? window.history.back() : window.close(); }
+
+        // --- Initialization ---
+        function init() {
+            lucide.createIcons();
+            buildPalette();
+            updateStaticUI();
+
+            const wrapper = document.getElementById('game-wrapper');
+            wrapper.addEventListener('pointerdown', handlePointerDown);
+            wrapper.addEventListener('pointerup', handlePointerUp);
+            wrapper.addEventListener('pointercancel', handlePointerUp);
+            wrapper.addEventListener('pointerleave', handlePointerUp);
+            wrapper.addEventListener('contextmenu', e => e.preventDefault());
+
+            window.addEventListener('resize', resizeCanvases);
+
+            if ('speechSynthesis' in window) window.speechSynthesis.getVoices();
+
+            requestAnimationFrame(renderLoop);
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-03" defer></script>
+</body>
+
+</html>

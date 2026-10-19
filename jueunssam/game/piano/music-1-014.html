@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>음표 플래시카드 짝 찾기</title>
+    <script> var ref = document.referrer || ""; if (ref.indexOf("jueunssam.com") === -1 && ref.indexOf("funnelmoa.com") === -1) { console.log("로컬 테스트 환경 허용"); } </script>
+
+    <script src="https://unpkg.com/tone"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        @font-face {
+            font-family: "Leland";
+            src: url("https://cdn.jsdelivr.net/gh/MuseScoreFonts/Leland@master/Leland.otf") format("opentype");
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --gnb-height: 70px;
+            --app-bg: #1e1b4b;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            color: #f8fafc;
+            font-family: 'Jua', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            background:
+                radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.18) 0%, transparent 48%),
+                radial-gradient(circle at 85% 30%, rgba(236, 72, 153, 0.18) 0%, transparent 48%),
+                var(--app-bg);
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        #gnb {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 10000;
+            width: 100%;
+            height: var(--gnb-height);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 0 clamp(14px, 3vw, 32px);
+            background: linear-gradient(90deg, #312e81, #4c1d95);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.36);
+        }
+
+        #gnb h1 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+            color: #fff;
+            font-size: clamp(19px, 3.3vw, 32px);
+            font-weight: 900;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.45);
+            white-space: nowrap;
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .nav-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 40px;
+            padding: 8px 18px;
+            color: white;
+            font-family: inherit;
+            font-size: clamp(13px, 2vw, 18px);
+            font-weight: 900;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 999px;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+
+        .nav-btn:active {
+            transform: translateY(4px);
+        }
+
+        .btn-restart {
+            background: linear-gradient(180deg, #8b5cf6 0%, #6d28d9 100%);
+            box-shadow: 0 4px 0 #4c1d95;
+        }
+
+        .btn-exit {
+            background: linear-gradient(180deg, #f43f5e 0%, #e11d48 100%);
+            box-shadow: 0 4px 0 #9f1239;
+        }
+
+        #game-container {
+            position: absolute;
+            inset: var(--gnb-height) 0 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: clamp(8px, 2vw, 24px);
+        }
+
+        #scalable-wrapper {
+            position: relative;
+            width: min(100%, 1280px);
+            height: min(100%, 720px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background:
+                url('https://www.transparenttextures.com/patterns/cubes.png'),
+                linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            border: 8px solid rgba(255, 255, 255, 0.1);
+            border-radius: clamp(22px, 4vw, 36px);
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.45), inset 0 0 0 8px rgba(255, 255, 255, 0.06);
+        }
+
+        .top-bar {
+            flex: 0 0 auto;
+            min-height: clamp(66px, 12vh, 92px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 16px clamp(18px, 3vw, 34px);
+            background: rgba(15, 23, 42, 0.82);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 18px rgba(0, 0, 0, 0.24);
+        }
+
+        .instruction {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-width: 0;
+        }
+
+        .mascot-icon {
+            flex: 0 0 auto;
+            width: 52px;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #0f172a;
+            background: #fbbf24;
+            border: 4px solid #fff;
+            border-radius: 50%;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        #instruction-text {
+            margin: 0;
+            color: #f8fafc;
+            font-size: clamp(20px, 3vw, 31px);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            word-break: keep-all;
+        }
+
+        .hud {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .hud-pill {
+            padding: 8px 16px;
+            color: #fff;
+            font-size: clamp(15px, 2.2vw, 22px);
+            font-weight: 900;
+            background: rgba(255, 255, 255, 0.1);
+            border: 3px solid rgba(255, 255, 255, 0.14);
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+
+        .stage-area {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: clamp(8px, 2vh, 28px) clamp(8px, 2.4vw, 34px);
+        }
+
+        #card-grid {
+            --card-size: 150px;
+            --symbol-scale: 1;
+            --text-scale: 1;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            gap: clamp(6px, 1.45vw, 18px);
+            align-content: center;
+            justify-content: center;
+        }
+
+        .memory-card {
+            position: relative;
+            width: var(--card-size);
+            aspect-ratio: 0.78 / 1;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            perspective: 900px;
+            cursor: pointer;
+        }
+
+        .card-inner {
+            position: absolute;
+            inset: 0;
+            transform-style: preserve-3d;
+            transition: transform 0.42s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .memory-card.flipped .card-inner,
+        .memory-card.matched .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: clamp(18px, 2vw, 28px);
+            backface-visibility: hidden;
+            box-shadow: 0 12px 0 rgba(15, 23, 42, 0.4), 0 18px 28px rgba(0, 0, 0, 0.3);
+            border: 5px solid rgba(255, 255, 255, 0.5);
+            overflow: hidden;
+        }
+
+        .card-back {
+            color: #fff;
+            background:
+                radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.34), transparent 20%),
+                linear-gradient(135deg, #ec4899, #8b5cf6 52%, #2563eb);
+        }
+
+        .card-back::before {
+            content: '?';
+            font-size: clamp(48px, 8vw, 86px);
+            font-weight: 900;
+            text-shadow: 0 5px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .card-front {
+            justify-content: center;
+            gap: clamp(2px, 0.45vh, 6px);
+            padding: clamp(10px, 1.8vh, 18px);
+            color: #0f172a;
+            background: radial-gradient(circle at top left, #ffffff, #f1f5f9);
+            transform: rotateY(180deg);
+        }
+
+        .music-font {
+            font-family: "Leland";
+            width: 92%;
+            min-height: 42%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: visible;
+            font-size: clamp(34px, 5vw, 72px);
+            line-height: 0.9;
+            color: #0f172a;
+            filter: drop-shadow(0 8px 12px rgba(15, 23, 42, 0.18));
+            transform: translateY(2px) scale(calc(0.94 * var(--symbol-scale)));
+            transform-origin: center center;
+        }
+
+        .dotted-symbol {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 42%;
+            transform: translateY(2px) scale(calc(0.94 * var(--symbol-scale)));
+            transform-origin: center center;
+        }
+
+        .dotted-symbol .base-symbol,
+        .dotted-symbol .dot-symbol {
+            font-family: "Leland";
+            line-height: 1;
+            color: #0f172a;
+            filter: drop-shadow(0 8px 12px rgba(15, 23, 42, 0.18));
+        }
+
+        .dotted-symbol .base-symbol {
+            font-size: clamp(34px, 5vw, 72px);
+        }
+
+        .dotted-symbol .dot-symbol {
+            width: 0.14em;
+            height: 0.14em;
+            margin-left: 0.2em;
+            background: #0f172a;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(15, 23, 42, 0.16);
+            transform: translateY(var(--dot-y, 0.18em));
+        }
+
+        .note-name {
+            color: #475569;
+            font-size: calc(clamp(11px, 1.45vw, 18px) * var(--text-scale));
+            font-weight: 900;
+            line-height: 1.05;
+            white-space: nowrap;
+        }
+
+        .memory-card.matched .card-face {
+            border-color: #4ade80;
+            box-shadow: 0 10px 0 #15803d, 0 0 28px rgba(74, 222, 128, 0.7);
+        }
+
+        .memory-card.wrong {
+            animation: wrongShake 0.38s both;
+        }
+
+        @keyframes wrongShake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-10px);
+            }
+
+            50% {
+                transform: translateX(10px);
+            }
+
+            75% {
+                transform: translateX(-7px);
+            }
+        }
+
+        .overlay-screen {
+            position: absolute;
+            inset: 0;
+            z-index: 500;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(30, 27, 75, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+            backdrop-filter: blur(10px);
+        }
+
+        .overlay-screen.hidden {
+            display: none;
+        }
+
+        .intro-icon {
+            width: clamp(86px, 14vw, 140px);
+            height: clamp(86px, 14vw, 140px);
+            margin-bottom: 22px;
+            color: #ec4899;
+            filter: drop-shadow(0 10px 0 #be185d);
+            animation: float 2.2s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .intro-title {
+            margin: 0 0 18px;
+            color: #fff;
+            font-size: clamp(42px, 8vw, 82px);
+            line-height: 1.05;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.38), 0 10px 0 #4c1d95;
+        }
+
+        .intro-desc {
+            margin: 0 0 34px;
+            color: #cbd5e1;
+            font-size: clamp(20px, 3.4vw, 34px);
+            line-height: 1.45;
+            word-break: keep-all;
+        }
+
+        .start-btn,
+        .next-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            min-width: 220px;
+            min-height: 72px;
+            padding: 16px 42px;
+            color: #fff;
+            font-family: inherit;
+            font-size: clamp(24px, 4vw, 40px);
+            font-weight: 900;
+            background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+            border: 6px solid rgba(255, 255, 255, 0.2);
+            border-radius: 40px;
+            box-shadow: 0 14px 0 #0369a1, 0 20px 30px rgba(0, 0, 0, 0.35);
+            cursor: pointer;
+        }
+
+        .result-card {
+            width: min(90%, 720px);
+            padding: clamp(30px, 5vw, 58px);
+            color: #1e293b;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            border: 12px solid #fbbf24;
+            border-radius: 56px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5), inset 0 10px 0 rgba(255, 255, 255, 1);
+        }
+
+        .result-card h2 {
+            margin: 0 0 14px;
+            font-size: clamp(40px, 7vw, 78px);
+        }
+
+        .result-card p {
+            margin: 0 0 28px;
+            color: #64748b;
+            font-size: clamp(20px, 3.5vw, 34px);
+        }
+
+        @media (max-width: 760px) {
+            :root {
+                --gnb-height: 60px;
+            }
+
+            #gnb {
+                padding: 0 10px;
+            }
+
+            .nav-btn .label {
+                display: none;
+            }
+
+            .top-bar {
+                min-height: 76px;
+                padding: 10px 12px;
+            }
+
+            .mascot-icon {
+                display: none;
+            }
+
+            .hud {
+                gap: 6px;
+            }
+
+            .hud-pill {
+                padding: 6px 10px;
+            }
+
+            .stage-area {
+                padding: 10px;
+            }
+        }
+
+        @media (max-height: 620px) {
+            #scalable-wrapper {
+                min-height: 0;
+            }
+
+            .top-bar {
+                min-height: 64px;
+            }
+
+            #instruction-text {
+                font-size: 20px;
+            }
+
+            .note-name {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav id="gnb">
+        <h1>
+            <i data-lucide="music" class="text-pink-400 w-9 h-9"></i>
+            <span>음표 플래시카드 짝 찾기</span>
+        </h1>
+        <div class="nav-actions">
+            <button class="nav-btn btn-restart" id="btn-restart" type="button">
+                <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+                <span class="label">다시하기</span>
+            </button>
+            <button class="nav-btn btn-exit" id="btn-exit" type="button">
+                <i data-lucide="log-out" class="w-5 h-5"></i>
+                <span class="label">종료</span>
+            </button>
+        </div>
+    </nav>
+
+    <div id="game-container">
+        <div id="scalable-wrapper">
+            <div class="top-bar">
+                <div class="instruction">
+                    <div class="mascot-icon">
+                        <i data-lucide="brain" class="w-8 h-8"></i>
+                    </div>
+                    <p id="instruction-text">같은 음표 카드 2장을 찾아보세요!</p>
+                </div>
+                <div class="hud">
+                    <span class="hud-pill" id="stage-label">1단계</span>
+                    <span class="hud-pill" id="card-count-label">4장</span>
+                    <span class="hud-pill" id="move-label">시도 0</span>
+                    <span class="hud-pill" id="match-label">0 / 2</span>
+                </div>
+            </div>
+
+            <main class="stage-area">
+                <section id="card-grid" aria-label="음표 카드 영역"></section>
+            </main>
+
+            <section id="intro-screen" class="overlay-screen">
+                <i data-lucide="sparkles" class="intro-icon"></i>
+                <h2 class="intro-title">음표 플래시카드</h2>
+                <p class="intro-desc">
+                    카드를 뒤집어 같은 음표를 찾아요.<br>
+                    4장, 8장, 12장, 20장까지 점점 어려워져요!
+                </p>
+                <button class="start-btn" id="btn-start" type="button">
+                    시작하기 <i data-lucide="play" class="w-9 h-9"></i>
+                </button>
+            </section>
+
+            <section id="level-screen" class="overlay-screen hidden">
+                <div class="result-card">
+                    <h2 id="level-title">성공!</h2>
+                    <p id="level-message">다음 단계로 가볼까요?</p>
+                    <button class="next-btn" id="btn-next" type="button">
+                        다음 단계 <i data-lucide="arrow-right" class="w-9 h-9"></i>
+                    </button>
+                </div>
+            </section>
+
+            <section id="exit-modal" class="overlay-screen hidden" style="z-index: 6000;">
+                <div class="result-card">
+                    <h2>학습 종료</h2>
+                    <p>정말 종료할까요?</p>
+                    <div class="flex gap-4 justify-center">
+                        <button class="next-btn" id="btn-cancel-exit" type="button" style="background: linear-gradient(180deg, #94a3b8, #64748b); box-shadow: 0 10px 0 #475569; min-width: 150px;">
+                            취소
+                        </button>
+                        <button class="next-btn" id="btn-confirm-exit" type="button" style="background: linear-gradient(180deg, #f43f5e, #e11d48); box-shadow: 0 10px 0 #9f1239; min-width: 150px;">
+                            확인
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        const ITEMS = [
+            { id: "n1", name: "온음표", char: "\uE1D2", tone: "C4" },
+            { id: "n2", name: "점2분음표", char: "\uE1D3", dotted: true, dotY: "0.12em", tone: "D4" },
+            { id: "n3", name: "2분음표", char: "\uE1D3", tone: "E4" },
+            { id: "n4", name: "점4분음표", char: "\uE1D5", dotted: true, dotY: "0.14em", tone: "F4" },
+            { id: "n5", name: "4분음표", char: "\uE1D5", tone: "G4" },
+            { id: "n6", name: "8분음표", char: "\uE1D7", tone: "A4" },
+            { id: "n7", name: "16분음표", char: "\uE1D9", tone: "B4" },
+            { id: "r1", name: "온쉼표", char: "\uE4F4", tone: "C5" },
+            { id: "r2", name: "점2분쉼표", char: "\uE4F5", dotted: true, dotY: "0.02em", tone: "D5" },
+            { id: "r3", name: "2분쉼표", char: "\uE4F5", tone: "E5" }
+        ];
+        const STAGES = [4, 8, 12, 20];
+
+        let synth = null;
+        let polySynth = null;
+        let membrane = null;
+        let stageIndex = 0;
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let moves = 0;
+        let lockBoard = false;
+        let previewTimer = null;
+
+        const cardGrid = document.getElementById('card-grid');
+        const instructionText = document.getElementById('instruction-text');
+        const stageLabel = document.getElementById('stage-label');
+        const cardCountLabel = document.getElementById('card-count-label');
+        const moveLabel = document.getElementById('move-label');
+        const matchLabel = document.getElementById('match-label');
+
+        async function initAudio() {
+            if (synth) return;
+            await Tone.start();
+            synth = new Tone.Synth({ oscillator: { type: 'triangle' } }).toDestination();
+            polySynth = new Tone.PolySynth(Tone.Synth).toDestination();
+            membrane = new Tone.MembraneSynth().toDestination();
+        }
+
+        function playFlip(item) {
+            if (synth) synth.triggerAttackRelease(item.tone, '16n');
+        }
+
+        function playSuccess() {
+            if (!polySynth) return;
+            const now = Tone.now();
+            polySynth.triggerAttackRelease("C4", "8n", now);
+            polySynth.triggerAttackRelease("E4", "8n", now + 0.08);
+            polySynth.triggerAttackRelease("G4", "8n", now + 0.16);
+            polySynth.triggerAttackRelease("C5", "4n", now + 0.24);
+        }
+
+        function playFail() {
+            if (membrane) membrane.triggerAttackRelease("C2", "8n");
+        }
+
+        function shuffle(array) {
+            const result = [...array];
+            for (let i = result.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [result[i], result[j]] = [result[j], result[i]];
+            }
+            return result;
+        }
+
+        function startStage(index = 0, showPreview = true) {
+            clearTimeout(previewTimer);
+            stageIndex = index;
+            const cardCount = STAGES[stageIndex];
+            const pairCount = cardCount / 2;
+            const stageItems = shuffle(ITEMS).slice(0, pairCount);
+            cards = shuffle(stageItems.flatMap((item) => [
+                { ...item, uid: `${item.id}-a` },
+                { ...item, uid: `${item.id}-b` }
+            ]));
+            flippedCards = [];
+            matchedPairs = 0;
+            moves = 0;
+            lockBoard = false;
+
+            updateHud();
+            renderCards();
+            if (showPreview) {
+                previewCards();
+            } else {
+                instructionText.textContent = '카드를 뒤집어 같은 음표를 찾아보세요!';
+            }
+        }
+
+        function previewCards() {
+            const cardCount = STAGES[stageIndex];
+            const previewDuration = Math.min(5000, 1400 + cardCount * 130);
+            lockBoard = true;
+            flippedCards = [];
+            instructionText.textContent = '음표 위치를 먼저 기억해요!';
+
+            requestAnimationFrame(() => {
+                document.querySelectorAll('.memory-card').forEach((button) => button.classList.add('flipped'));
+            });
+
+            previewTimer = setTimeout(() => {
+                document.querySelectorAll('.memory-card:not(.matched)').forEach((button) => button.classList.remove('flipped'));
+                lockBoard = false;
+                flippedCards = [];
+                instructionText.textContent = '이제 같은 음표 카드 2장을 찾아보세요!';
+            }, previewDuration);
+        }
+
+        function updateHud() {
+            const cardCount = STAGES[stageIndex];
+            stageLabel.textContent = `${stageIndex + 1}단계`;
+            cardCountLabel.textContent = `${cardCount}장`;
+            moveLabel.textContent = `시도 ${moves}`;
+            matchLabel.textContent = `${matchedPairs} / ${cardCount / 2}`;
+        }
+
+        function getGridColumns(cardCount) {
+            if (cardCount <= 4) return 2;
+            if (cardCount <= 8) return 4;
+            if (cardCount <= 12) return 4;
+            return 5;
+        }
+
+        function getGridRows(cardCount, columns) {
+            return Math.ceil(cardCount / columns);
+        }
+
+        function renderCards() {
+            const cardCount = STAGES[stageIndex];
+            const columns = getGridColumns(cardCount);
+            const rows = getGridRows(cardCount, columns);
+            cardGrid.style.gridTemplateColumns = `repeat(${columns}, var(--card-size))`;
+            cardGrid.style.gridTemplateRows = `repeat(${rows}, calc(var(--card-size) / 0.78))`;
+            cardGrid.innerHTML = '';
+            requestAnimationFrame(updateCardScale);
+
+            cards.forEach((card) => {
+                const button = document.createElement('button');
+                button.className = 'memory-card';
+                button.type = 'button';
+                button.dataset.uid = card.uid;
+                button.dataset.id = card.id;
+                const symbolHtml = card.dotted
+                    ? `<span class="dotted-symbol" style="--dot-y:${card.dotY || '0.12em'}"><span class="base-symbol">${card.char}</span><span class="dot-symbol"></span></span>`
+                    : `<span class="music-font">${card.char}</span>`;
+                button.innerHTML = `
+                    <div class="card-inner">
+                        <div class="card-face card-back"></div>
+                        <div class="card-face card-front">
+                            ${symbolHtml}
+                            <span class="note-name">${card.name}</span>
+                        </div>
+                    </div>
+                `;
+                button.addEventListener('click', () => handleCardClick(button, card));
+                cardGrid.appendChild(button);
+            });
+        }
+
+        function updateCardScale() {
+            const cardCount = STAGES[stageIndex];
+            const columns = getGridColumns(cardCount);
+            const rows = getGridRows(cardCount, columns);
+            const gridRect = cardGrid.getBoundingClientRect();
+            const styles = getComputedStyle(cardGrid);
+            const gap = parseFloat(styles.columnGap) || 10;
+            const availableWidth = gridRect.width - gap * (columns - 1);
+            const availableHeight = gridRect.height - gap * (rows - 1);
+            const byWidth = availableWidth / columns;
+            const byHeight = availableHeight / rows * 0.78;
+            const size = Math.max(48, Math.min(150, byWidth, byHeight));
+            cardGrid.style.setProperty('--card-size', `${Math.floor(size)}px`);
+            cardGrid.style.setProperty('--symbol-scale', stageIndex === STAGES.length - 1 ? '0.78' : '1');
+            cardGrid.style.setProperty('--text-scale', stageIndex === STAGES.length - 1 ? '0.86' : '1');
+        }
+
+        function handleCardClick(button, card) {
+            if (lockBoard || button.classList.contains('flipped') || button.classList.contains('matched')) return;
+            button.classList.add('flipped');
+            flippedCards.push({ button, card });
+            playFlip(card);
+
+            if (flippedCards.length === 2) {
+                moves++;
+                updateHud();
+                const [first, second] = flippedCards;
+                if (first.card.id === second.card.id) {
+                    handleMatch(first, second);
+                } else {
+                    handleMismatch(first, second);
+                }
+            }
+        }
+
+        function handleMatch(first, second) {
+            first.button.classList.add('matched');
+            second.button.classList.add('matched');
+            flippedCards = [];
+            matchedPairs++;
+            updateHud();
+            playSuccess();
+            instructionText.textContent = `${first.card.name} 짝을 찾았어요!`;
+
+            if (matchedPairs >= STAGES[stageIndex] / 2) {
+                setTimeout(showLevelComplete, 700);
+            }
+        }
+
+        function handleMismatch(first, second) {
+            lockBoard = true;
+            first.button.classList.add('wrong');
+            second.button.classList.add('wrong');
+            instructionText.textContent = '다른 카드예요. 다시 기억해볼까요?';
+            playFail();
+
+            setTimeout(() => {
+                first.button.classList.remove('flipped', 'wrong');
+                second.button.classList.remove('flipped', 'wrong');
+                flippedCards = [];
+                lockBoard = false;
+            }, 820);
+        }
+
+        function showLevelComplete() {
+            const isLast = stageIndex >= STAGES.length - 1;
+            document.getElementById('level-title').textContent = isLast ? '모든 단계 완료!' : `${stageIndex + 1}단계 성공!`;
+            document.getElementById('level-message').textContent = isLast
+                ? `총 ${moves}번의 시도로 마지막 단계를 완료했어요!`
+                : `다음은 ${STAGES[stageIndex + 1]}장 카드에 도전해요.`;
+            document.getElementById('btn-next').innerHTML = isLast
+                ? '처음으로 <i data-lucide="refresh-cw" class="w-9 h-9"></i>'
+                : '다음 단계 <i data-lucide="arrow-right" class="w-9 h-9"></i>';
+            document.getElementById('level-screen').classList.remove('hidden');
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function goNextStage() {
+            document.getElementById('level-screen').classList.add('hidden');
+            if (stageIndex >= STAGES.length - 1) {
+                document.getElementById('intro-screen').classList.remove('hidden');
+                startStage(0, false);
+                return;
+            }
+            startStage(stageIndex + 1, true);
+        }
+
+        function exitPage() {
+            if (window.history.length > 1) window.history.back();
+            else window.location.href = 'https://jueunssam.com/web-study/';
+        }
+
+        document.getElementById('btn-start').addEventListener('click', async () => {
+            await initAudio();
+            document.getElementById('intro-screen').classList.add('hidden');
+            startStage(0, true);
+        });
+        document.getElementById('btn-next').addEventListener('click', goNextStage);
+        document.getElementById('btn-restart').addEventListener('click', () => {
+            startStage(0, true);
+            document.getElementById('intro-screen').classList.add('hidden');
+            document.getElementById('level-screen').classList.add('hidden');
+        });
+        document.getElementById('btn-exit').addEventListener('click', () => {
+            document.getElementById('exit-modal').classList.remove('hidden');
+        });
+        document.getElementById('btn-cancel-exit').addEventListener('click', () => {
+            document.getElementById('exit-modal').classList.add('hidden');
+        });
+        document.getElementById('btn-confirm-exit').addEventListener('click', exitPage);
+        window.addEventListener('resize', updateCardScale);
+
+        startStage(0, false);
+        if (window.lucide) lucide.createIcons();
+    </script>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-07" defer></script>
+</body>
+
+</html>

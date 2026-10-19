@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>스마트 드럼 메모리 게임</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Fredoka:wght@600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Jua', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a2e;
+            color: white;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 헤더 스타일 */
+        .kakao-header {
+            background-color: #FEE500;
+            color: #3b1e1e;
+            width: 100%;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            z-index: 500;
+            flex-shrink: 0;
+            border-bottom: 2px solid #FBC02D;
+        }
+
+        /* 메인 컨테이너 */
+        #main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            background: linear-gradient(135deg, #1e1e2f 0%, #2d2b42 100%);
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            /* 중요: 흔들림 효과를 위해 transform 기준점 설정 */
+            transform-origin: center;
+        }
+
+        /* 배경 장식 (은은한 빛) */
+        .glow-bg {
+            position: absolute;
+            width: 60vw;
+            height: 60vw;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.15;
+            z-index: 0;
+            animation: pulse-bg 10s infinite alternate;
+        }
+
+        .glow-1 {
+            top: -20%;
+            left: -10%;
+            background: #ff0055;
+        }
+
+        .glow-2 {
+            bottom: -20%;
+            right: -10%;
+            background: #00ddff;
+        }
+
+        @keyframes pulse-bg {
+            0% {
+                transform: scale(1);
+                opacity: 0.1;
+            }
+
+            100% {
+                transform: scale(1.1);
+                opacity: 0.2;
+            }
+        }
+
+        /* 문제 영역 */
+        #question-area {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1.5vw;
+            height: 12vh;
+            width: 100%;
+            z-index: 10;
+            margin-top: 1vh;
+        }
+
+        .q-dot {
+            width: 3vw;
+            height: 3vw;
+            max-width: 40px;
+            max-height: 40px;
+            min-width: 20px;
+            min-height: 20px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .q-dot.revealed {
+            transform: scale(1.3);
+            border-color: white;
+            box-shadow: 0 0 20px currentColor;
+        }
+
+        /* 드럼 패드 영역 (2열 레이아웃) */
+        #drum-area {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 4vh;
+            z-index: 10;
+            padding: 2vh 5vw;
+        }
+
+        .drum-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 3vw;
+            width: 100%;
+        }
+
+        /* === 리얼 드럼 스타일 패드 === */
+        .drum-pad {
+            position: relative;
+            width: 14vh;
+            height: 14vh;
+            max-width: 18vw;
+            max-height: 18vw;
+            aspect-ratio: 1 / 1;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: not-allowed;
+            transition: transform 0.1s;
+            background-color: #262626;
+            border: 1.2vh solid var(--pad-color);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        /* 중앙 작은 원 */
+        .drum-pad::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 25%;
+            height: 25%;
+            border-radius: 50%;
+            background-color: var(--pad-color);
+            z-index: 1;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 활성화 상태 */
+        .drum-pad.active {
+            transform: scale(0.95);
+            border-color: white;
+            background-color: #333;
+        }
+
+        .drum-pad.active::before {
+            background-color: white;
+            box-shadow: 0 0 15px white;
+        }
+
+        /* 타격 효과 (Ripple) */
+        .drum-pad::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 4px solid var(--pad-color);
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .drum-pad.active::after {
+            animation: ripple-ring 0.4s ease-out;
+        }
+
+        @keyframes ripple-ring {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.8;
+                border-width: 4px;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(2.0);
+                opacity: 0;
+                border-width: 0px;
+            }
+        }
+
+        .drum-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+        }
+
+        .drum-label {
+            font-size: clamp(10px, 1.6vmin, 14px);
+            font-weight: 800;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+            position: absolute;
+            top: 5%;
+        }
+
+        .drum-icon {
+            display: none;
+        }
+
+        /* 개별 드럼 색상 */
+        .pad-crash {
+            --pad-color: #ff2e63;
+        }
+
+        .pad-tom1 {
+            --pad-color: #ff9f1c;
+        }
+
+        .pad-tom2 {
+            --pad-color: #ffd700;
+        }
+
+        .pad-ride {
+            --pad-color: #00e676;
+        }
+
+        .pad-snare {
+            --pad-color: #2979ff;
+        }
+
+        .pad-hh {
+            --pad-color: #f50057;
+        }
+
+        .pad-floor {
+            --pad-color: #d500f9;
+        }
+
+        /* 하단 정보창 */
+        #bottom-info {
+            width: 100%;
+            height: 10vh;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+
+        /* 오버레이 */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.95);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            transition: opacity 0.3s;
+        }
+
+        .hidden {
+            display: none !important;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            padding: 1rem 3rem;
+            border-radius: 50px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.95);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #94a3b8;
+            padding: 0.8rem 2rem;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: 2px solid #334155;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            border-color: #94a3b8;
+            color: white;
+        }
+
+        /* MIDI 필요 알림 토스트 */
+        #midi-toast {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #ff4757;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            border: 2px solid #ff4757;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 200;
+            white-space: nowrap;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #midi-toast.show {
+            opacity: 1;
+            animation: shake-centered 0.4s ease-in-out;
+        }
+
+        /* === 애니메이션 수정 (진동/흔들림 분리) === */
+
+        /* 1. 화면 전체 진동 (제자리에서 살짝) - 틀렸을 때 */
+        .shake {
+            animation: shake-soft 0.4s cubic-bezier(.36, .07, .19, .97) both;
+        }
+
+        @keyframes shake-soft {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            15% {
+                transform: translateX(-6px) rotate(-1deg);
+            }
+
+            30% {
+                transform: translateX(5px) rotate(1deg);
+            }
+
+            45% {
+                transform: translateX(-4px) rotate(0deg);
+            }
+
+            60% {
+                transform: translateX(3px);
+            }
+
+            75% {
+                transform: translateX(-2px);
+            }
+        }
+
+        /* 2. 중앙 정렬 요소 흔들림 (토스트 등) - transform 유지하며 흔들림 */
+        @keyframes shake-centered {
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%) translate3d(0, 0, 0);
+            }
+
+            10%,
+            90% {
+                transform: translate(-50%, -50%) translate3d(-3px, 0, 0);
+            }
+
+            20%,
+            80% {
+                transform: translate(-50%, -50%) translate3d(6px, 0, 0);
+            }
+
+            30%,
+            50%,
+            70% {
+                transform: translate(-50%, -50%) translate3d(-8px, 0, 0);
+            }
+
+            40%,
+            60% {
+                transform: translate(-50%, -50%) translate3d(8px, 0, 0);
+            }
+        }
+
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 90;
+        }
+    </style>
+    <script>
+        window.history.replaceState(null, null, "/");
+        window.onpopstate = function () {
+            window.history.replaceState(null, null, "/");
+        };
+    </script>
+</head>
+
+<body>
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- MIDI 경고 토스트 -->
+    <div id="midi-toast">🚫 화면 터치 불가! MIDI 드럼을 쳐주세요.</div>
+
+    <!-- 헤더 -->
+    <header class="kakao-header">
+        <div class="flex items-center gap-2">
+            <i data-lucide="music" class="text-[#3b1e1e] w-6 h-6"></i>
+            <h1 class="text-xl font-bold tracking-tight text-[#3b1e1e]">스마트 드럼 메모리</h1>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="game.resetGame()"
+                class="bg-white text-[#3b1e1e] px-3 py-1.5 rounded-xl text-sm font-bold shadow-sm border border-gray-200 hover:bg-gray-50 transition">
+                다시 시작
+            </button>
+            <button onclick="history.back()"
+                class="bg-[#3b1e1e] text-[#FEE500] px-3 py-1.5 rounded-xl text-sm font-bold shadow-sm hover:opacity-90 transition">
+                학습 종료
+            </button>
+        </div>
+    </header>
+
+    <div id="main-container">
+        <!-- 배경 장식 -->
+        <div class="glow-bg glow-1"></div>
+        <div class="glow-bg glow-2"></div>
+
+        <!-- 문제 표시 영역 -->
+        <div id="question-area">
+            <!-- JS로 동적 생성 -->
+        </div>
+
+        <!-- 플레이어 턴 안내 및 타이머 (새로 추가) -->
+        <div id="player-turn-indicator" class="hidden flex-col items-center justify-center w-full mt-2 mb-2 z-20">
+            <div class="text-2xl font-bold text-yellow-300 mb-2 animate-pulse drop-shadow-lg">드럼을 두드리세요!</div>
+            <div
+                class="w-3/4 max-w-md h-4 bg-gray-800 rounded-full overflow-hidden border-2 border-white/20 shadow-inner">
+                <div id="turn-timer-bar"
+                    class="h-full bg-gradient-to-r from-green-400 to-yellow-400 w-full transition-all ease-linear">
+                </div>
+            </div>
+        </div>
+
+        <!-- 드럼 패드 영역 (2줄 배치) -->
+        <div id="drum-area" onclick="game.showMidiWarning()">
+            <!-- 윗줄: 크래쉬, 탐1, 탐2, 라이드 -->
+            <div class="drum-row">
+                <!-- 크래쉬 (Red) -->
+                <div class="drum-pad pad-crash" id="drum-crash">
+                    <div class="drum-content">
+                        <span class="drum-label">크래쉬</span>
+                    </div>
+                </div>
+                <!-- 탐1 (Orange) -->
+                <div class="drum-pad pad-tom1" id="drum-tom1">
+                    <div class="drum-content">
+                        <span class="drum-label">탐1</span>
+                    </div>
+                </div>
+                <!-- 탐2 (Yellow) -->
+                <div class="drum-pad pad-tom2" id="drum-tom2">
+                    <div class="drum-content">
+                        <span class="drum-label">탐2</span>
+                    </div>
+                </div>
+                <!-- 라이드 (Green) -->
+                <div class="drum-pad pad-ride" id="drum-ride">
+                    <div class="drum-content">
+                        <span class="drum-label">라이드</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 아랫줄: 스네어, 하이햇, 플로어 -->
+            <div class="drum-row">
+                <!-- 스네어 (Blue) -->
+                <div class="drum-pad pad-snare" id="drum-snare">
+                    <div class="drum-content">
+                        <span class="drum-label">스네어</span>
+                    </div>
+                </div>
+                <!-- 하이햇 (Pink) -->
+                <div class="drum-pad pad-hh" id="drum-hh">
+                    <div class="drum-content">
+                        <span class="drum-label">하이햇</span>
+                    </div>
+                </div>
+                <!-- 플로어 (Purple) -->
+                <div class="drum-pad pad-floor" id="drum-floor">
+                    <div class="drum-content">
+                        <span class="drum-label">플로어</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 하단 정보창 -->
+        <div id="bottom-info">
+            <div class="flex flex-col items-center gap-1 w-full max-w-md">
+                <div class="flex items-center gap-4 text-3xl font-black text-white drop-shadow-md">
+                    <span class="text-blue-400">LEVEL <span id="level-display" class="text-white">1</span></span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-300 font-bold text-lg">기회:</span>
+                    <div id="lives-display" class="flex gap-2">
+                        <i data-lucide="heart" class="w-6 h-6 text-rose-500 fill-rose-500 drop-shadow"></i>
+                        <i data-lucide="heart" class="w-6 h-6 text-rose-500 fill-rose-500 drop-shadow"></i>
+                        <i data-lucide="heart" class="w-6 h-6 text-rose-500 fill-rose-500 drop-shadow"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 인트로 화면 -->
+        <div id="screen-intro" class="overlay">
+            <h1
+                class="text-5xl md:text-7xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 drop-shadow-lg tracking-tight text-center leading-tight">
+                SMART<br>DRUM MEMORY
+            </h1>
+            <p class="text-gray-300 font-medium mb-10 text-xl text-center">
+                기억력의 한계에 도전하세요!<br>
+                <span class="text-sm text-gray-500 mt-2 block">* MIDI 전자 드럼 연결 필수</span>
+            </p>
+
+            <div id="midi-status"
+                class="flex items-center gap-3 bg-white/10 px-6 py-3 rounded-full mb-10 text-gray-300 font-bold text-lg border border-white/10 backdrop-blur">
+                <i data-lucide="cable"></i> <span>MIDI 연결 확인 중...</span>
+            </div>
+
+            <div class="flex gap-4">
+                <button onclick="game.tryStartGame()" class="btn-primary">게임 시작</button>
+                <button onclick="document.getElementById('screen-howto').classList.remove('hidden')"
+                    class="btn-secondary">사용법</button>
+            </div>
+        </div>
+
+        <!-- 사용법 화면 -->
+        <div id="screen-howto" class="overlay hidden">
+            <div
+                class="max-w-2xl w-full bg-[#1e293b] p-10 rounded-3xl shadow-2xl border border-white/10 text-center relative">
+                <h2 class="text-4xl font-black text-white mb-8">HOW TO PLAY</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left mb-10">
+                    <div class="bg-white/5 p-6 rounded-2xl border border-white/5">
+                        <div class="text-3xl mb-4">👀</div>
+                        <h3 class="text-xl font-bold text-blue-400 mb-2">1. 관찰</h3>
+                        <p class="text-gray-400 text-sm">드럼이 반짝이며 연주되는 순서를 눈과 귀로 기억하세요.</p>
+                    </div>
+                    <div class="bg-white/5 p-6 rounded-2xl border border-white/5">
+                        <div class="text-3xl mb-4">🥁</div>
+                        <h3 class="text-xl font-bold text-purple-400 mb-2">2. 연주</h3>
+                        <p class="text-gray-400 text-sm">전자 드럼을 두드려 기억한 순서대로 똑같이 연주하세요.</p>
+                    </div>
+                    <div class="bg-white/5 p-6 rounded-2xl border border-white/5">
+                        <div class="text-3xl mb-4">❤️</div>
+                        <h3 class="text-xl font-bold text-pink-400 mb-2">3. 도전</h3>
+                        <p class="text-gray-400 text-sm">성공하면 레벨 업! 3번 실수하면 게임이 끝납니다.</p>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('screen-howto').classList.add('hidden')"
+                    class="btn-primary w-full md:w-auto">준비 완료!</button>
+            </div>
+        </div>
+
+        <!-- 게임 오버 화면 -->
+        <div id="screen-gameover" class="overlay hidden">
+            <h1 class="text-7xl font-black text-white mb-2 drop-shadow-[0_0_15px_rgba(255,0,80,0.8)]">GAME OVER</h1>
+            <div class="text-2xl font-medium text-gray-400 mb-10">
+                최종 기록: <span id="final-score" class="text-blue-400 text-5xl font-black ml-2">1</span> LEVEL
+            </div>
+            <button onclick="game.resetGame()" class="btn-primary">다시 도전하기</button>
+        </div>
+
+        <!-- MIDI 미연결 시 하단 자동 플레이 모달 표시 -->
+        <div id="modal-no-midi"
+            class="hidden fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-gray-900 rounded-[2rem] p-8 max-w-lg w-full text-center shadow-2xl border border-gray-700">
+                <i data-lucide="bot" class="w-16 h-16 mx-auto text-blue-500 mb-4 animate-bounce"></i>
+                <h3 class="text-3xl font-bold text-white mb-4">자동 플레이 모드</h3>
+                <p class="text-lg text-gray-300 mb-8 leading-relaxed break-keep font-sans">
+                    전자 드럼이 연결되어 있지 않습니다.<br>
+                    게임이 <strong class="text-white">버튼 터치 없이 자동으로 연주</strong>하며 플레이하는 모습을 감상해보세요!
+                </p>
+                <div class="flex gap-4 justify-center">
+                    <button onclick="game.goToHome()"
+                        class="bg-gray-700 text-white px-8 py-3 rounded-xl font-bold text-lg hover:bg-gray-600 transition-colors">돌아가기</button>
+                    <button onclick="game.startAutoPlay()"
+                        class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold text-lg hover:bg-blue-500 shadow-lg shadow-blue-900/50 transition-colors">자동
+                        플레이 시작</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GOOGLE_API_KEY = "AIzaSyAE0nnpOYZRfLkfM09O3NQjpWnN1kUqR3E";
+
+        const DRUMS = {
+            'crash': { note: [49, 52, 55, 57], color: '#ff2e63', freq: 880, name: '크래쉬' },
+            'tom1': { note: [48, 50], color: '#ff9f1c', freq: 392.00, name: '탐1' },
+            'tom2': { note: [45, 47], color: '#ffd700', freq: 329.63, name: '탐2' },
+            'ride': { note: [51, 59], color: '#00e676', freq: 523.25, name: '라이드' },
+            'snare': { note: [38, 40], color: '#2979ff', freq: 261.63, name: '스네어' },
+            'hh': { note: [42, 44, 46], color: '#f50057', freq: 987.77, name: '하이햇' },
+            'floor': { note: [41, 43], color: '#d500f9', freq: 196.00, name: '플로어' }
+        };
+
+        class DrumMemoryGame {
+            constructor() {
+                this.sequence = [];
+                this.playerSequence = [];
+                this.level = 1;
+                this.lives = 3;
+                this.isPlayingSequence = false;
+                this.isWaitingForInput = false;
+                this.isAutoPlay = false;
+                this.absolutePlayTime = 0;
+                this.gameTimerInterval = null; // Changed from autoPlayInterval
+                this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                this.currentTTS = null;
+
+                this.midiConnected = false;
+                this.midiAccess = null; // Added for MIDI state management
+
+                // Confetti properties
+                this.cCanvas = document.getElementById('confetti-canvas');
+                this.cCtx = this.cCanvas.getContext('2d');
+                this.cParticles = [];
+                this.confettiSettings = { limit: 150, colors: ['#ff2e63', '#ff9f1c', '#ffd700', '#00e676', '#2979ff'] };
+
+
+                this.initMIDI();
+                lucide.createIcons();
+                this.initConfetti();
+            }
+
+            // === TTS Logic ===
+            async speak(text) {
+                if (!GOOGLE_API_KEY) return;
+
+                if (this.currentTTS) {
+                    this.currentTTS.pause();
+                    this.currentTTS = null;
+                }
+
+                try {
+                    const response = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key=' + GOOGLE_API_KEY, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            input: { text: text },
+                            voice: { languageCode: 'ko-KR', name: 'ko-KR-Neural2-A', ssmlGender: 'FEMALE' },
+                            audioConfig: { audioEncoding: 'MP3' }
+                        })
+                    });
+
+                    if (!response.ok) return;
+
+                    const data = await response.json();
+                    const audio = new Audio('data:audio/mp3;base64,' + data.audioContent);
+                    this.currentTTS = audio;
+                    audio.play();
+                } catch (e) {
+                    console.error("TTS Error", e);
+                }
+            }
+
+            // === Audio Tone ===
+            playTone(freq, type = 'sine') {
+                if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+                const osc = this.audioCtx.createOscillator();
+                const gain = this.audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.3, this.audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.audioCtx.destination);
+                osc.start();
+                osc.stop(this.audioCtx.currentTime + 0.3);
+            }
+
+            playDrumSound(drumId) {
+                const drum = DRUMS[drumId];
+                if (!drum) return;
+                let type = 'sine';
+                if (drumId === 'crash' || drumId === 'ride' || drumId === 'hh') type = 'square';
+                if (drumId === 'snare') type = 'triangle';
+                this.playTone(drum.freq, type);
+            }
+
+            playWrongSound() {
+                this.playTone(100, 'sawtooth');
+                this.playTone(80, 'sawtooth');
+            }
+
+            // === UI Helpers ===
+            showMidiWarning() {
+                const toast = document.getElementById('midi-toast');
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 1500);
+            }
+
+            tryStartGame() {
+                if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+                if (!this.midiConnected) {
+                    document.getElementById('modal-no-midi').classList.remove('hidden');
+                } else {
+                    this.isAutoPlay = false;
+                    this.startGame();
+                }
+            }
+
+            forceStartWithoutMidi() {
+                document.getElementById('modal-no-midi').classList.add('hidden');
+                this.isAutoPlay = false;
+                this.startGame();
+            }
+
+            startAutoPlay() {
+                document.getElementById('modal-no-midi').classList.add('hidden');
+                this.isAutoPlay = true;
+                this.startGame();
+            }
+
+            // === Game Logic ===
+            startGame() {
+                this.sequence = [];
+                this.playerSequence = [];
+                this.level = 1;
+                this.lives = 3;
+                this.updateUI();
+
+                // 2분 제한 타이머 설정
+                this.absolutePlayTime = 0;
+                if (this.gameTimerInterval) clearInterval(this.gameTimerInterval);
+                if (this.isAutoPlay) {
+                    this.gameTimerInterval = setInterval(() => {
+                        this.absolutePlayTime++;
+                        if (this.absolutePlayTime >= 120) { // 120 seconds = 2 minutes
+                            this.gameOver();
+                        }
+                    }, 1000); // Check every second
+                }
+
+                document.getElementById('screen-intro').classList.add('hidden');
+                document.getElementById('screen-gameover').classList.add('hidden');
+
+                this.speak("순서를 잘 기억하고 드럼을 쳐보세요!");
+                setTimeout(() => this.nextRound(), 2000);
+            }
+
+            resetGame() {
+                this.isPlayingSequence = false;
+                this.isWaitingForInput = false;
+                if (this.gameTimerInterval) clearInterval(this.gameTimerInterval); // Clear game timer
+                document.getElementById('screen-gameover').classList.add('hidden');
+                document.getElementById('screen-intro').classList.remove('hidden');
+            }
+
+            goToHome() {
+                this.isAutoPlay = false;
+                document.getElementById('modal-no-midi').classList.add('hidden');
+                this.resetGame();
+            }
+
+            getRandomDrum() {
+                const drumKeys = Object.keys(DRUMS);
+                return drumKeys[Math.floor(Math.random() * drumKeys.length)];
+            }
+
+            nextRound() {
+                this.playerSequence = [];
+                this.updateUI();
+
+                document.getElementById('player-turn-indicator').classList.add('hidden');
+                document.getElementById('player-turn-indicator').classList.remove('flex');
+
+                // Add new step
+                const nextDrum = this.getRandomDrum();
+                this.sequence.push(nextDrum);
+
+                this.renderQuestionDots();
+
+                // Generate and Play TTS before playing sequence
+                const text = this.sequence.map(id => DRUMS[id].name).join(' ');
+                this.speak(text).then(() => {
+                    setTimeout(() => {
+                        this.playSequence();
+                    }, 500); // 0.5s pause after TTS
+                });
+            }
+
+            async playSequence() {
+                this.isPlayingSequence = true;
+                this.isWaitingForInput = false;
+                this.resetDots();
+
+                for (let i = 0; i < this.sequence.length; i++) {
+                    await this.activateDrum(this.sequence[i], 600);
+                }
+
+                this.isPlayingSequence = false;
+                this.isWaitingForInput = true;
+
+                // 타이머, 텍스트 표시
+                const turnIndicator = document.getElementById('player-turn-indicator');
+                const timerBar = document.getElementById('turn-timer-bar');
+                turnIndicator.classList.remove('hidden');
+                turnIndicator.classList.add('flex');
+
+                timerBar.style.transition = 'none';
+                timerBar.style.width = '100%';
+                void timerBar.offsetWidth; // force reflow
+                timerBar.style.transition = 'width 3s linear';
+                timerBar.style.width = '0%';
+
+                if (this.isAutoPlay) {
+                    this.handleBotTurn();
+                }
+            }
+
+            handleBotTurn() {
+                if (!this.isWaitingForInput || this.isPlayingSequence || !this.isAutoPlay) return;
+
+                const currentIndex = this.playerSequence.length;
+                if (currentIndex >= this.sequence.length) return;
+
+                const targetDrum = this.sequence[currentIndex];
+                let delay = (currentIndex === 0) ? 3000 : 800; // 첫 타격은 3초 대기
+
+                setTimeout(() => {
+                    if (!this.isWaitingForInput || !this.isAutoPlay) return;
+                    this.handleInput(targetDrum);
+
+                    if (this.isWaitingForInput) {
+                        this.handleBotTurn();
+                    }
+                }, delay);
+            }
+
+            renderQuestionDots() {
+                const container = document.getElementById('question-area');
+                container.innerHTML = '';
+                for (let i = 0; i < this.sequence.length; i++) {
+                    const dot = document.createElement('div');
+                    dot.className = 'q-dot';
+                    dot.id = `dot-${i}`;
+                    container.appendChild(dot);
+                }
+            }
+
+            resetDots() {
+                const dots = document.querySelectorAll('.q-dot');
+                dots.forEach(dot => {
+                    dot.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                    dot.style.borderColor = 'rgba(255,255,255,0.2)';
+                    dot.style.boxShadow = 'none';
+                    dot.classList.remove('revealed');
+                });
+            }
+
+            revealDot(index, drumId) {
+                const dot = document.getElementById(`dot-${index}`);
+                if (dot && DRUMS[drumId]) {
+                    dot.style.backgroundColor = DRUMS[drumId].color;
+                    dot.style.borderColor = 'white';
+                    dot.style.boxShadow = `0 0 15px ${DRUMS[drumId].color}`;
+                    dot.classList.add('revealed');
+                }
+            }
+
+            activateDrum(drumId, duration = 300) {
+                return new Promise(resolve => {
+                    const pad = document.getElementById(`drum-${drumId}`);
+                    if (pad) {
+                        pad.classList.add('active');
+                        this.playDrumSound(drumId);
+                        setTimeout(() => {
+                            pad.classList.remove('active');
+                            setTimeout(resolve, 200);
+                        }, duration - 200);
+                    } else { resolve(); }
+                });
+            }
+
+            handleInput(drumId) {
+                if (!this.isWaitingForInput || this.isPlayingSequence) return;
+
+                const pad = document.getElementById(`drum-${drumId}`);
+                pad.classList.add('active');
+                this.playDrumSound(drumId);
+                setTimeout(() => pad.classList.remove('active'), 150);
+
+                const currentIndex = this.playerSequence.length;
+                const expected = this.sequence[currentIndex];
+
+                if (drumId === expected) {
+                    this.playerSequence.push(drumId);
+                    this.revealDot(currentIndex, drumId);
+
+                    if (this.playerSequence.length === this.sequence.length) {
+                        this.isWaitingForInput = false;
+                        this.fireConfetti();
+                        this.level++;
+                        setTimeout(() => this.nextRound(), 1200);
+                    }
+                } else {
+                    this.handleMistake();
+                }
+            }
+
+            handleMistake() {
+                this.lives--;
+                this.playWrongSound();
+                this.updateUI();
+
+                const container = document.getElementById('main-container');
+                container.classList.add('shake');
+                setTimeout(() => container.classList.remove('shake'), 500);
+
+                document.getElementById('player-turn-indicator').classList.add('hidden');
+                document.getElementById('player-turn-indicator').classList.remove('flex');
+
+                if (this.lives <= 0) {
+                    this.gameOver();
+                } else {
+                    this.isWaitingForInput = false;
+                    setTimeout(() => {
+                        this.playerSequence = [];
+                        this.resetDots();
+                        this.playSequence();
+                    }, 1000);
+                }
+            }
+
+            gameOver() {
+                this.isWaitingForInput = false;
+                if (this.gameTimerInterval) clearInterval(this.gameTimerInterval); // Clear game timer
+                document.getElementById('player-turn-indicator').classList.add('hidden');
+                document.getElementById('player-turn-indicator').classList.remove('flex');
+
+                this.playTone(100, 'sawtooth');
+                document.getElementById('final-score').innerText = `LEVEL ${this.level - 1}`;
+                this.speak("게임 오버! 아쉬워요.");
+                setTimeout(() => {
+                    document.getElementById('screen-gameover').classList.remove('hidden');
+                }, 500);
+                lucide.createIcons(); // Re-render lucide icons
+            }
+
+            updateUI() {
+                document.getElementById('level-display').innerText = this.level;
+                const hearts = document.getElementById('lives-display').children;
+                for (let i = 0; i < 3; i++) {
+                    if (i < this.lives) {
+                        hearts[i].classList.remove('text-gray-600', 'fill-gray-600');
+                        hearts[i].classList.add('text-rose-500', 'fill-rose-500');
+                    } else {
+                        hearts[i].classList.remove('text-rose-500', 'fill-rose-500');
+                        hearts[i].classList.add('text-gray-600', 'fill-gray-600');
+                    }
+                }
+            }
+
+            // === MIDI ===
+            async initMIDI() {
+                if (!navigator.requestMIDIAccess) return;
+                try {
+                    this.midiAccess = await navigator.requestMIDIAccess();
+                    this.bindMidi(this.midiAccess);
+                    this.midiAccess.onstatechange = (e) => this.bindMidi(e.target);
+                } catch (e) { console.warn("MIDI Fail", e); }
+            }
+
+            bindMidi(midiAccess) {
+                let connected = false;
+                for (let input of midiAccess.inputs.values()) {
+                    input.onmidimessage = (e) => this.onMidiMessage(e);
+                    if (input.state === 'connected') connected = true;
+                }
+                this.midiConnected = connected; // Update midiConnected state
+                const el = document.getElementById('midi-status');
+                if (connected) {
+                    el.className = "flex items-center gap-2 bg-green-500/20 text-green-400 px-4 py-2 rounded-full mb-8 font-bold text-sm border border-green-500/30";
+                    el.innerHTML = `<i data-lucide="check-circle"></i> <span>드럼 연결 완료!</span>`;
+                } else {
+                    el.className = "flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full mb-8 text-gray-400 font-bold text-sm border border-white/10";
+                    el.innerHTML = `<i data-lucide="cable"></i> <span>MIDI 연결 확인 중...</span>`;
+                }
+                lucide.createIcons();
+            }
+
+            onMidiMessage(e) {
+                const [status, note, velocity] = e.data;
+                if (status >= 144 && status <= 159 && velocity > 0) {
+                    let hitDrum = null;
+                    for (const [id, drum] of Object.entries(DRUMS)) {
+                        if (drum.note.includes(note)) { hitDrum = id; break; }
+                    }
+                    if (hitDrum) this.handleInput(hitDrum);
+                }
+            }
+
+            // === Visual Effects ===
+            initConfetti() {
+                // this.cCanvas = document.getElementById("confetti-canvas"); // Already set in constructor
+                // this.cCtx = this.cCanvas.getContext("2d"); // Already set in constructor
+                window.addEventListener('resize', () => {
+                    this.cCanvas.width = window.innerWidth;
+                    this.cCanvas.height = window.innerHeight;
+                });
+                this.cCanvas.width = window.innerWidth;
+                this.cCanvas.height = window.innerHeight;
+                this.animateConfetti();
+            }
+
+            fireConfetti() {
+                const colors = ['#ff2e63', '#ff9f1c', '#ffd700', '#00e676', '#2979ff', '#f50057', '#d500f9'];
+                for (let i = 0; i < 50; i++) {
+                    this.cParticles.push({
+                        x: window.innerWidth / 2, y: window.innerHeight / 2,
+                        w: Math.random() * 8 + 4, h: Math.random() * 8 + 4,
+                        dx: (Math.random() - 0.5) * 20, dy: (Math.random() - 0.5) * 20,
+                        color: colors[Math.floor(Math.random() * colors.length)], life: 100
+                    });
+                }
+            }
+
+            animateConfetti() {
+                this.cCtx.clearRect(0, 0, this.cCanvas.width, this.cCanvas.height);
+                this.cParticles.forEach((p, i) => {
+                    p.x += p.dx; p.y += p.dy; p.dy += 0.5; p.life--;
+                    this.cCtx.fillStyle = p.color;
+                    this.cCtx.fillRect(p.x, p.y, p.w, p.h);
+                    if (p.life <= 0) this.cParticles.splice(i, 1);
+                });
+                requestAnimationFrame(() => this.animateConfetti());
+            }
+        }
+
+        window.game = new DrumMemoryGame();
+    </script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-07" defer></script>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-midi-status.js?v=20260618-04" data-instrument="drum" defer></script>
+</body>
+
+</html>

@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>개구리 숫자 점프 (Frog Jump Math)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* 테마: 숲속 개구리 연못 */
+        body {
+            font-family: 'Jua', sans-serif;
+            background: linear-gradient(180deg, #84cc16 0%, #365314 100%);
+            user-select: none;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+            touch-action: none;
+            color: #1a2e05;
+        }
+
+        /* --- Kakao Style Header (GNB) --- */
+        .kakao-header {
+            background-color: #FEE500;
+            color: #3b1e1e;
+            width: 100%;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            z-index: 10001;
+            flex-shrink: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        /* --- Frog CSS Illustration --- */
+        .frog-wrapper {
+            transform: scale(0.35);
+            transform-origin: bottom center;
+            width: 240px;
+            height: 203px;
+            pointer-events: none;
+        }
+
+        .frog_head {
+            position: relative;
+            height: 203px;
+            width: 240px;
+            border-radius: 50%;
+            background: #7ee127;
+            box-shadow: 0px 12px #387e1091;
+        }
+
+        .eye {
+            position: absolute;
+            content: "";
+            width: 100px;
+            height: 100px;
+            background: #7ee127;
+            border-radius: 50%;
+            bottom: 58%;
+            right: 60%;
+        }
+
+        .eye::after {
+            position: absolute;
+            content: "";
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #fff;
+            bottom: 13%;
+            left: 8%;
+        }
+
+        .e2 {
+            left: unset;
+            right: -3%;
+        }
+
+        .pupil {
+            position: absolute;
+            content: "";
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #7ee127;
+            bottom: 37%;
+            left: 33%;
+            z-index: 1;
+        }
+
+        .pupil::after {
+            position: absolute;
+            content: "";
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #000;
+            bottom: 3%;
+            left: 13%;
+        }
+
+        .blush::after,
+        .blush::before {
+            position: absolute;
+            content: "";
+            width: 42px;
+            height: 25px;
+            border-radius: 50%;
+            background: #e13995a3;
+            top: 39%;
+            right: 72%;
+        }
+
+        .blush::before {
+            top: 39%;
+            left: 72%;
+        }
+
+        .nose {
+            position: relative;
+            width: 44px;
+            height: 21px;
+            border-radius: 42%;
+            border-bottom: 3px solid #000;
+            border-left: 2px solid #000;
+            border-right: 2px solid #000;
+            border-top: 0;
+            top: 49%;
+            left: 39%;
+        }
+
+        .frog_body {
+            position: relative;
+            width: 176px;
+            height: 117px;
+            background: #7ee127;
+            z-index: -2;
+            top: 70%;
+            right: -15%;
+        }
+
+        .frog_body::after {
+            position: absolute;
+            content: "";
+            width: 55px;
+            height: 64px;
+            border-radius: 28px 25px 0px 0px;
+            background: #e8f5e8;
+            top: 51%;
+            right: 37%;
+        }
+
+        .hand {
+            position: relative;
+            width: 27px;
+            height: 55px;
+            background: #7ee127;
+            top: 55%;
+            left: 18%;
+        }
+
+        .h2 {
+            left: unset;
+            right: -63%;
+            top: 7%;
+        }
+
+        .finger {
+            position: relative;
+            width: 38px;
+            height: 17px;
+            background: #7ee127;
+            top: 95%;
+            border-radius: 37%;
+            left: -40%;
+        }
+
+        .f2 {
+            left: unset;
+            right: 8%;
+        }
+
+        .thigh::after,
+        .thigh::before {
+            position: absolute;
+            content: "";
+            width: 47px;
+            height: 81px;
+            border-radius: 28px 25px 0px 0px;
+            background: #7ee127;
+            transform: rotate(309deg);
+            top: 23%;
+            right: 91%;
+        }
+
+        .thigh::before {
+            transform: rotate(-309deg);
+            top: 15%;
+            left: 92%;
+        }
+
+        .paw::after,
+        .paw::before {
+            position: absolute;
+            content: "";
+            width: 66px;
+            height: 21px;
+            background: #7ee127;
+            top: 83%;
+            border-radius: 46%;
+            left: -11%;
+        }
+
+        .paw::before {
+            left: 72%;
+        }
+
+        .shadow {
+            position: relative;
+            width: 388px;
+            height: 41px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.3);
+            top: -11px;
+            left: -107px;
+            z-index: -1;
+        }
+
+        /* 가로 모드 강제 */
+        #orientation-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+        }
+
+        @media (orientation: portrait) {
+            #orientation-overlay {
+                display: flex;
+            }
+        }
+
+        /* --- 레이아웃 최적화 --- */
+        #game-screen {
+            padding-top: 60px;
+            /* 헤더 높이만큼 확보 */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* 피아노 전체 컨테이너 (개구리 포함) */
+        .piano-container-wrapper {
+            position: relative;
+            width: 85vw;
+            /* 개구리 잘림 방지를 위해 너비를 줄이고 여백 확보 */
+            max-width: 1000px;
+            margin-bottom: 2vmin;
+            flex-shrink: 0;
+        }
+
+        /* 피아노 프레임 */
+        .piano-frame {
+            background: #57534e;
+            padding: 1vmin;
+            border-radius: 1.5vmin;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            position: relative;
+            z-index: 10;
+        }
+
+        .piano-board {
+            display: flex;
+            height: 22vh;
+            min-height: 120px;
+            max-height: 250px;
+            background: #1c1917;
+            border-radius: 0 0 1vmin 1vmin;
+            overflow: hidden;
+            border-top: 4px solid #a3e635;
+            position: relative;
+        }
+
+        .white-key {
+            flex: 1;
+            background: linear-gradient(to bottom, #fff 0%, #e2e8f0 100%);
+            border: 1px solid #94a3b8;
+            border-radius: 0 0 0.8vmin 0.8vmin;
+            margin: 0 0.1vmin;
+            height: 100%;
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            padding-bottom: 1vmin;
+            transition: all 0.05s;
+        }
+
+        .white-key.active {
+            background: #bef264;
+            transform: scaleY(0.98);
+            box-shadow: 0 0 15px #84cc16;
+            border-bottom: 5px solid #4d7c0f;
+        }
+
+        /* 검은 건반 */
+        .black-key {
+            position: absolute;
+            top: 0;
+            width: 5%;
+            height: 60%;
+            background: linear-gradient(to bottom, #334155 0%, #000 100%);
+            border-radius: 0 0 0.5vmin 0.5vmin;
+            z-index: 20;
+            pointer-events: none;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        /* 개구리 트랙 (피아노 바로 위에 위치) */
+        #frog-track {
+            position: absolute;
+            bottom: 100%;
+            /* 피아노 바로 위 */
+            left: 0;
+            width: 100%;
+            height: 0;
+            z-index: 20;
+        }
+
+        #frog-character {
+            position: absolute;
+            bottom: -2vmin;
+            /* 피아노와 자연스럽게 겹치게 */
+            transform: translateX(-50%);
+            transition: left 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.3));
+        }
+
+        .frog-bounce {
+            animation: frog-jump 0.5s ease-in-out;
+        }
+
+        @keyframes frog-jump {
+            0% {
+                transform: translateX(-50%) translateY(0) scale(1);
+            }
+
+            50% {
+                transform: translateX(-50%) translateY(-10vmin) scale(1.1);
+            }
+
+            100% {
+                transform: translateX(-50%) translateY(0) scale(1);
+            }
+        }
+
+        .key-number {
+            font-size: clamp(12px, 2.5vmin, 24px);
+            font-weight: 900;
+            color: #444;
+            margin-bottom: 0.5vmin;
+        }
+
+        .btn-3d {
+            transition: all 0.1s;
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-3d:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 rgba(0, 0, 0, 0.2);
+        }
+
+        .speech-bubble {
+            background: white;
+            border-radius: 1.5rem;
+            padding: 1rem 2rem;
+            position: relative;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            border: 4px solid #84cc16;
+            min-width: 200px;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .speech-bubble h2 {
+            font-size: clamp(1.5rem, 5vmin, 3rem);
+        }
+
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 12px 12px 0;
+            border-style: solid;
+            border-color: #84cc16 transparent transparent transparent;
+        }
+
+        .modal-bg {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="orientation-overlay">
+        <i data-lucide="smartphone" class="w-24 h-24 text-green-400 mb-4 animate-spin-slow"></i>
+        <h2 class="text-3xl font-bold">화면을 가로로 돌려주세요!</h2>
+    </div>
+
+    <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+
+    <!-- HEADER (Global) -->
+    <header class="kakao-header">
+        <div class="flex items-center gap-2">
+            <i data-lucide="music" class="w-6 h-6 text-[#3b1e1e]"></i>
+            <h1 class="text-lg md:text-xl font-bold tracking-tight text-[#3b1e1e]">개구리 숫자 점프</h1>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <!-- Language Button (Newly created left of Exit) -->
+            <button onclick="toggleLanguage()"
+                class="bg-white text-[#3b1e1e] px-3 py-1.5 rounded-lg font-bold text-sm shadow-sm hover:bg-gray-50 transition flex items-center gap-1 border border-gray-100">
+                <i data-lucide="languages" class="w-4 h-4"></i>
+                <span id="header-lang-text">KO</span>
+            </button>
+
+            <!-- Exit Button -->
+            <button onclick="goHome()"
+                class="bg-[#3b1e1e] text-[#FEE500] px-3 py-1.5 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition flex items-center gap-1">
+                종료 <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- INTRO SCREEN -->
+    <section id="intro-screen"
+        class="fixed inset-0 z-40 flex flex-col items-center justify-center bg-white/10 backdrop-blur-md"
+        style="padding-top: 60px;">
+        <div class="absolute inset-0 bg-green-900/40 -z-10"></div>
+
+        <div
+            class="relative z-50 text-center space-y-4 max-w-4xl px-4 w-full flex flex-col items-center justify-center h-full">
+
+            <h1
+                class="text-5xl md:text-7xl font-black text-white drop-shadow-[0_5px_5px_rgba(0,0,0,0.5)] tracking-wide">
+                <span id="title-main">개구리 숫자 점프</span>
+            </h1>
+            <p class="text-xl md:text-3xl text-green-100 font-bold drop-shadow-md">
+                <span id="title-sub">피아노 건반으로 배우는 신나는 수학!</span>
+            </p>
+
+            <!-- MIDI Status Badge -->
+            <div id="midi-status-intro"
+                class="flex items-center gap-2 px-6 py-3 rounded-2xl bg-black/50 text-gray-300 font-bold border-2 border-white/20 backdrop-blur transition-all duration-300">
+                <i data-lucide="loader" class="w-6 h-6 animate-spin"></i>
+                <span class="text-xl">피아노 찾는 중...</span>
+            </div>
+
+            <div class="flex gap-4 mt-4">
+                <button onclick="tryStartGame()"
+                    class="btn-3d bg-green-500 text-white px-8 py-4 rounded-3xl text-2xl md:text-3xl font-black shadow-[0_8px_16px_rgba(22,163,74,0.4)] hover:bg-green-600 border-b-8 border-green-700 flex items-center">
+                    <i data-lucide="play" class="w-6 h-6 inline mr-2 fill-current"></i> <span
+                        id="btn-start-text">시작</span>
+                </button>
+                <button onclick="openGuide()"
+                    class="btn-3d bg-yellow-400 text-yellow-900 px-6 py-4 rounded-3xl text-xl md:text-2xl font-bold shadow-[0_8px_16px_rgba(250,204,21,0.4)] hover:bg-yellow-500 border-b-8 border-yellow-600 flex items-center">
+                    <i data-lucide="help-circle" class="w-6 h-6 inline mr-2"></i> <span id="btn-guide-text">방법</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- GAME SCREEN -->
+    <section id="game-screen" class="hidden bg-gradient-to-b from-blue-200 to-green-100">
+
+        <!-- Top Area: Question & Score -->
+        <div class="w-full px-4 flex justify-between items-start pt-4 relative z-30 flex-shrink-0">
+            <!-- Left Side Spacer -->
+            <div class="w-24 hidden md:block"></div>
+
+            <!-- Center: Question & Warning -->
+            <div class="flex flex-col items-center flex-1">
+                <!-- MIDI Warning: Sits in flow to prevent overlap -->
+                <div id="game-midi-warning"
+                    class="hidden bg-red-500 text-white px-4 py-2 rounded-full text-sm md:text-base font-bold shadow-lg animate-pulse mb-2 flex items-center gap-2 whitespace-nowrap">
+                    <i data-lucide="plug-zap" class="w-4 h-4"></i>
+                    <span id="text-midi-disconnected">피아노 미연결</span>
+                </div>
+
+                <div class="speech-bubble transform transition-all duration-300" id="question-bubble">
+                    <h2 id="question-text" class="font-black text-gray-800">준비...</h2>
+                </div>
+                <button onclick="replayQuestion()"
+                    class="bg-green-100 p-2 rounded-full hover:bg-green-200 text-green-600 shadow-sm mt-2">
+                    <i data-lucide="volume-2" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <!-- Right: Score -->
+            <div
+                class="bg-white px-4 py-2 rounded-xl shadow-md border-2 border-yellow-400 flex items-center gap-2 w-24 md:w-auto justify-center">
+                <i data-lucide="star" class="w-6 h-6 text-yellow-500 fill-current"></i>
+                <span id="score-display" class="text-2xl font-black text-gray-700">0</span>
+            </div>
+        </div>
+
+        <!-- Spacer -->
+        <div class="flex-grow"></div>
+
+        <!-- Bottom Area: Piano & Frog Container -->
+        <div class="piano-container-wrapper">
+
+            <!-- Frog Track Layer -->
+            <div id="frog-track">
+                <!-- Frog Character -->
+                <div id="frog-character">
+                    <div class="frog-wrapper">
+                        <div class="frog_head">
+                            <div class="eye e1">
+                                <div class="pupil p1"></div>
+                            </div>
+                            <div class="eye e2">
+                                <div class="pupil p2"></div>
+                            </div>
+                            <div class="blush"></div>
+                            <div class="nose"></div>
+                            <div class="frog_body">
+                                <div class="hand h1">
+                                    <div class="finger f1"></div>
+                                </div>
+                                <div class="thigh">
+                                    <div class="paw"></div>
+                                </div>
+                                <div class="hand h2">
+                                    <div class="finger f2"></div>
+                                </div>
+                                <div class="shadow"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Piano Visual -->
+            <div class="piano-frame">
+                <!-- Number Line Indicator -->
+                <div class="w-full bg-gray-800 h-8 md:h-10 rounded-t-lg flex items-center justify-between px-4 mb-1">
+                    <span class="text-gray-400 font-bold text-xs md:text-sm">START (1)</span>
+                    <span class="text-green-400 font-bold tracking-widest text-sm md:text-lg">NUMBER LINE</span>
+                    <span class="text-gray-400 font-bold text-xs md:text-sm">END (15)</span>
+                </div>
+
+                <div class="piano-board" id="piano-keys-container">
+                    <!-- Keys generated by JS -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MODAL: No MIDI -->
+    <div id="modal-no-midi" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4">
+        <div class="bg-white rounded-[2rem] p-6 md:p-8 max-w-lg w-full text-center shadow-2xl border-4 border-red-400">
+            <i data-lucide="cable" class="w-16 h-16 mx-auto text-red-400 mb-4"></i>
+            <h3 class="text-3xl font-bold text-gray-800 mb-4" id="modal-nomidi-title">피아노가 없어요!</h3>
+            <p class="text-lg text-gray-600 mb-8 leading-relaxed break-keep" id="modal-nomidi-desc">
+                이 게임은 피아노 건반이 꼭 필요해요.<br>
+                건반 없이 구경만 하시겠어요?<br>
+                <span class="text-red-500 text-sm font-bold">*플레이는 불가능합니다.*</span>
+            </p>
+            <div class="flex gap-4 justify-center">
+                <button onclick="enterGame(true)"
+                    class="bg-gray-200 text-gray-600 px-6 py-3 rounded-2xl font-bold text-lg hover:bg-gray-300">
+                    <span id="btn-just-watch">구경하기</span>
+                </button>
+                <button onclick="closeModal('modal-no-midi')"
+                    class="bg-green-500 text-white px-6 py-3 rounded-2xl font-bold text-lg hover:bg-green-600">
+                    <span id="btn-ok">확인</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Guide -->
+    <div id="modal-guide" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4">
+        <div class="bg-white rounded-[2rem] p-8 max-w-2xl w-full relative shadow-2xl border-4 border-yellow-400">
+            <button onclick="closeModal('modal-guide')"
+                class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i data-lucide="x" class="w-8 h-8"></i>
+            </button>
+
+            <div class="flex items-center gap-4 mb-6">
+                <div class="bg-yellow-100 p-3 rounded-full">
+                    <i data-lucide="book-open" class="w-8 h-8 text-yellow-600"></i>
+                </div>
+                <h3 class="text-3xl font-bold text-gray-800" id="guide-title">학습 방법</h3>
+            </div>
+
+            <ul class="space-y-4 text-xl text-gray-700">
+                <li class="flex items-start gap-4">
+                    <span
+                        class="bg-green-100 text-green-600 rounded-full w-8 h-8 flex items-center justify-center font-bold shrink-0 text-sm">1</span>
+                    <div>
+                        <strong class="text-green-700" id="guide-step1-title">문제를 들어보세요</strong><br>
+                        <span class="text-base text-gray-500" id="guide-step1-desc">"3 더하기 2는?" 같은 문제를 읽어줘요.</span>
+                    </div>
+                </li>
+                <li class="flex items-start gap-4">
+                    <span
+                        class="bg-blue-100 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center font-bold shrink-0 text-sm">2</span>
+                    <div>
+                        <strong class="text-blue-700" id="guide-step2-title">건반을 눌러요</strong><br>
+                        <span class="text-base text-gray-500" id="guide-step2-desc">정답인 숫자 건반을 꾹 눌러주세요.</span>
+                    </div>
+                </li>
+                <li class="flex items-start gap-4">
+                    <span
+                        class="bg-purple-100 text-purple-600 rounded-full w-8 h-8 flex items-center justify-center font-bold shrink-0 text-sm">3</span>
+                    <div>
+                        <strong class="text-purple-700" id="guide-step3-title">개구리 점프!</strong><br>
+                        <span class="text-base text-gray-500" id="guide-step3-desc">정답이면 개구리가 폴짝 뛰어요!</span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- MODAL: Result -->
+    <div id="modal-result" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4">
+        <div
+            class="bg-white rounded-[2.5rem] p-10 max-w-xl w-full text-center relative overflow-hidden border-4 border-green-500">
+            <i data-lucide="trophy" class="w-24 h-24 text-yellow-400 mx-auto mb-4 animate-bounce"></i>
+            <h2 class="text-4xl font-bold text-gray-800 mb-2" id="result-title">참 잘했어요!</h2>
+            <p class="text-xl text-gray-500 mb-6" id="result-desc">모든 문제를 풀었어요.</p>
+
+            <div class="text-6xl font-black text-green-600 mb-8">
+                <span id="final-score">100</span> <span class="text-3xl text-gray-400">점</span>
+            </div>
+
+            <button onclick="goHome()"
+                class="bg-green-500 text-white w-full py-4 rounded-2xl font-bold text-2xl hover:bg-green-600 shadow-lg">
+                <span id="btn-home">처음으로</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // CONFIG & STATE
+        // ==========================================
+        const GOOGLE_API_KEY = "AIzaSyAE0nnpOYZRfLkfM09O3NQjpWnN1kUqR3E"; // User provided key
+
+        let isEnglish = false;
+        let midiAccess = null;
+        let isMidiConnected = false;
+        let audioCtx = null;
+
+        let gameState = 'intro'; // intro, playing, result
+        let currentLevel = 0;
+        let score = 0;
+        let currentQuestion = null;
+        let isAnswering = false;
+
+        // C3(48) -> 1 ... C5(72) -> 15 (White keys only)
+        // Map MIDI Note to Number (1~15)
+        const MIDI_MAP = {};
+        const KEY_ELEMENTS = [];
+
+        // 15 White Keys from C3 to C5
+        const KEYS_DATA = [
+            { note: 48, num: 1 }, { note: 50, num: 2 }, { note: 52, num: 3 }, { note: 53, num: 4 }, { note: 55, num: 5 }, { note: 57, num: 6 }, { note: 59, num: 7 },
+            { note: 60, num: 8 }, { note: 62, num: 9 }, { note: 64, num: 10 }, { note: 65, num: 11 }, { note: 67, num: 12 }, { note: 69, num: 13 }, { note: 71, num: 14 }, { note: 72, num: 15 }
+        ];
+
+        // Language Dictionary
+        const TEXTS = {
+            titleMain: { ko: "개구리 숫자 점프", en: "Frog Number Jump" },
+            titleSub: { ko: "피아노 건반으로 배우는 신나는 수학!", en: "Fun Math with Piano Keys!" },
+            btnStart: { ko: "시작", en: "Start" },
+            btnGuide: { ko: "방법", en: "Guide" },
+            midiSearching: { ko: "피아노 찾는 중...", en: "Searching Piano..." },
+            midiConnected: { ko: "피아노 연결됨!", en: "Piano Connected!" },
+            midiDisconnected: { ko: "피아노 미연결", en: "No Piano Found" },
+
+            guideTitle: { ko: "학습 방법", en: "How to Play" },
+            guideS1T: { ko: "문제를 들어보세요", en: "Listen to the Question" },
+            guideS1D: { ko: "\"3 더하기 2는?\" 같은 문제를 읽어줘요.", en: "I will ask \"What is 3 plus 2?\"" },
+            guideS2T: { ko: "건반을 눌러요", en: "Press the Key" },
+            guideS2D: { ko: "정답인 숫자 건반을 꾹 눌러주세요.", en: "Press the piano key with the correct number." },
+            guideS3T: { ko: "개구리 점프!", en: "Frog Jumps!" },
+            guideS3D: { ko: "정답이면 개구리가 폴짝 뛰어요!", en: "The frog will jump if you are correct!" },
+
+            modalNoMidiTitle: { ko: "피아노가 없어요!", en: "No Piano Found!" },
+            modalNoMidiDesc: { ko: "이 게임은 피아노 건반이 꼭 필요해요.<br>건반 없이 구경만 하시겠어요?<br><span class='text-red-500 text-sm font-bold'>*플레이는 불가능합니다.*</span>", en: "You need a piano keyboard to play.<br>Do you want to just watch?<br><span class='text-red-500 text-sm font-bold'>*Gameplay is disabled.*</span>" },
+            btnJustWatch: { ko: "구경하기", en: "Just Watch" },
+            btnOk: { ko: "확인", en: "OK" },
+
+            gameWarning: { ko: "피아노가 연결되지 않았습니다.", en: "Piano disconnected." },
+
+            resultTitle: { ko: "참 잘했어요!", en: "Great Job!" },
+            resultDesc: { ko: "오늘의 수학 공부 끝!", en: "Math practice finished!" },
+            btnHome: { ko: "처음으로", en: "Go Home" },
+
+            // TTS Scripts
+            ttsIntro: { ko: "개구리 숫자 점프에 오신 것을 환영해요! 피아노를 연결하고 게임 시작 버튼을 눌러주세요.", en: "Welcome to Frog Number Jump! Connect your piano and press start." },
+            ttsGuide: { ko: "문제를 듣고, 정답 숫자가 적힌 건반을 눌러주세요. 개구리가 점프할 거예요!", en: "Listen to the math problem, and press the key with the answer number. The frog will jump!" },
+            ttsCorrect: { ko: ["정답입니다!", "잘했어요!", "멋져요!"], en: ["Correct!", "Good job!", "Awesome!"] },
+            ttsWrong: { ko: ["다시 생각해보세요.", "아니에요.", "힘내세요!"], en: ["Try again.", "Not quite.", "Keep going!"] },
+            ttsResult: { ko: "와우! 정말 잘했어요. 참 똑똑하네요!", en: "Wow! You did great. You are so smart!" }
+        };
+
+        // ==========================================
+        // INIT & UTILS
+        // ==========================================
+        window.onload = function () {
+            lucide.createIcons();
+            initKeys();
+            checkMidiSupport();
+
+            // Try to speak intro immediately. 
+            speakWithGoogle(isEnglish ? TEXTS.ttsIntro.en : TEXTS.ttsIntro.ko, isEnglish ? 'en-US' : 'ko-KR');
+        };
+
+        function initKeys() {
+            const container = document.getElementById('piano-keys-container');
+            container.innerHTML = '';
+
+            KEYS_DATA.forEach((k, i) => {
+                // Map note to config
+                MIDI_MAP[k.note] = i;
+
+                const div = document.createElement('div');
+                div.className = 'white-key group';
+                div.id = `key-${i}`;
+                div.innerHTML = `<span class="key-number">${k.num}</span>`;
+
+                // Block Mouse Interaction (Must use MIDI per requirements)
+                div.addEventListener('mousedown', (e) => {
+                    if (!isMidiConnected) {
+                        showToast(isEnglish ? "Connect Piano to Play!" : "피아노를 연결해야 해요!");
+                    }
+                });
+
+                container.appendChild(div);
+                KEY_ELEMENTS.push(div);
+            });
+
+            // Visual Black Keys (Just decoration)
+            const bkIndices = [0, 1, 3, 4, 5, 7, 8, 10, 11, 12];
+            bkIndices.forEach(idx => {
+                const bk = document.createElement('div');
+                bk.className = 'black-key';
+                const leftPercent = (idx + 0.65) * (100 / 15);
+                bk.style.left = `${leftPercent}%`;
+                container.appendChild(bk);
+            });
+        }
+
+        // ==========================================
+        // MIDI HANDLING
+        // ==========================================
+        function checkMidiSupport() {
+            if (navigator.requestMIDIAccess) {
+                navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
+            } else {
+                updateMidiUI(false);
+            }
+        }
+
+        function onMIDISuccess(midi) {
+            midiAccess = midi;
+            midi.onstatechange = (e) => checkConnection();
+            checkConnection();
+        }
+
+        function onMIDIFailure() {
+            updateMidiUI(false);
+        }
+
+        function checkConnection() {
+            if (!midiAccess) return;
+            let connected = false;
+            for (let input of midiAccess.inputs.values()) {
+                connected = true;
+                input.onmidimessage = onMIDIMessage;
+            }
+            isMidiConnected = connected;
+            updateMidiUI(connected);
+        }
+
+        function updateMidiUI(connected) {
+            const badge = document.getElementById('midi-status-intro');
+            const gameWarn = document.getElementById('game-midi-warning');
+
+            if (connected) {
+                badge.className = "flex items-center gap-2 px-6 py-3 rounded-2xl bg-green-500 text-white font-bold border-2 border-green-300 shadow-lg transform scale-105 transition-all";
+                badge.innerHTML = `<i data-lucide="check-circle" class="w-6 h-6"></i><span class="text-xl">${getText('midiConnected')}</span>`;
+                gameWarn.classList.add('hidden');
+            } else {
+                badge.className = "flex items-center gap-2 px-6 py-3 rounded-2xl bg-gray-800/80 text-gray-400 font-bold border-2 border-gray-600 transition-all";
+                badge.innerHTML = `<i data-lucide="plug" class="w-6 h-6"></i><span class="text-xl">${getText('midiDisconnected')}</span>`;
+                // If in game, show warning
+                if (gameState === 'playing') {
+                    gameWarn.classList.remove('hidden');
+                }
+            }
+            lucide.createIcons();
+        }
+
+        function onMIDIMessage(event) {
+            if (gameState !== 'playing') return;
+            if (!isMidiConnected) return; // Should allow play only if connected
+
+            const [status, note, velocity] = event.data;
+            const command = status & 0xf0;
+
+            if (command === 144 && velocity > 0) { // Note On
+                handleInput(note);
+            } else if (command === 128 || (command === 144 && velocity === 0)) { // Note Off
+                const idx = MIDI_MAP[note];
+                if (idx !== undefined) {
+                    KEY_ELEMENTS[idx].classList.remove('active');
+                }
+            }
+        }
+
+        function handleInput(note) {
+            const idx = MIDI_MAP[note];
+            if (idx === undefined) return;
+
+            // Visual Feedback
+            KEY_ELEMENTS[idx].classList.add('active');
+            playTone(note);
+
+            if (isAnswering) return;
+
+            const inputNum = KEYS_DATA[idx].num;
+            checkAnswer(inputNum, idx);
+        }
+
+        // ==========================================
+        // GAME LOGIC
+        // ==========================================
+        function tryStartGame() {
+            // Ensure AudioContext is resumed/started on user gesture
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            stopAudio();
+            if (!isMidiConnected) {
+                openModal('modal-no-midi');
+            } else {
+                enterGame();
+            }
+        }
+
+        function enterGame(watchMode = false) {
+            closeModal('modal-no-midi');
+            document.getElementById('intro-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            document.getElementById('game-screen').classList.add('flex');
+
+            gameState = 'playing';
+            score = 0;
+            currentLevel = 0;
+            updateScore();
+
+            if (watchMode) {
+                document.getElementById('game-midi-warning').classList.remove('hidden');
+                speakWithGoogle(isEnglish ? "Watch mode. Connect piano to play." : "구경하기 모드입니다. 플레이하려면 피아노를 연결하세요.", isEnglish ? 'en-US' : 'ko-KR');
+
+                // Allow game to proceed even in watch mode (visuals only)
+                setTimeout(() => {
+                    generateQuestion();
+                }, 2000);
+            } else {
+                generateQuestion();
+            }
+        }
+
+        function generateQuestion() {
+            if (currentLevel >= 10) {
+                endGame();
+                return;
+            }
+
+            let start, add, answer;
+            do {
+                start = Math.floor(Math.random() * 10) + 1; // 1~10
+                add = Math.floor(Math.random() * 5) + 1;   // 1~5
+                answer = start + add;
+            } while (answer > 15);
+
+            currentQuestion = { start, add, answer };
+
+            // Move frog to Start position
+            moveFrog(start);
+
+            const qText = `${start} + ${add} = ?`;
+            document.getElementById('question-text').innerText = qText;
+
+            // Speak
+            const speakText = isEnglish
+                ? `Start at ${start}, add ${add}. What is the number?`
+                : `${start} 더하기 ${add}는 무엇일까요?`;
+
+            isAnswering = true;
+            setTimeout(() => isAnswering = false, 1000);
+
+            speakWithGoogle(speakText, isEnglish ? 'en-US' : 'ko-KR');
+        }
+
+        function moveFrog(numIndex) {
+            // Calculate percentage based on 15 keys
+            const oneKeyWidth = 100 / 15;
+            const pct = (numIndex - 1) * oneKeyWidth + (oneKeyWidth / 2);
+
+            const frog = document.getElementById('frog-character');
+            frog.style.left = `${pct}%`;
+            frog.classList.add('frog-bounce');
+            setTimeout(() => frog.classList.remove('frog-bounce'), 500);
+        }
+
+        function checkAnswer(inputNum, keyIdx) {
+            if (isAnswering) return;
+            isAnswering = true;
+
+            if (inputNum === currentQuestion.answer) {
+                // Correct
+                moveFrog(inputNum); // Jump to answer
+                score += 10;
+                updateScore();
+                fireConfetti();
+
+                const praise = getRandom(isEnglish ? TEXTS.ttsCorrect.en : TEXTS.ttsCorrect.ko);
+                speakWithGoogle(praise, isEnglish ? 'en-US' : 'ko-KR').then(() => {
+                    currentLevel++;
+                    setTimeout(() => {
+                        isAnswering = false;
+                        generateQuestion();
+                    }, 1000);
+                });
+
+            } else {
+                // Wrong
+                document.getElementById('question-bubble').classList.add('animate-shake');
+                setTimeout(() => document.getElementById('question-bubble').classList.remove('animate-shake'), 500);
+
+                const encourage = getRandom(isEnglish ? TEXTS.ttsWrong.en : TEXTS.ttsWrong.ko);
+                speakWithGoogle(encourage, isEnglish ? 'en-US' : 'ko-KR').then(() => {
+                    isAnswering = false;
+                });
+            }
+        }
+
+        function endGame() {
+            gameState = 'result';
+            document.getElementById('final-score').innerText = score;
+            openModal('modal-result');
+            speakWithGoogle(isEnglish ? TEXTS.ttsResult.en : TEXTS.ttsResult.ko, isEnglish ? 'en-US' : 'ko-KR');
+        }
+
+        function updateScore() {
+            document.getElementById('score-display').innerText = score;
+        }
+
+        function replayQuestion() {
+            if (!currentQuestion) return;
+            const { start, add } = currentQuestion;
+            const speakText = isEnglish
+                ? `Start at ${start}, add ${add}. What is the number?`
+                : `${start} 더하기 ${add}는 무엇일까요?`;
+            speakWithGoogle(speakText, isEnglish ? 'en-US' : 'ko-KR');
+        }
+
+        // ==========================================
+        // UI & HELPERS
+        // ==========================================
+        function toggleLanguage() {
+            isEnglish = !isEnglish;
+            updateUITexts();
+            speakWithGoogle(isEnglish ? "English Mode" : "한국어 모드", isEnglish ? 'en-US' : 'ko-KR');
+        }
+
+        function updateUITexts() {
+            document.getElementById('header-lang-text').innerText = isEnglish ? "ENG" : "KO";
+            document.getElementById('title-main').innerText = isEnglish ? TEXTS.titleMain.en : TEXTS.titleMain.ko;
+            document.getElementById('title-sub').innerText = isEnglish ? TEXTS.titleSub.en : TEXTS.titleSub.ko;
+            document.getElementById('btn-start-text').innerText = isEnglish ? TEXTS.btnStart.en : TEXTS.btnStart.ko;
+            document.getElementById('btn-guide-text').innerText = isEnglish ? TEXTS.btnGuide.en : TEXTS.btnGuide.ko;
+
+            // Modal Texts
+            document.getElementById('modal-nomidi-title').innerText = isEnglish ? TEXTS.modalNoMidiTitle.en : TEXTS.modalNoMidiTitle.ko;
+            document.getElementById('modal-nomidi-desc').innerHTML = isEnglish ? TEXTS.modalNoMidiDesc.en : TEXTS.modalNoMidiDesc.ko;
+            document.getElementById('btn-just-watch').innerText = isEnglish ? TEXTS.btnJustWatch.en : TEXTS.btnJustWatch.ko;
+            document.getElementById('btn-ok').innerText = isEnglish ? TEXTS.btnOk.en : TEXTS.btnOk.ko;
+
+            document.getElementById('guide-title').innerText = isEnglish ? TEXTS.guideTitle.en : TEXTS.guideTitle.ko;
+            document.getElementById('guide-step1-title').innerText = isEnglish ? TEXTS.guideS1T.en : TEXTS.guideS1T.ko;
+            document.getElementById('guide-step1-desc').innerText = isEnglish ? TEXTS.guideS1D.en : TEXTS.guideS1D.ko;
+            document.getElementById('guide-step2-title').innerText = isEnglish ? TEXTS.guideS2T.en : TEXTS.guideS2T.ko;
+            document.getElementById('guide-step2-desc').innerText = isEnglish ? TEXTS.guideS2D.en : TEXTS.guideS2D.ko;
+            document.getElementById('guide-step3-title').innerText = isEnglish ? TEXTS.guideS3T.en : TEXTS.guideS3T.ko;
+            document.getElementById('guide-step3-desc').innerText = isEnglish ? TEXTS.guideS3D.en : TEXTS.guideS3D.ko;
+
+            document.getElementById('text-midi-disconnected').innerText = isEnglish ? TEXTS.gameWarning.en : TEXTS.gameWarning.ko;
+            document.getElementById('result-title').innerText = isEnglish ? TEXTS.resultTitle.en : TEXTS.resultTitle.ko;
+            document.getElementById('result-desc').innerText = isEnglish ? TEXTS.resultDesc.en : TEXTS.resultDesc.ko;
+            document.getElementById('btn-home').innerText = isEnglish ? TEXTS.btnHome.en : TEXTS.btnHome.ko;
+
+            checkConnection(); // Update MIDI badge text
+        }
+
+        function getText(key) {
+            return isEnglish ? TEXTS[key].en : TEXTS[key].ko;
+        }
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function openGuide() {
+            openModal('modal-guide');
+            speakWithGoogle(isEnglish ? TEXTS.ttsGuide.en : TEXTS.ttsGuide.ko, isEnglish ? 'en-US' : 'ko-KR');
+        }
+
+        function goHome() {
+            location.reload();
+        }
+
+        function getRandom(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        function showToast(msg) {
+            // Simple toast implementation if needed
+        }
+
+        // ==========================================
+        // AUDIO / TTS
+        // ==========================================
+
+        function stopAudio() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+        }
+
+        function playTone(note) {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            // Note to Freq: 440 * 2^((note-69)/12)
+            const freq = 440 * Math.pow(2, (note - 69) / 12);
+            osc.frequency.value = freq;
+            osc.type = 'triangle';
+
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.5);
+        }
+
+        let currentAudio = null;
+        async function speakWithGoogle(text, langCode = 'ko-KR') {
+            stopAudio();
+
+            if (!GOOGLE_API_KEY) return Promise.resolve();
+
+            let voiceName = 'ko-KR-Neural2-A';
+            if (langCode === 'en-US') voiceName = 'en-US-Neural2-F';
+
+            try {
+                const response = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key=' + GOOGLE_API_KEY, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        input: { text: text },
+                        voice: { languageCode: langCode, name: voiceName, ssmlGender: 'FEMALE' },
+                        audioConfig: { audioEncoding: 'MP3', speakingRate: 0.9 }
+                    })
+                });
+
+                if (!response.ok) return Promise.resolve();
+
+                const data = await response.json();
+                const audio = new Audio('data:audio/mp3;base64,' + data.audioContent);
+                currentAudio = audio;
+
+                return new Promise((resolve) => {
+                    audio.onended = resolve;
+                    audio.onerror = resolve;
+                    audio.play().catch(resolve);
+                });
+            } catch (e) {
+                console.error(e);
+                return Promise.resolve();
+            }
+        }
+
+        // ==========================================
+        // EFFECTS
+        // ==========================================
+        const canvas = document.getElementById('confetti-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+
+        function fireConfetti() {
+            const colors = ['#a3e635', '#facc15', '#ffffff', '#60a5fa'];
+            for (let i = 0; i < 60; i++) {
+                particles.push({
+                    x: window.innerWidth / 2, y: window.innerHeight / 2,
+                    vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.5) * 20,
+                    life: 1.5, color: colors[Math.floor(Math.random() * colors.length)],
+                    size: Math.random() * 8 + 4
+                });
+            }
+        }
+
+        function loop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life -= 0.02;
+                if (p.life <= 0) { particles.splice(i, 1); continue; }
+                ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+            }
+            requestAnimationFrame(loop);
+        }
+        loop();
+    </script>
+    <script src="../../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../../js/web-learning-ranking.js?v=20260618-07" defer></script>
+    <script src="../../../js/web-learning-midi-status.js?v=20260618-04" data-instrument="piano" defer></script>
+</body>
+
+</html>

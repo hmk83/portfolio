@@ -1,0 +1,1716 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>드럼 플라이 - MIDI 컨트롤 게임</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { corePlugins: { preflight: false } }</script>
+    <script src="https://unpkg.com/lucide@latest" onerror="console.warn('Lucide icons failed to load');"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Jua', sans-serif;
+            overflow: hidden;
+            background: #87CEEB;
+            color: #3b1e1e;
+            user-select: none;
+            -webkit-user-select: none;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+        }
+
+        /* 카카오 스타일 헤더 - 항상 표시 */
+        .kakao-header {
+            background: linear-gradient(135deg, #FEE500 0%, #FBC02D 100%);
+            color: #3b1e1e;
+            width: 100%;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 2000;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        .header-title {
+            font-size: clamp(16px, 4vw, 22px);
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header-btn {
+            padding: 8px 16px;
+            font-size: clamp(12px, 2.5vw, 14px);
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            border-radius: 20px;
+            color: #3b1e1e;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Jua', sans-serif;
+        }
+
+        .header-btn:hover {
+            background: rgba(255, 255, 255, 0.6);
+            transform: translateY(-1px);
+        }
+
+        .header-btn:active {
+            transform: translateY(0);
+        }
+
+        #intro-screen {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, #87CEEB 0%, #4FB3E8 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            z-index: 1000;
+            padding: 20px;
+            padding-top: 80px;
+            overflow: hidden;
+        }
+
+        .intro-content {
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+            padding-bottom: 40px;
+        }
+
+        .intro-title {
+            font-size: clamp(36px, 8vw, 64px);
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #FEE500;
+            text-shadow:
+                3px 3px 0 #3b1e1e,
+                -1px -1px 0 #3b1e1e,
+                1px -1px 0 #3b1e1e,
+                -1px 1px 0 #3b1e1e;
+        }
+
+        .intro-subtitle {
+            font-size: clamp(14px, 3vw, 20px);
+            color: #3b1e1e;
+            margin-bottom: 30px;
+        }
+
+        /* 난이도 선택 카드 */
+        .difficulty-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 30px 0;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding: 5px;
+        }
+
+        .difficulty-card {
+            background: rgba(255, 255, 255, 0.9);
+            border: 4px solid #3b1e1e;
+            border-radius: 20px;
+            padding: 15px 20px;
+            min-width: 90px;
+            flex: 1;
+            max-width: 140px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .difficulty-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .difficulty-card.selected {
+            background: linear-gradient(135deg, #FEE500, #FBC02D);
+            border-color: #8B6914;
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(251, 191, 45, 0.6);
+        }
+
+        .difficulty-icon {
+            font-size: clamp(28px, 5vw, 40px);
+            margin-bottom: 8px;
+        }
+
+        .difficulty-name {
+            font-size: clamp(14px, 2.5vw, 18px);
+            font-weight: bold;
+            color: #3b1e1e;
+            margin-bottom: 5px;
+        }
+
+        .difficulty-desc {
+            font-size: clamp(10px, 1.8vw, 12px);
+            color: #666;
+            line-height: 1.3;
+        }
+
+        .difficulty-card.selected .difficulty-desc {
+            color: #8B6914;
+        }
+
+        @media (max-width: 600px) {
+            .difficulty-card {
+                min-width: 70px;
+                padding: 12px 15px;
+            }
+
+            .difficulty-container {
+                gap: 8px;
+            }
+        }
+
+        /* 도트 캐릭터 */
+        .character-showcase {
+            margin: 30px 0;
+            animation: float 2s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-15px);
+            }
+        }
+
+        .pixel-canvas {
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        /* 버튼 스타일 */
+        .btn-large {
+            padding: 16px 48px;
+            font-size: clamp(20px, 4vw, 28px);
+            font-weight: bold;
+            background: linear-gradient(135deg, #FEE500, #FBC02D);
+            border: 4px solid #3b1e1e;
+            border-radius: 50px;
+            color: #3b1e1e;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #8B6914, 0 8px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.1s;
+            font-family: 'Jua', sans-serif;
+            margin: 10px;
+        }
+
+        .btn-large:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 0 #8B6914, 0 10px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn-large:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #8B6914, 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-secondary {
+            padding: 12px 32px;
+            font-size: clamp(16px, 3vw, 20px);
+            font-weight: bold;
+            background: transparent;
+            border: 3px solid #3b1e1e;
+            border-radius: 40px;
+            color: #3b1e1e;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Jua', sans-serif;
+            margin: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(59, 30, 30, 0.1);
+        }
+
+        /* 게임 화면 */
+        #game-screen {
+            display: none;
+            width: 100%;
+            height: 100vh;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            background: linear-gradient(180deg, #87CEEB 0%, #4FB3E8 100%);
+            overflow: hidden;
+        }
+
+        /* 게임 캔버스 */
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: calc(100vh - 60px);
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        /* 게임 UI 오버레이 */
+        .game-ui {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .score-display {
+            background: rgba(254, 229, 0, 0.9);
+            color: #3b1e1e;
+            padding: 12px 24px;
+            border-radius: 30px;
+            border: 3px solid #3b1e1e;
+            font-size: clamp(20px, 4vw, 32px);
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 게임 오버 화면 */
+        .game-over-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 20px;
+        }
+
+        .game-over-content {
+            background: linear-gradient(135deg, #FEE500, #FBC02D);
+            padding: 40px;
+            border-radius: 30px;
+            border: 5px solid #3b1e1e;
+            text-align: center;
+            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .game-over-title {
+            font-size: clamp(32px, 6vw, 48px);
+            color: #3b1e1e;
+            margin-bottom: 20px;
+        }
+
+        .final-score {
+            font-size: clamp(24px, 5vw, 36px);
+            color: #3b1e1e;
+            margin: 15px 0;
+        }
+
+        .best-score {
+            font-size: clamp(18px, 3.5vw, 24px);
+            color: #8B6914;
+            margin-bottom: 30px;
+        }
+
+        /* 모달 */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #ffffff, #f0f0f0);
+            padding: 25px;
+            border-radius: 20px;
+            border: 4px solid #FEE500;
+            max-width: 400px;
+            /* 너비 줄임 */
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .modal-title {
+            font-size: clamp(24px, 5vw, 28px);
+            color: #3b1e1e;
+            font-weight: bold;
+        }
+
+        .modal-close {
+            font-size: 24px;
+            color: #3b1e1e;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(59, 30, 30, 0.1);
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: rgba(59, 30, 30, 0.2);
+            transform: rotate(90deg);
+        }
+
+        .modal-body {
+            color: #3b1e1e;
+            line-height: 1.5;
+            font-size: 16px;
+        }
+
+        .modal-body h3 {
+            font-size: 20px;
+            margin: 15px 0 10px 0;
+            color: #FBC02D;
+        }
+
+        .control-item {
+            background: rgba(254, 229, 0, 0.2);
+            padding: 10px;
+            border-radius: 10px;
+            margin: 5px 0;
+            border-left: 4px solid #FBC02D;
+        }
+
+        /* MIDI 상태 표시 */
+        .midi-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: clamp(12px, 2.5vw, 14px);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 50;
+            transition: all 0.3s;
+        }
+
+        .midi-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ef4444;
+            animation: pulse 2s infinite;
+        }
+
+        .midi-dot.connected {
+            background: #10b981;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .kakao-header {
+                height: 50px;
+                padding: 0 12px;
+            }
+
+            .header-btn {
+                padding: 6px 12px;
+            }
+
+            .game-ui {
+                gap: 15px;
+            }
+
+            .modal-content {
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-buttons {
+                gap: 5px;
+            }
+
+            .header-btn {
+                padding: 5px 10px;
+                font-size: 11px;
+            }
+        }
+
+        /* 시작 안내 */
+        .start-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(254, 229, 0, 0.95);
+            color: #3b1e1e;
+            padding: 20px 40px;
+            border-radius: 20px;
+            border: 3px solid #3b1e1e;
+            font-size: clamp(18px, 4vw, 24px);
+            font-weight: bold;
+            z-index: 20;
+            pointer-events: none;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 카카오 스타일 헤더 -->
+    <div class="kakao-header">
+        <div class="header-title">🥁 드럼 플라이</div>
+        <div class="header-buttons">
+            <button class="header-btn" onclick="restartGame()">🔄 다시시작</button>
+            <button class="header-btn" onclick="exitGame()">❌ 학습종료</button>
+        </div>
+    </div>
+
+    <!-- 인트로 화면 -->
+    <div id="intro-screen">
+        <div class="intro-content">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px;">
+                <div class="character-showcase" style="margin:0;">
+                    <canvas id="introCharacter" width="60" height="60" class="pixel-canvas"></canvas>
+                </div>
+                <h1 class="intro-title" style="margin:0;">드럼 플라이</h1>
+            </div>
+            <p class="intro-subtitle">MIDI 드럼으로 날아다니는 새를 조종하세요!</p>
+
+            <!-- 난이도 선택 -->
+            <div style="margin: 20px 0;">
+                <h2 style="font-size: clamp(18px, 4vw, 24px); color: #3b1e1e; margin-bottom: 15px;">⚡ 난이도 선택</h2>
+                <div class="difficulty-container"
+                    style="display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 10px; padding: 5px;">
+                    <div class="difficulty-card selected" onclick="selectDifficulty('kindergarten')"
+                        data-difficulty="kindergarten">
+                        <div class="difficulty-icon">🍼</div>
+                        <div class="difficulty-name">초보</div>
+                        <div class="difficulty-desc">매우 쉬움</div>
+                    </div>
+                    <div class="difficulty-card" onclick="selectDifficulty('elementary')" data-difficulty="elementary">
+                        <div class="difficulty-icon">🎒</div>
+                        <div class="difficulty-name">보통</div>
+                        <div class="difficulty-desc">쉬움</div>
+                    </div>
+                    <div class="difficulty-card" onclick="selectDifficulty('middle')" data-difficulty="middle">
+                        <div class="difficulty-icon">📚</div>
+                        <div class="difficulty-name">고수</div>
+                        <div class="difficulty-desc">보통</div>
+                    </div>
+                    <div class="difficulty-card" onclick="selectDifficulty('high')" data-difficulty="high">
+                        <div class="difficulty-icon">🎓</div>
+                        <div class="difficulty-name">신</div>
+                        <div class="difficulty-desc">어려움</div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-large" onclick="startGame()">🎮 게임 시작하기</button>
+            <button class="btn-secondary" onclick="showHowToPlay()">📖 게임 방법</button>
+
+            <p id="midi-connection-status" style="margin-top: 30px; color: #3b1e1e; opacity: 0.7; font-size: clamp(12px, 2.5vw, 14px); transition: all 0.3s;">
+                💡 MIDI 드럼 연결이 필요합니다.
+            </p>
+        </div>
+    </div>
+
+    <!-- 교육적 가치 모달 -->
+    <div class="modal-overlay" id="educationalModal" style="display: flex;">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <div class="modal-title">🎓 우리 아이 성장 게임</div>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <div style="font-size: 48px; margin: 20px 0;">🥁✨</div>
+
+                <h3 style="color: #3b1e1e; margin-bottom: 15px;">이런 능력이 쑥쑥 자라요!</h3>
+
+                <div style="text-align: left; margin: 20px 0;">
+                    <p style="margin: 10px 0; font-size: 16px;">
+                        🧠 <strong>집중력</strong>: 장애물을 보며 타이밍 조절
+                    </p>
+                    <p style="margin: 10px 0; font-size: 16px;">
+                        👀 <strong>순발력</strong>: 빠르게 판단하고 반응
+                    </p>
+                    <p style="margin: 10px 0; font-size: 16px;">
+                        🎵 <strong>리듬감</strong>: 드럼 치며 타이밍 익히기
+                    </p>
+                </div>
+
+                <button class="btn-large" onclick="closeModal('educationalModal')" style="margin-top: 10px;">
+                    ✅ 확인했어요!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 게임 화면 -->
+    <div id="game-screen">
+        <div class="game-ui">
+            <div class="score-display">점수: <span id="scoreValue">0</span></div>
+            <div class="score-display">최고: <span id="bestValue">0</span></div>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="startHint" class="start-hint" style="display: none;">
+            드럼을 쳐서 시작하세요!
+        </div>
+    </div>
+
+    <!-- 게임 오버 화면 -->
+    <div class="game-over-overlay" id="gameOverOverlay">
+        <div class="game-over-content">
+            <div class="game-over-title">💀 게임 오버!</div>
+            <div class="final-score">점수: <span id="finalScore">0</span></div>
+            <div class="best-score">최고 점수: <span id="bestScoreDisplay">0</span></div>
+            <button class="btn-large" onclick="restartFromGameOver()">🔄 다시 도전</button>
+            <button class="btn-secondary" onclick="backToIntro()">🏠 처음으로</button>
+        </div>
+    </div>
+
+    <!-- 게임 방법 모달 (수정됨: 간소화) -->
+    <div class="modal-overlay" id="howToPlayModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">📖 게임 방법</div>
+                <div class="modal-close" onclick="closeModal('howToPlayModal')">×</div>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <div style="font-size: 48px; margin-bottom: 10px;">🥁</div>
+                <p style="font-size: 18px; line-height: 1.4; margin-bottom: 20px;">
+                    <strong>MIDI 드럼</strong>을 연결하고<br>
+                    드럼을 쳐서 새를 띄우세요!
+                </p>
+
+                <div
+                    style="background: rgba(254, 229, 0, 0.2); padding: 15px; border-radius: 15px; text-align: left; font-size: 16px;">
+                    <p style="margin: 8px 0;">✅ <strong>파이프 사이</strong>로 통과하세요</p>
+                    <p style="margin: 8px 0;">❌ <strong>바닥/파이프</strong>에 닿으면 꽝!</p>
+                    <p style="margin: 8px 0;">✨ <strong>초보 모드</strong>는 천장에 닿아도 안전해요</p>
+                </div>
+                <p style="font-size: 14px; color: #666; margin-top: 15px;">※ 화면 터치로는 플레이할 수 없습니다.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MIDI 연결 모달 -->
+    <div class="modal-overlay" id="midiModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">🎹 MIDI 연결</div>
+                <div class="modal-close" onclick="closeModal('midiModal')">×</div>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <div style="font-size: 48px; margin: 20px 0;">🎵</div>
+                <p style="font-size: 18px; margin: 20px 0;">
+                    MIDI 드럼이 연결되었습니다!
+                </p>
+                <button class="btn-large" onclick="closeModal('midiModal')" style="margin-top: 20px;">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MIDI 미연결 모달 -->
+    <div id="modal-no-midi" style="display: none;"
+        class="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-gray-900 rounded-[2rem] p-8 max-w-lg w-full text-center shadow-2xl border border-gray-700">
+            <i data-lucide="bot" class="w-16 h-16 mx-auto text-blue-500 mb-4 animate-bounce"></i>
+            <h3 class="text-3xl font-bold text-white mb-4">자동 플레이 모드</h3>
+            <p class="text-lg text-gray-300 mb-8 leading-relaxed break-keep font-sans">
+                전자 드럼이 연결되어 있지 않습니다.<br>
+                게임이 <strong class="text-white">버튼 터치 없이 자동으로 연주</strong>하며 플레이하는 모습을 감상해보세요!
+            </p>
+            <div class="flex gap-4 justify-center">
+                <button onclick="window.history.back()"
+                    class="bg-gray-700 text-white px-8 py-3 rounded-xl font-bold text-lg hover:bg-gray-600 transition-colors">돌아가기</button>
+                <button onclick="startAutoPlay()"
+                    class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold text-lg hover:bg-blue-500 shadow-lg shadow-blue-900/50 transition-colors">자동
+                    플레이 시작</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MIDI 상태 표시 -->
+    <div class="midi-indicator">
+        <div class="midi-dot" id="midiDot"></div>
+        <span id="midiStatusText">MIDI 대기</span>
+    </div>
+
+    <!-- BGM 컨트롤 -->
+    <div class="bgm-control" onclick="toggleBGM()">
+        <span class="bgm-icon" id="bgmIcon">🔇</span>
+        <span>BGM</span>
+    </div>
+
+    <script>
+        // ========== 전역 변수 ==========
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let gameRunning = false;
+        let gameStarted = false;
+        let animationId = null;
+        let isAutoPlay = false;
+        let absolutePlayTime = 0;
+        let autoPlayInterval = null;
+        let scoreInterval = null; // 10초 보너스 점수 타이머
+
+        // 게임 상태
+        let score = 0;
+        let bestScore = localStorage.getItem('drumFlyBestScore') || 0;
+        let midiAccess = null;
+        let midiConnected = false;
+        let currentDifficulty = 'kindergarten';
+
+        // 장애물 생성 상태 (상태 머신)
+        let spawnState = 'READY'; // READY, SPAWNING, RESTING
+        let spawnedCount = 0;
+        let targetSpawnCount = 0;
+        let spawnTimer = 0;
+        let restTimer = 0;
+
+        // 난이도별 설정
+        const difficultySettings = {
+            kindergarten: {
+                name: '초보',
+                icon: '🍼',
+                pipeSpeed: 0.8,
+                pipeGap: 600,     // 매우 넓게 (280 -> 350)
+                waveCount: 2,     // 2개씩 생성
+                spawnInterval: 600, // 간격 조절
+                gravity: 0.04,    // 매우 가벼움
+                jump: -3.5,
+                restTime: 300,    // 5초 휴식
+                noCeilingDeath: true,
+                showTutorial: true
+            },
+            elementary: {
+                name: '보통',
+                icon: '🎒',
+                pipeSpeed: 1.3,
+                pipeGap: 350,     // 넓게 (230 -> 300)
+                waveCount: 3,     // 3개씩 생성
+                spawnInterval: 350, // 간격 조절
+                gravity: 0.15,
+                jump: -5.0,
+                restTime: 240,    // 4초 휴식
+                noCeilingDeath: true,
+                showTutorial: true
+            },
+            middle: {
+                name: '고수',
+                icon: '📚',
+                pipeSpeed: 2.2,
+                pipeGap: 300,
+                waveCount: 5,     // 5개 생성
+                spawnInterval: 320,
+                gravity: 0.35,
+                jump: -6.5,
+                restTime: 120,    // 2초 휴식
+                noCeilingDeath: false,
+                showTutorial: false
+            },
+            high: {
+                name: '신',
+                icon: '🎓',
+                pipeSpeed: 2.8,
+                pipeGap: 200,
+                waveCount: 9999,  // 무한
+                spawnInterval: 200,
+                gravity: 0.4,
+                jump: -7.5,
+                restTime: 0,
+                noCeilingDeath: false,
+                showTutorial: false
+            }
+        };
+
+        // 캔버스 크기 설정
+        function resizeCanvas() {
+            const container = document.getElementById('game-screen');
+            if (container && container.style.display !== 'none') {
+                const newWidth = container.offsetWidth;
+                const newHeight = container.offsetHeight;
+
+                // 크기가 0이면 재시도
+                if (newWidth === 0 || newHeight === 0) {
+                    setTimeout(resizeCanvas, 100);
+                    return;
+                }
+
+                canvas.width = newWidth;
+                canvas.height = newHeight;
+
+                // 새 위치 재조정
+                if (gameRunning && bird.x === 0 && bird.y === 0) {
+                    bird.x = canvas.width * 0.2;
+                    bird.y = canvas.height / 2;
+                }
+            }
+        }
+
+        // 새 객체
+        const bird = {
+            x: 0,
+            y: 0,
+            width: 40,
+            height: 40,
+            velocity: 0,
+            gravity: 0.5,
+            jump: -8,
+            rotation: 0,
+
+            init() {
+                this.x = canvas.width * 0.2;
+                this.y = canvas.height / 2;
+                this.velocity = 0;
+                this.rotation = 0;
+
+                // 난이도별 물리 엔진 확실하게 적용 (이중 체크)
+                const settings = difficultySettings[currentDifficulty];
+                this.gravity = settings.gravity;
+                this.jump = settings.jump;
+
+                console.log(`Bird Init: Gravity=${this.gravity}, Jump=${this.jump}`);
+            },
+
+            update() {
+                this.velocity += this.gravity;
+                this.y += this.velocity;
+
+                // 회전 계산
+                if (this.velocity < 0) {
+                    this.rotation = -25;
+                } else {
+                    this.rotation = Math.min(90, this.velocity * 3);
+                }
+
+                // 난이도 설정 재확인 (안전장치)
+                const settings = difficultySettings[currentDifficulty];
+
+                // 바닥 충돌
+                if (this.y + this.height > canvas.height) {
+                    endGame();
+                }
+
+                // 천장 충돌
+                if (this.y < 0) {
+                    if (settings.noCeilingDeath) {
+                        this.y = 0;
+                        this.velocity = 0;
+                    } else {
+                        endGame();
+                    }
+                }
+            },
+
+            flap() {
+                this.velocity = this.jump;
+            },
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+                ctx.rotate(this.rotation * Math.PI / 180);
+                drawPixelBird(ctx, -this.width / 2, -this.height / 2);
+                ctx.restore();
+            }
+        };
+
+        // 파이프 배열
+        let pipes = [];
+        let pipeWidth = 60;
+
+        function createPipe() {
+            const settings = difficultySettings[currentDifficulty];
+            const pipeGap = settings.pipeGap;
+            const minHeight = 50;
+            const maxHeight = canvas.height - pipeGap - minHeight;
+            const height = Math.random() * (maxHeight - minHeight) + minHeight;
+
+            pipes.push({
+                x: canvas.width,
+                topHeight: height,
+                bottomY: height + pipeGap,
+                passed: false
+            });
+        }
+
+        function updatePipes() {
+            const settings = difficultySettings[currentDifficulty];
+            const pipeSpeed = settings.pipeSpeed;
+
+            // 튜토리얼 중일 때는 본 게임 생성 로직 차단
+            if (tutorialActive) {
+                // 기존 파이프 이동만 처리
+                for (let i = pipes.length - 1; i >= 0; i--) {
+                    const pipe = pipes[i];
+                    pipe.x -= pipeSpeed;
+                    if (checkCollision(bird, pipe)) endGame();
+                    if (!pipe.passed && pipe.x + pipeWidth < bird.x) {
+                        pipe.passed = true;
+                        score += 100; // 파이프 통과 시 100점 증가
+                        updateScoreDisplay();
+                        handleTutorialPipeClear();
+                    }
+                    if (pipe.x + pipeWidth < 0) pipes.splice(i, 1);
+                }
+                return;
+            }
+
+            // --- 본 게임 장애물 생성 로직 (상태 머신) ---
+
+            // 1. 상태: 준비 (READY)
+            if (spawnState === 'READY') {
+                spawnState = 'SPAWNING';
+                spawnedCount = 0;
+                targetSpawnCount = settings.waveCount;
+                spawnTimer = 0; // 바로 첫 파이프 생성
+                console.log(`[WAVE START] 목표: ${targetSpawnCount}개`);
+            }
+
+            // 2. 상태: 생성 중 (SPAWNING)
+            else if (spawnState === 'SPAWNING') {
+                if (spawnTimer <= 0) {
+                    createPipe();
+                    spawnedCount++;
+                    console.log(`[SPAWN] ${spawnedCount}/${targetSpawnCount}`);
+
+                    // 목표 개수 도달 체크
+                    if (spawnedCount >= targetSpawnCount) {
+                        // 목표 달성 -> 휴식으로 전환
+                        spawnState = 'RESTING';
+                        restTimer = settings.restTime;
+                        console.log(`[REST START] ${restTimer}프레임 휴식`);
+                    } else {
+                        // 아직 남음 -> 다음 생성 대기
+                        spawnTimer = settings.spawnInterval;
+                    }
+                } else {
+                    spawnTimer--;
+                }
+            }
+
+            // 3. 상태: 휴식 중 (RESTING)
+            else if (spawnState === 'RESTING') {
+                restTimer--;
+                if (restTimer <= 0) {
+                    spawnState = 'READY'; // 휴식 끝 -> 다시 준비
+                    console.log(`[REST END] 다시 시작`);
+                }
+            }
+
+            // 파이프 이동 및 충돌 체크 (항상 실행)
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                const pipe = pipes[i];
+                pipe.x -= pipeSpeed;
+
+                // 충돌 체크
+                if (checkCollision(bird, pipe)) {
+                    endGame();
+                }
+
+                // 점수 증가
+                if (!pipe.passed && pipe.x + pipeWidth < bird.x) {
+                    pipe.passed = true;
+                    score += 100; // 파이프 통과 시 100점 증가
+                    updateScoreDisplay();
+                }
+
+                // 화면 밖으로 나간 파이프 제거
+                if (pipe.x + pipeWidth < 0) {
+                    pipes.splice(i, 1);
+                }
+            }
+        }
+
+        function checkCollision(bird, pipe) {
+            const birdRight = bird.x + bird.width;
+            const birdLeft = bird.x;
+            const birdTop = bird.y;
+            const birdBottom = bird.y + bird.height;
+
+            const pipeLeft = pipe.x;
+            const pipeRight = pipe.x + pipeWidth;
+
+            if (birdRight > pipeLeft && birdLeft < pipeRight) {
+                if (birdTop < pipe.topHeight || birdBottom > pipe.bottomY) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function drawPipes() {
+            pipes.forEach(pipe => {
+                // 위쪽 파이프
+                ctx.fillStyle = '#2ecc71';
+                ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
+                ctx.strokeStyle = '#27ae60';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(pipe.x, 0, pipeWidth, pipe.topHeight);
+
+                // 파이프 입구
+                ctx.fillStyle = '#27ae60';
+                ctx.fillRect(pipe.x - 5, pipe.topHeight - 30, pipeWidth + 10, 30);
+
+                // 아래쪽 파이프
+                ctx.fillStyle = '#2ecc71';
+                ctx.fillRect(pipe.x, pipe.bottomY, pipeWidth, canvas.height - pipe.bottomY);
+                ctx.strokeStyle = '#27ae60';
+                ctx.strokeRect(pipe.x, pipe.bottomY, pipeWidth, canvas.height - pipe.bottomY);
+
+                // 파이프 입구
+                ctx.fillStyle = '#27ae60';
+                ctx.fillRect(pipe.x - 5, pipe.bottomY, pipeWidth + 10, 30);
+            });
+        }
+
+        // 배경 그리기
+        function drawBackground() {
+            // 하늘
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(1, '#4FB3E8');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 구름
+            drawClouds();
+
+            // 바닥
+            ctx.fillStyle = '#DEB887';
+            ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+            ctx.fillStyle = '#CD853F';
+            ctx.fillRect(0, canvas.height - 50, canvas.width, 5);
+        }
+
+        let cloudOffset = 0;
+        function drawClouds() {
+            // 게임이 시작되면 구름 이동
+            if (gameStarted) {
+                cloudOffset += 0.5;
+            }
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            for (let i = 0; i < 3; i++) {
+                // 오른쪽에서 왼쪽으로 이동
+                const x = canvas.width - (cloudOffset + i * 300) % (canvas.width + 200) - 100;
+                const y = 100 + i * 50;
+
+                ctx.beginPath();
+                ctx.arc(x, y, 30, 0, Math.PI * 2);
+                ctx.arc(x + 30, y, 40, 0, Math.PI * 2);
+                ctx.arc(x + 60, y, 30, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // 도트 새 그리기
+        function drawPixelBird(context, x, y) {
+            const pixelSize = 5;
+            const design = [
+                '00000111000',
+                '00001YYY100',
+                '00011YYY110',
+                '01111YYY111',
+                '1YYYY1YY111',
+                '1YYYYYYY111',
+                '1YYYYYBB111',
+                '01YYYYYB110',
+                '001111111100',
+                '00011000000'
+            ];
+
+            const colorMap = {
+                '0': null,
+                '1': '#3b1e1e',
+                'Y': '#FEE500',
+                'B': '#000000'
+            };
+
+            design.forEach((row, py) => {
+                for (let px = 0; px < row.length; px++) {
+                    const color = colorMap[row[px]];
+                    if (color) {
+                        context.fillStyle = color;
+                        context.fillRect(x + px * pixelSize, y + py * pixelSize, pixelSize, pixelSize);
+                    }
+                }
+            });
+        }
+
+        // 인트로 캐릭터
+        function drawIntroCharacter() {
+            const canvas = document.getElementById('introCharacter');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 120, 120);
+
+            const pixelSize = 6;
+            const design = [
+                '00000111000',
+                '00001YYY100',
+                '00011YYY110',
+                '01111YYY111',
+                '1YYYY1YY111',
+                '1YYYYYYY111',
+                '1YYYYYBB111',
+                '01YYYYYB110',
+                '001111111100',
+                '00011000000'
+            ];
+
+            const colorMap = {
+                '0': null,
+                '1': '#3b1e1e',
+                'Y': '#FEE500',
+                'B': '#000000'
+            };
+
+            const offsetX = 20;
+            const offsetY = 30;
+
+            design.forEach((row, py) => {
+                for (let px = 0; px < row.length; px++) {
+                    const color = colorMap[row[px]];
+                    if (color) {
+                        ctx.fillStyle = color;
+                        ctx.fillRect(offsetX + px * pixelSize, offsetY + py * pixelSize, pixelSize, pixelSize);
+                    }
+                }
+            });
+        }
+
+        // BGM 관리
+        let bgmAudio = null;
+        let bgmPlaying = false;
+
+        function initBGM() {
+            bgmAudio = new Audio('https://cdn.pixabay.com/audio/2022/11/23/audio_c1aad63632.mp3');
+            bgmAudio.loop = true;
+            bgmAudio.volume = 0.3;
+        }
+
+        function toggleBGM() {
+            if (!bgmAudio) return;
+
+            if (bgmPlaying) {
+                bgmAudio.pause();
+                bgmPlaying = false;
+                document.getElementById('bgmIcon').textContent = '🔇';
+            } else {
+                bgmAudio.play().catch(err => console.log('BGM 재생 실패:', err));
+                bgmPlaying = true;
+                document.getElementById('bgmIcon').textContent = '🔊';
+            }
+        }
+
+        function startBGM() {
+            if (bgmAudio && !bgmPlaying) {
+                bgmAudio.play().catch(err => console.log('BGM 재생 실패:', err));
+                bgmPlaying = true;
+                document.getElementById('bgmIcon').textContent = '🔊';
+            }
+        }
+
+        // 튜토리얼 시스템 (게임 내 20초)
+        let tutorialActive = false;
+        let tutorialStartTime = 0;
+        let tutorialDuration = 20000; // 20초
+        let tutorialCompleted = {};
+        let tutorialPhase = 0;
+        let tutorialPauseBird = false;
+
+        // localStorage에서 튜토리얼 상태 불러오기
+        try {
+            const saved = localStorage.getItem('drumFlyTutorials');
+            if (saved) {
+                tutorialCompleted = JSON.parse(saved);
+            }
+        } catch (e) {
+            tutorialCompleted = {};
+        }
+
+        const TUTORIAL_WAITING = 0;
+        const TUTORIAL_PRACTICE = 1;
+
+        function startTutorial() {
+            tutorialActive = true;
+            tutorialPhase = TUTORIAL_WAITING;
+            tutorialPauseBird = true; // 새 고정
+            tutorialStartTime = Date.now();
+            pipesPassed = 0;
+
+            document.getElementById('startHint').textContent = '드럼을 쳐서 시작하세요!';
+            document.getElementById('startHint').style.display = 'block';
+        }
+
+        function updateTutorial() {
+            if (!tutorialActive) return;
+
+            // 연습 모드
+            if (tutorialPhase === TUTORIAL_PRACTICE) {
+                // 튜토리얼 파이프 생성 (연습용 파이프)
+                if (pipes.length === 0 && pipesPassed < 2 && spawnTimer <= 0) {
+                    const minHeight = canvas.height * 0.3;
+                    pipes.push({
+                        x: canvas.width,
+                        topHeight: minHeight,
+                        bottomY: minHeight + 350, // 매우 넓은 간격
+                        passed: false
+                    });
+                    spawnTimer = 200; // 넉넉한 딜레이
+                } else if (spawnTimer > 0) {
+                    spawnTimer--;
+                }
+            }
+        }
+
+        // 입력 감지 시 튜토리얼 진행
+        function handleTutorialInput() {
+            if (tutorialActive && tutorialPhase === TUTORIAL_WAITING) {
+                tutorialPhase = TUTORIAL_PRACTICE;
+                tutorialPauseBird = false;
+                pipesPassed = 0;
+                spawnTimer = 60; // 1초 후 첫 파이프
+                document.getElementById('startHint').style.display = 'none';
+            }
+        }
+
+        function handleTutorialPipeClear() {
+            if (tutorialActive && tutorialPhase === TUTORIAL_PRACTICE) {
+                pipesPassed++;
+                if (pipesPassed >= 2) {
+                    // 연습 완료!
+                    tutorialActive = false;
+                    pipes = [];
+                    pipesPassed = 0;
+
+                    // 본 게임 웨이브 초기화
+                    spawnState = 'READY';
+
+                    // 완료 메시지
+                    const msg = document.createElement('div');
+                    msg.innerHTML = '<div style="font-size: 40px;">🎉</div><div style="font-size: 24px; font-weight: bold; padding: 10px;">참 잘했어요!<br>이제 시작합니다!</div>';
+                    msg.style.position = 'fixed';
+                    msg.style.top = '50%';
+                    msg.style.left = '50%';
+                    msg.style.transform = 'translate(-50%, -50%)';
+                    msg.style.background = 'rgba(255, 255, 255, 0.9)';
+                    msg.style.padding = '30px';
+                    msg.style.borderRadius = '20px';
+                    msg.style.border = '4px solid #FEE500';
+                    msg.style.textAlign = 'center';
+                    msg.style.zIndex = '1000';
+                    msg.style.animation = 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                    document.body.appendChild(msg);
+
+                    setTimeout(() => {
+                        msg.remove();
+                    }, 2000);
+                }
+            }
+        }
+
+        function drawTutorial() {
+            if (!tutorialActive) return;
+
+            const elapsed = Date.now() - tutorialStartTime;
+
+            if (elapsed >= tutorialDuration) {
+                tutorialActive = false;
+                tutorialCompleted[currentDifficulty] = true;
+                localStorage.setItem('drumFlyTutorials', JSON.stringify(tutorialCompleted));
+                return;
+            }
+
+            // 튜토리얼 오버레이
+            ctx.save();
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 메시지 박스
+            const boxWidth = Math.min(400, canvas.width - 40);
+            const boxHeight = 200;
+            const boxX = canvas.width / 2 - boxWidth / 2;
+            const boxY = canvas.height / 3;
+
+            ctx.fillStyle = 'rgba(254, 229, 0, 0.95)';
+            ctx.strokeStyle = '#3b1e1e';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 20);
+            ctx.fill();
+            ctx.stroke();
+
+            // 텍스트
+            ctx.fillStyle = '#3b1e1e';
+            ctx.font = 'bold 24px Jua';
+            ctx.textAlign = 'center';
+            if (tutorialPhase === TUTORIAL_WAITING) {
+                ctx.fillText('🥁 드럼 튜토리얼', canvas.width / 2, boxY + 40);
+                ctx.font = '18px Jua';
+                ctx.fillText('드럼을 쳐서 새를 날려보세요!', canvas.width / 2, boxY + 100);
+            } else if (tutorialPhase === TUTORIAL_PRACTICE) {
+                ctx.fillText('연습 모드', canvas.width / 2, boxY + 40);
+                ctx.font = '18px Jua';
+                ctx.fillText('파이프 2개를 통과해보세요!', canvas.width / 2, boxY + 100);
+            }
+
+            ctx.restore();
+        }
+
+        function shouldShowTutorial() {
+            const settings = difficultySettings[currentDifficulty];
+            if (!settings.showTutorial) return false;
+            if (tutorialCompleted[currentDifficulty]) return false;
+            return true;
+        }
+
+        // 게임 루프
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawBackground();
+
+            if (gameStarted) {
+                if (isAutoPlay) handleBotTurn();
+                // 튜토리얼 업데이트
+                updateTutorial();
+
+                // 튜토리얼 중 새 멈추기
+                if (tutorialPauseBird) {
+                    bird.velocity = 0;
+                } else {
+                    bird.update();
+                }
+
+                updatePipes();
+                drawPipes();
+            }
+
+            bird.draw();
+
+            // 튜토리얼 표시
+            if (tutorialActive && tutorialPhase === TUTORIAL_WAITING) {
+                drawTutorial(); // 대기 중에만 오버레이 표시
+            }
+
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        // 게임 봇 로직
+        function handleBotTurn() {
+            let nextPipe = null;
+            for (let i = 0; i < pipes.length; i++) {
+                if (!pipes[i].passed && pipes[i].x + pipeWidth > bird.x) {
+                    nextPipe = pipes[i];
+                    break;
+                }
+            }
+
+            if (nextPipe) {
+                // 정확히 파이프 사이의 중간 지점을 목표로 설정
+                const gapMiddle = nextPipe.topHeight + (nextPipe.bottomY - nextPipe.topHeight) / 2;
+                // 새가 중간보다 약간 아래쪽으로 떨어지고 있고 하강 중일 때 점프
+                if (bird.y > gapMiddle + 10 && bird.velocity >= 0) {
+                    handleJump();
+                }
+            } else {
+                // 파이프가 없을 때는 화면 중간 유지
+                if (bird.y > canvas.height / 2 && bird.velocity >= 0) {
+                    handleJump();
+                }
+            }
+        }
+
+        function executeGameStart() {
+            document.getElementById('intro-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
+            document.querySelector('.kakao-header').style.display = 'flex'; // GNB 보이기
+
+            setTimeout(() => {
+                resizeCanvas();
+                initGame();
+                startBGM();
+                document.getElementById('startHint').style.display = 'block';
+
+                absolutePlayTime = 0;
+                if (autoPlayInterval) clearInterval(autoPlayInterval);
+                if (scoreInterval) clearInterval(scoreInterval);
+                
+                if (isAutoPlay) {
+                    if (!gameStarted) beginGame();
+
+                    // 110초 ~ 120초(1분 50초 ~ 2분) 사이의 랜덤 종료 시간 설정
+                    let autoPlayMaxTime = 110 + Math.random() * 10;
+                    autoPlayInterval = setInterval(() => {
+                        absolutePlayTime += 0.1;
+                        if (absolutePlayTime >= autoPlayMaxTime) {
+                            clearInterval(autoPlayInterval);
+                            bird.velocity = 10; // 떨어지면서 죽게 만듦 (연출)
+                            endGame();
+                        }
+                    }, 100);
+                }
+            }, 50);
+        }
+
+        // 게임 시작
+        function startGame() {
+            if (!midiConnected) {
+                document.getElementById('modal-no-midi').style.display = 'flex';
+                return;
+            }
+            isAutoPlay = false;
+            executeGameStart();
+        }
+
+        function startAutoPlay() {
+            closeModal('modal-no-midi');
+            isAutoPlay = true;
+            executeGameStart();
+        }
+
+        function forceStartWithoutMidi() {
+            closeModal('modal-no-midi');
+            isAutoPlay = false;
+            executeGameStart();
+        }
+
+        function initGame() {
+            gameRunning = true;
+            gameStarted = false;
+            score = 0;
+            pipes = [];
+            if (scoreInterval) clearInterval(scoreInterval);
+
+            // 웨이브 변수 초기화
+            spawnState = 'READY';
+            spawnedCount = 0;
+            spawnTimer = 0;
+            restTimer = 0;
+
+            bird.init();
+            updateScoreDisplay();
+
+            gameLoop();
+        }
+
+        function beginGame() {
+            if (!gameStarted) {
+                gameStarted = true;
+                document.getElementById('startHint').style.display = 'none';
+                bird.flap();
+
+                if (shouldShowTutorial()) {
+                    startTutorial();
+                }
+
+                // 10초마다 200점 추가 (튜토리얼 중이 아닐 때만 점수 획득)
+                if (scoreInterval) clearInterval(scoreInterval);
+                scoreInterval = setInterval(() => {
+                    if (gameRunning && gameStarted && !tutorialActive) {
+                        score += 200;
+                        updateScoreDisplay();
+                    }
+                }, 10000); // 10초 간격
+            }
+        }
+
+        // 점프 액션
+        function handleJump() {
+            if (gameRunning) {
+                if (!gameStarted) {
+                    beginGame();
+                } else {
+                    if (tutorialActive && tutorialPhase === TUTORIAL_WAITING) {
+                        handleTutorialInput();
+                    }
+                    bird.flap();
+                }
+            }
+        }
+
+        // 게임 오버
+        function endGame() {
+            gameRunning = false;
+            gameStarted = false;
+
+            if (animationId) cancelAnimationFrame(animationId);
+            if (autoPlayInterval) clearInterval(autoPlayInterval);
+            if (scoreInterval) clearInterval(scoreInterval);
+
+            if (score > bestScore) {
+                bestScore = score;
+                localStorage.setItem(`drumFlyBestScore_${currentDifficulty}`, bestScore);
+            }
+
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('bestScoreDisplay').textContent = bestScore;
+            document.getElementById('gameOverOverlay').style.display = 'flex';
+        }
+
+        function restartFromGameOver() {
+            document.getElementById('gameOverOverlay').style.display = 'none';
+            initGame();
+        }
+
+        function backToIntro() {
+            document.getElementById('gameOverOverlay').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('intro-screen').style.display = 'flex';
+            // document.querySelector('.kakao-header').style.display = 'none'; // 헤더 항상 표시 요청
+
+            if (animationId) cancelAnimationFrame(animationId);
+            if (scoreInterval) clearInterval(scoreInterval);
+        }
+
+        function restartGame() {
+            // 게임 중 헤더 버튼 눌렀을 때도 인트로로 이동 (요청사항)
+            backToIntro();
+        }
+
+        function exitGame() {
+            if (confirm('정말 학습을 종료하시겠습니까?')) {
+                window.history.back();
+            }
+        }
+
+        function updateScoreDisplay() {
+            document.getElementById('scoreValue').textContent = score;
+            document.getElementById('bestValue').textContent = bestScore;
+        }
+
+        // 난이도 선택
+        function selectDifficulty(difficulty) {
+            currentDifficulty = difficulty;
+
+            document.querySelectorAll('.difficulty-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            const selectedCard = document.querySelector(`[data-difficulty="${difficulty}"]`);
+            if (selectedCard) {
+                selectedCard.classList.add('selected');
+            }
+
+            bestScore = localStorage.getItem(`drumFlyBestScore_${difficulty}`) || 0;
+            updateScoreDisplay();
+        }
+
+        function showHowToPlay() {
+            document.getElementById('howToPlayModal').style.display = 'flex';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // MIDI 초기화
+        async function initMIDI() {
+            try {
+                midiAccess = await navigator.requestMIDIAccess();
+                midiAccess.inputs.forEach(input => {
+                    input.onmidimessage = handleMIDIMessage;
+                });
+                if (midiAccess.inputs.size > 0) {
+                    updateMIDIStatus(true);
+                    // 인트로 화면일 때만 알림
+                    if (document.getElementById('intro-screen').style.display !== 'none') {
+                        document.getElementById('midiModal').style.display = 'flex';
+                    }
+                }
+                midiAccess.onstatechange = (e) => {
+                    updateMIDIStatus(e.port.state === 'connected');
+                };
+            } catch (err) {
+                updateMIDIStatus(false);
+            }
+        }
+
+        function updateMIDIStatus(connected) {
+            midiConnected = connected;
+            const dot = document.getElementById('midiDot');
+            const text = document.getElementById('midiStatusText');
+            const introStatusText = document.getElementById('midi-connection-status');
+            
+            if (connected) {
+                dot.classList.add('connected');
+                text.textContent = 'MIDI 연결됨';
+                
+                // 인트로 텍스트 연결 완료 상태로 강조 (박스 처리)
+                if (introStatusText) {
+                    introStatusText.innerHTML = '✅ MIDI 드럼이 연결되었습니다! 플레이 준비 완료!';
+                    introStatusText.style.background = 'rgba(255, 255, 255, 0.95)';
+                    introStatusText.style.border = '4px solid #10b981';
+                    introStatusText.style.color = '#047857';
+                    introStatusText.style.padding = '12px 24px';
+                    introStatusText.style.borderRadius = '50px';
+                    introStatusText.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.5)';
+                    introStatusText.style.opacity = '1';
+                    introStatusText.style.fontSize = 'clamp(16px, 3.5vw, 20px)';
+                    introStatusText.style.fontWeight = 'bold';
+                    introStatusText.style.animation = 'pulse 2s infinite';
+                    introStatusText.style.display = 'inline-block';
+                    introStatusText.style.marginTop = '20px';
+                }
+            } else {
+                dot.classList.remove('connected');
+                text.textContent = 'MIDI 없음';
+                
+                // 인트로 텍스트 원래 상태로 복구
+                if (introStatusText) {
+                    introStatusText.innerHTML = '💡 MIDI 드럼 연결이 필요합니다.';
+                    introStatusText.style.background = 'transparent';
+                    introStatusText.style.border = 'none';
+                    introStatusText.style.color = '#3b1e1e';
+                    introStatusText.style.padding = '0';
+                    introStatusText.style.borderRadius = '0';
+                    introStatusText.style.boxShadow = 'none';
+                    introStatusText.style.opacity = '0.7';
+                    introStatusText.style.fontSize = 'clamp(12px, 2.5vw, 14px)';
+                    introStatusText.style.fontWeight = 'normal';
+                    introStatusText.style.animation = 'none';
+                    introStatusText.style.marginTop = '30px';
+                }
+            }
+        }
+
+        function handleMIDIMessage(message) {
+            const [status, note, velocity] = message.data;
+            if ((status >= 144 && status <= 159) && velocity > 0) {
+                handleJump();
+            }
+        }
+
+        // 키보드 이벤트 (테스트용)
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Equal' || e.code === 'NumpadEqual') {
+                e.preventDefault();
+                handleJump();
+            }
+        });
+
+        /* [수정됨] 터치 이벤트 리스너 제거 
+        핸드폰 터치 플레이를 막기 위해 아래 코드를 제거/주석 처리함
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleJump();
+        });
+        */
+
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.style.display = 'none';
+            });
+        });
+
+        window.addEventListener('resize', () => {
+            if (document.getElementById('game-screen').style.display === 'block') {
+                resizeCanvas();
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            drawIntroCharacter();
+            initMIDI();
+            initBGM();
+            selectDifficulty('kindergarten');
+
+            // GNB 초기에는 보임 (요청사항: 인트로에서도 보여줘)
+            document.querySelector('.kakao-header').style.display = 'flex';
+
+            setInterval(() => {
+                drawIntroCharacter();
+            }, 100);
+
+            const educationalShown = localStorage.getItem('drumFlyEducationalShown');
+            if (!educationalShown) {
+                document.getElementById('educationalModal').style.display = 'flex';
+                localStorage.setItem('drumFlyEducationalShown', 'true');
+            }
+        });
+    </script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-07" defer></script>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-midi-status.js?v=20260618-04" data-instrument="drum" defer></script>
+</body>
+
+</html>

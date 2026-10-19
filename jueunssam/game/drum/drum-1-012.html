@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>드럼 레이싱 학습</title>
+
+    <!-- Tailwind CSS (스타일링 보조) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #FEE500;
+            /* 카카오 옐로우 */
+            color: #3A1D1D;
+            /* 카카오 브라운 */
+            overflow: hidden;
+            /* 스크롤 방지 */
+            touch-action: none;
+            /* 터치 제스처 방지 */
+        }
+
+        /* 카카오 스타일 버튼 */
+        .btn-kakao {
+            background-color: #FEE500;
+            color: #3A1D1D;
+            border: 2px solid #3A1D1D;
+            border-radius: 12px;
+            font-weight: 700;
+            transition: transform 0.1s, background-color 0.1s;
+        }
+
+        .btn-kakao:active {
+            transform: scale(0.95);
+            background-color: #F6D500;
+        }
+
+        .btn-kakao-dark {
+            background-color: #3A1D1D;
+            color: #FEE500;
+            border: none;
+            border-radius: 8px;
+        }
+
+        /* 난이도 버튼 스타일 */
+        .btn-diff {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 2px solid #3A1D1D;
+            font-weight: 700;
+            background: white;
+            transition: all 0.2s;
+        }
+
+        .btn-diff.selected {
+            background: #3A1D1D;
+            color: #FEE500;
+            transform: scale(1.05);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 캔버스 컨테이너 */
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 60px);
+            /* 상단 바 제외 높이 */
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+            /* 도트 느낌 살리기 */
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        /* 팝업 스타일 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-box {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            max-width: 90%;
+            width: 320px;
+            border: 1px solid #eee;
+        }
+
+        /* 인트로 레이싱 배경 애니메이션 */
+        @keyframes road-scroll {
+            from {
+                background-position: 0 0;
+            }
+
+            to {
+                background-position: 0 100px;
+            }
+        }
+
+        .racing-bg {
+            background-image:
+                linear-gradient(90deg, transparent 45%, #fff 45%, #fff 55%, transparent 55%),
+                linear-gradient(#333, #333);
+            background-size: 100% 100px, 100% 100%;
+            animation: road-scroll 1s linear infinite;
+        }
+
+        /* 타이머 애니메이션 */
+        @keyframes pulse-red {
+            0% {
+                color: white;
+                transform: scale(1);
+            }
+
+            50% {
+                color: #ff4444;
+                transform: scale(1.2);
+            }
+
+            100% {
+                color: white;
+                transform: scale(1);
+            }
+        }
+
+        .timer-warning {
+            animation: pulse-red 0.5s infinite;
+        }
+
+        /* 하트 애니메이션 */
+        @keyframes heart-beat {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.2);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .heart-icon {
+            display: inline-block;
+            animation: heart-beat 1.5s infinite ease-in-out;
+        }
+
+        .heart-lost {
+            filter: grayscale(100%);
+            opacity: 0.3;
+        }
+    </style>
+</head>
+
+<body class="flex flex-col h-screen">
+
+    <!-- 상단 네비게이션 바 -->
+    <header class="h-[60px] bg-white flex justify-between items-center px-4 shadow-md z-20 shrink-0">
+        <!-- 왼쪽: 타이틀 -->
+        <h1 class="text-xl font-black tracking-tighter text-[#3A1D1D]">DRUM RACER</h1>
+
+        <div class="flex gap-2">
+            <!-- 오른쪽: 다시 시작 -->
+            <button id="btn-restart" class="btn-kakao px-4 py-2 text-sm flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z" />
+                    <path
+                        d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z" />
+                </svg>
+                다시 시작
+            </button>
+            <!-- 오른쪽: 학습 종료 -->
+            <button id="btn-exit" class="btn-kakao px-4 py-2 text-sm bg-gray-100 border-gray-300">
+                학습 종료
+            </button>
+        </div>
+    </header>
+
+    <!-- 게임 영역 -->
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- 타이머 HUD (게임 중에만 표시) -->
+        <div id="hud-timer"
+            class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/60 px-6 py-2 rounded-full text-white font-black text-2xl hidden z-30 border-2 border-white/20 backdrop-blur-sm shadow-lg flex items-center gap-2">
+            <span>⏱️</span>
+            <span id="timer-val">60</span>
+        </div>
+
+        <!-- 하트 HUD (게임 중에만 표시) -->
+        <div id="hud-hearts"
+            class="absolute top-4 right-4 bg-black/30 px-4 py-2 rounded-full hidden z-30 backdrop-blur-sm flex gap-1">
+            <span class="text-2xl heart-icon">❤️</span>
+            <span class="text-2xl heart-icon">❤️</span>
+            <span class="text-2xl heart-icon">❤️</span>
+        </div>
+
+        <!-- 인트로 UI -->
+        <div id="intro-ui"
+            class="absolute inset-0 flex flex-col items-center justify-center bg-[#FEE500] z-10 transition-opacity duration-300 racing-bg">
+            <div class="bg-white/80 p-6 rounded-2xl backdrop-blur-sm shadow-xl text-center max-w-sm w-full mx-4">
+                <div class="mb-2">
+                    <!-- 아이콘 변경: 드럼 -> 자동차 -->
+                    <div
+                        class="w-16 h-16 bg-[#3A1D1D] rounded-xl mx-auto flex items-center justify-center shadow-lg transform -rotate-12">
+                        <span class="text-4xl">🏎️</span>
+                    </div>
+                </div>
+                <h2 class="text-2xl font-black mb-1 text-[#3A1D1D] italic transform -skew-x-12">리듬 레이싱</h2>
+                <p class="text-[#3A1D1D] opacity-80 mb-4 text-xs">드럼으로 질주하는 비트 레이싱!</p>
+
+                <!-- 난이도 선택 -->
+                <div class="mb-6">
+                    <p class="text-xs font-bold text-gray-500 mb-2">난이도 선택</p>
+                    <div class="flex justify-center gap-2 flex-wrap">
+                        <button class="btn-diff" data-diff="BEGINNER">초보</button>
+                        <button class="btn-diff selected" data-diff="NORMAL">보통</button>
+                        <button class="btn-diff" data-diff="EXPERT">고수</button>
+                        <button class="btn-diff" data-diff="GOD">신</button>
+                    </div>
+                </div>
+
+                <!-- MIDI 상태 표시 -->
+                <div id="midi-status"
+                    class="flex items-center justify-center gap-2 mb-4 px-4 py-2 bg-white/70 rounded-full mx-auto w-fit">
+                    <div id="midi-led" class="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
+                    <span id="midi-text" class="text-xs font-bold text-gray-600">MIDI 찾는 중...</span>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <button id="btn-play"
+                        class="btn-kakao-dark w-full py-3 text-lg font-bold shadow-md active:scale-95 transition-transform">
+                        게임 시작
+                    </button>
+                    <button id="btn-tutorial"
+                        class="btn-kakao w-full py-3 text-lg font-bold shadow-md active:scale-95 transition-transform bg-white border-[#3A1D1D] text-[#3A1D1D]">
+                        플레이 방법 배우기
+                    </button>
+                </div>
+
+                <div class="mt-3 text-[10px] text-gray-500 text-center">
+                    스네어(L) | 플로어탐(R) | 하이햇(Accel)
+                </div>
+            </div>
+
+            <!-- 튜토리얼 메시지 박스 -->
+            <div id="tutorial-box"
+                class="absolute bottom-10 bg-white/90 p-6 rounded-xl shadow-lg text-center max-w-md hidden">
+                <h3 id="tutorial-title" class="text-xl font-bold mb-2 text-[#3A1D1D]">튜토리얼</h3>
+                <p id="tutorial-text" class="text-lg text-gray-800 leading-relaxed">하이햇 페달을 밟아 출발해보세요!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 플레이 방법 모달 -->
+    <div id="modal-how-to-play"
+        class="hidden fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div
+            class="bg-gray-900 rounded-[2rem] p-8 max-w-lg w-full text-center shadow-2xl border border-gray-700 relative">
+            <i data-lucide="info" class="w-16 h-16 mx-auto text-[#FEE500] mb-4"></i>
+            <h3 class="text-3xl font-bold text-white mb-6">플레이 방법</h3>
+            <div class="text-lg text-gray-300 mb-8 space-y-4 text-left px-4">
+                <p class="flex items-center gap-3"><span class="text-2xl">🟢</span> <span class="flex-1"><strong
+                            class="text-pink-400">하이햇 페달</strong>을 밟으면 앞으로 질주합니다.</span></p>
+                <p class="flex items-center gap-3"><span class="text-2xl">⬅️</span> <span class="flex-1"><strong
+                            class="text-blue-400">스네어 (L)</strong>를 치면 왼쪽으로 이동합니다.</span></p>
+                <p class="flex items-center gap-3"><span class="text-2xl">➡️</span> <span class="flex-1"><strong
+                            class="text-purple-400">플로어탐 (R)</strong>을 치면 오른쪽으로 이동합니다.</span></p>
+            </div>
+            <button onclick="document.getElementById('modal-how-to-play').classList.add('hidden')"
+                class="bg-gray-700 text-white px-8 py-3 rounded-xl font-bold text-lg hover:bg-gray-600 transition-colors w-full">확인
+                완료</button>
+        </div>
+    </div>
+
+    <!-- 드럼 미연결 시 자동 플레이 안내 모달 -->
+    <div id="modal-no-midi"
+        class="hidden fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-gray-900 rounded-[2rem] p-8 max-w-lg w-full text-center shadow-2xl border border-gray-700">
+            <i data-lucide="bot" class="w-16 h-16 mx-auto text-blue-500 mb-4 animate-bounce"></i>
+            <h3 class="text-3xl font-bold text-white mb-4">자동 플레이 모드</h3>
+            <p class="text-lg text-gray-300 mb-8 leading-relaxed break-keep font-sans">
+                전자 드럼이 연결되어 있지 않습니다.<br>
+                게임이 <strong class="text-white">버튼 터치 없이 자동으로 연주</strong>하며 플레이하는 모습을 감상해보세요!
+            </p>
+            <div class="flex gap-4 justify-center">
+                <button onclick="window.history.back()"
+                    class="bg-gray-700 text-white px-8 py-3 rounded-xl font-bold text-lg hover:bg-gray-600 transition-colors">돌아가기</button>
+                <button id="btn-auto-play"
+                    class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold text-lg hover:bg-blue-500 shadow-lg shadow-blue-900/50 transition-colors">자동
+                    플레이 시작</button>
+            </div>
+            <!-- btn-force-start is hidden but kept for legacy JS bindings if any -->
+            <button id="btn-force-start" class="hidden"></button>
+        </div>
+    </div>
+
+    <!-- 게임 오버 UI -->
+    <div id="game-over-ui"
+        class="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-40 hidden text-white text-center">
+        <h2 id="game-over-title" class="text-4xl font-black mb-2 text-[#FEE500]">GAME OVER</h2>
+        <p class="text-lg text-gray-300 mb-4" id="game-over-reason">충돌했습니다!</p>
+        <p class="text-xl mb-8">Score: <span id="final-score">0</span></p>
+        <button id="btn-retry" class="btn-kakao px-8 py-3 font-bold">다시 도전</button>
+    </div>
+
+    <script>
+        // --- 1. 설정 및 상수 ---
+        const DIFFICULTY_SETTINGS = {
+            // minGap: 앞차와의 최소 거리 (피할 공간 확보)
+            BEGINNER: { speedMult: 0.5, spawnRate: 0.02, minGap: 0.8, name: '초보' },
+            NORMAL: { speedMult: 0.7, spawnRate: 0.04, minGap: 0.5, name: '보통' },
+            EXPERT: { speedMult: 0.9, spawnRate: 0.08, minGap: 0.35, name: '고수' },
+            GOD: { speedMult: 1.0, spawnRate: 0.15, minGap: 0.25, name: '신' }
+        };
+
+        const INITIAL_TIME = 60; // 60초
+        const TIME_BONUS = 5;    // 아이템 획득 시 +5초
+        const MAX_LIVES = 3;     // 최대 생명
+
+        // --- BGM 설정 ---
+        const BGM_URL = "https://cdn.pixabay.com/audio/2022/04/01/audio_2c98320d83.mp3";
+        let bgm = new Audio(BGM_URL);
+        bgm.loop = true; // 무한 재생
+        bgm.volume = 0.3; // 배경음 볼륨 (0.0 ~ 1.0)
+
+        // --- 2. 초기화 및 상태 관리 ---
+        window.onload = () => {
+            initGame();
+        };
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+
+        // UI Elements
+        const uiElements = {
+            intro: document.getElementById('intro-ui'),
+            midiStatus: document.getElementById('midi-status'),
+            midiLed: document.getElementById('midi-led'),
+            midiText: document.getElementById('midi-text'),
+            btnPlay: document.getElementById('btn-play'),
+            btnTutorial: document.getElementById('btn-tutorial'),
+            btnRestart: document.getElementById('btn-restart'),
+            btnExit: document.getElementById('btn-exit'),
+            modalNoMidi: document.getElementById('modal-no-midi'),
+            modalHowToPlay: document.getElementById('modal-how-to-play'),
+            btnForceStart: document.getElementById('btn-force-start'),
+            btnAutoPlay: document.getElementById('btn-auto-play'),
+            gameOver: document.getElementById('game-over-ui'),
+            gameOverTitle: document.getElementById('game-over-title'),
+            gameOverReason: document.getElementById('game-over-reason'),
+            btnRetry: document.getElementById('btn-retry'),
+            finalScore: document.getElementById('final-score'),
+            tutorialBox: document.getElementById('tutorial-box'),
+            tutorialTitle: document.getElementById('tutorial-title'),
+            tutorialText: document.getElementById('tutorial-text'),
+            hudTimer: document.getElementById('hud-timer'),
+            timerVal: document.getElementById('timer-val'),
+            hudHearts: document.getElementById('hud-hearts'),
+            diffButtons: document.querySelectorAll('.btn-diff')
+        };
+
+        // Game State
+        let gameState = {
+            mode: 'INTRO',
+            midiConnected: false,
+            score: 0,
+            speed: 0,
+            distance: 0,
+            lastTime: 0,
+            tutorialStep: 0,
+            isGasDown: false,
+            difficulty: 'NORMAL',
+            timeLeft: INITIAL_TIME,
+            lastTimeUpdate: 0,
+            lives: MAX_LIVES,
+            invincibleUntil: 0
+        };
+
+        let pendingAction = null;
+        let particles = [];
+        let items = []; // 아이템 배열
+
+        // --- 3. 오디오 시스템 ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        let engineOsc = null;
+        let engineGain = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+                engineOsc = audioCtx.createOscillator();
+                engineGain = audioCtx.createGain();
+                engineOsc.type = 'sawtooth';
+                engineOsc.frequency.value = 60;
+                engineGain.gain.value = 0;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 400;
+                engineOsc.connect(filter);
+                filter.connect(engineGain);
+                engineGain.connect(audioCtx.destination);
+                engineOsc.start();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function updateEngineSound() {
+            if (!audioCtx || !engineOsc) return;
+
+            if (gameState.mode === 'PLAYING' || gameState.mode === 'TUTORIAL') {
+                const targetFreq = 60 + (gameState.speed * 2000);
+                const targetVol = 0.05 + (gameState.speed * 2);
+                engineOsc.frequency.setTargetAtTime(targetFreq, audioCtx.currentTime, 0.1);
+                engineGain.gain.setTargetAtTime(targetVol, audioCtx.currentTime, 0.1);
+            } else {
+                engineGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            if (type === 'pass') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'crash') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.3);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'success') { // 튜토리얼 성공
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(660, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'item') { // 아이템 획득
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(1760, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            }
+        }
+
+        // --- 4. VFX & Assets ---
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y; this.color = color;
+                this.size = Math.random() * 5 + 2; this.life = 1.0;
+                this.vy = Math.random() * 0.005 + 0.005;
+                this.vx = (Math.random() - 0.5) * 0.002;
+            }
+            update(speed) {
+                this.y += this.vy + speed; this.x += this.vx;
+                this.life -= 0.02; this.size *= 0.95;
+            }
+            draw(ctx, w, h) {
+                ctx.globalAlpha = this.life; ctx.fillStyle = this.color;
+                ctx.beginPath(); ctx.arc(this.x * w, this.y * h, this.size, 0, Math.PI * 2); ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        const AssetManager = {
+            playerSprite: null, enemySprite: null, clockSprite: null,
+            init() {
+                this.createPlayerSprite(); this.createEnemySprite(); this.createClockSprite();
+            },
+            createPlayerSprite() {
+                const c = document.createElement('canvas'); c.width = 40; c.height = 60;
+                const ctx = c.getContext('2d');
+                ctx.fillStyle = '#D95050'; ctx.fillRect(5, 5, 30, 50); // Red Car
+                ctx.fillStyle = '#3A1D1D'; ctx.fillRect(8, 15, 24, 10); ctx.fillRect(8, 35, 24, 8);
+                ctx.fillStyle = '#FFFFFF'; ctx.fillRect(5, 5, 5, 5); ctx.fillRect(30, 5, 5, 5);
+                this.playerSprite = c;
+            },
+            createEnemySprite() {
+                const c = document.createElement('canvas'); c.width = 40; c.height = 60;
+                const ctx = c.getContext('2d');
+                ctx.fillStyle = '#5090D9'; ctx.fillRect(5, 5, 30, 50); // Blue Car
+                ctx.fillStyle = '#1D1D3A'; ctx.fillRect(8, 15, 24, 10);
+                ctx.fillStyle = '#FFEB3B'; ctx.fillRect(5, 5, 5, 5); ctx.fillRect(30, 5, 5, 5);
+                this.enemySprite = c;
+            },
+            createClockSprite() {
+                const c = document.createElement('canvas'); c.width = 40; c.height = 40;
+                const ctx = c.getContext('2d');
+                ctx.beginPath(); ctx.arc(20, 20, 18, 0, Math.PI * 2);
+                ctx.fillStyle = '#00CED1'; ctx.fill(); // Cyan Circle
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+                ctx.fillStyle = '#fff'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('+5', 20, 21);
+                this.clockSprite = c;
+            }
+        };
+
+        // --- 5. MIDI ---
+        const MIDI_MAP = { SNARE: [38, 40], TOM: [41, 43, 45, 47, 48, 50], HIHAT_PEDAL: [44, 42, 46] };
+        function onMidiMessage(event) {
+            const [command, note, velocity] = event.data;
+            const status = command & 0xf0;
+            const isNoteOn = status === 144 && velocity > 0;
+            const isNoteOff = status === 128 || (status === 144 && velocity === 0);
+
+            if (isNoteOn && gameState.mode === 'INTRO') {
+                uiElements.midiLed.classList.add('bg-green-400');
+                setTimeout(() => { if (!gameState.midiConnected) uiElements.midiLed.classList.remove('bg-green-400'); }, 100);
+            }
+
+            if (gameState.mode === 'PLAYING' || gameState.mode === 'TUTORIAL') {
+                if (isNoteOn) {
+                    if (MIDI_MAP.SNARE.includes(note)) {
+                        player.move(-1);
+                        if (gameState.mode === 'TUTORIAL') updateTutorial(note);
+                    } else if (MIDI_MAP.TOM.includes(note)) {
+                        player.move(1);
+                        if (gameState.mode === 'TUTORIAL') updateTutorial(note);
+                    }
+                }
+                if (MIDI_MAP.HIHAT_PEDAL.includes(note)) {
+                    if (isNoteOn) {
+                        gameState.isGasDown = true;
+                        if (gameState.mode === 'TUTORIAL' && gameState.tutorialStep === 1) updateTutorial(note);
+                    } else if (isNoteOff) {
+                        gameState.isGasDown = false;
+                    }
+                }
+            }
+        }
+
+        function checkMidiConnection() {
+            navigator.requestMIDIAccess().then(access => {
+                let connected = false;
+                access.inputs.forEach(input => { if (input.state === 'connected') connected = true; });
+                gameState.midiConnected = connected;
+                if (connected) {
+                    uiElements.midiLed.className = 'w-3 h-3 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]';
+                    uiElements.midiText.textContent = "MIDI 연결됨";
+                    uiElements.midiText.classList.replace('text-gray-600', 'text-green-700');
+                } else {
+                    uiElements.midiLed.className = 'w-3 h-3 rounded-full bg-red-500 animate-pulse';
+                    uiElements.midiText.textContent = "MIDI 대기중...";
+                    uiElements.midiText.classList.replace('text-green-700', 'text-gray-600');
+                }
+            });
+        }
+        function initMidi() {
+            if (navigator.requestMIDIAccess) {
+                navigator.requestMIDIAccess().then(access => {
+                    checkMidiConnection();
+                    access.inputs.forEach(input => { input.onmidimessage = onMidiMessage; });
+                    access.onstatechange = checkMidiConnection;
+                }).catch(() => uiElements.midiText.textContent = "MIDI 미지원");
+            } else uiElements.midiText.textContent = "Web MIDI API 미지원";
+        }
+
+        // --- 6. Game Logic ---
+        let enemies = [];
+        const player = {
+            x: 0, targetX: 0.5, y: 0.8,
+            width: 0.02, // Ultra Wide View
+            speed: 0, maxSpeed: 0.025,
+
+            reset() {
+                this.x = 0.5; this.targetX = 0.5; this.speed = 0;
+                gameState.isGasDown = false; particles = [];
+            },
+            move(dir) {
+                // 잔디 영역(0.0, 1.0)으로 이동 방지 (레인 제한: 0.25, 0.5, 0.75)
+                if (dir === -1) {
+                    if (this.targetX > 0.3) this.targetX -= 0.25;
+                }
+                else if (dir === 1) {
+                    if (this.targetX < 0.7) this.targetX += 0.25;
+                }
+            },
+            update() {
+                const settings = DIFFICULTY_SETTINGS[gameState.difficulty];
+                const currentMaxSpeed = this.maxSpeed * settings.speedMult;
+
+                if (gameState.isGasDown) {
+                    if (this.speed < currentMaxSpeed) this.speed += 0.0005;
+                    if (Math.random() < 0.3) particles.push(new Particle(this.x, this.y + 0.05, '#f0f0f0'));
+                } else {
+                    this.speed *= 0.95;
+                }
+                this.x += (this.targetX - this.x) * 0.2;
+                if (this.speed < 0.0001) this.speed = 0;
+                gameState.speed = this.speed * 5000;
+                gameState.distance += this.speed;
+            },
+            draw(ctx, w, h) {
+                // 무적 상태 시 깜빡임
+                if (gameState.invincibleUntil > performance.now()) {
+                    if (Math.floor(performance.now() / 100) % 2 === 0) return;
+                }
+
+                const pw = w * this.width; const ph = pw * 1.5;
+                const px = (this.x * w) - (pw / 2); const py = this.y * h;
+                ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(px + 5, py + 5, pw, ph);
+                ctx.drawImage(AssetManager.playerSprite, px, py, pw, ph);
+            }
+        };
+
+        class Enemy {
+            constructor(lane) {
+                this.lane = lane;
+                this.y = -0.5;
+                this.speed = Math.random() * 0.005 + 0.005;
+            }
+            update(playerSpeed) { this.y += (playerSpeed - this.speed * 0.5); }
+            draw(ctx, w, h) {
+                const ew = w * 0.02; const eh = ew * 1.5; // Scale matches player (2%)
+                const ex = (this.lane * w) - (ew / 2); const ey = this.y * h;
+                ctx.drawImage(AssetManager.enemySprite, ex, ey, ew, eh);
+            }
+        }
+
+        class Item {
+            constructor() {
+                this.lane = [0.25, 0.5, 0.75][Math.floor(Math.random() * 3)];
+                this.y = -0.5;
+                this.active = true;
+            }
+            update(playerSpeed) { this.y += (playerSpeed); } // 아이템은 멈춰있음 (상대속도 = 플레이어 속도)
+            draw(ctx, w, h) {
+                if (!this.active) return;
+                const iw = w * 0.02; // Item scale adjusted (2%)
+                const ix = (this.lane * w) - (iw / 2); const iy = this.y * h;
+                ctx.drawImage(AssetManager.clockSprite, ix, iy, iw, iw);
+            }
+        }
+
+        function gameLoop(timestamp) {
+            if (gameState.mode !== 'PLAYING' && gameState.mode !== 'TUTORIAL') return;
+
+            // Timer Logic
+            if (gameState.mode === 'PLAYING') {
+                if (timestamp - gameState.lastTimeUpdate > 1000) {
+                    gameState.timeLeft--;
+                    gameState.lastTimeUpdate = timestamp;
+                    updateTimerUI();
+
+                    if (gameState.isAutoPlay) {
+                        gameState.absolutePlayTime = (gameState.absolutePlayTime || 0) + 1;
+                        if (gameState.absolutePlayTime >= 120) {
+                            gameOver('TIME OVER (AUTO PLAY)');
+                            return;
+                        }
+                    }
+
+                    if (gameState.timeLeft <= 0) {
+                        gameOver('TIME UP');
+                        return;
+                    }
+                }
+            }
+
+            gameState.lastTime = timestamp;
+            update();
+            draw();
+            updateEngineSound();
+            requestAnimationFrame(gameLoop);
+        }
+
+        let botLastAction = 0;
+        function handleBotTurn() {
+            gameState.isGasDown = true;
+            if (performance.now() - botLastAction < 150) return;
+
+            let obstacleInLane = false;
+            enemies.forEach(e => {
+                if (e.y > player.y - 0.7 && e.y < player.y + 0.1) {
+                    if (Math.abs(e.lane - player.targetX) < 0.1) {
+                        obstacleInLane = true;
+                    }
+                }
+            });
+
+            if (obstacleInLane) {
+                const lanes = [0.25, 0.5, 0.75];
+                let safeLanes = [];
+                for (let lane of lanes) {
+                    let safe = true;
+                    enemies.forEach(e => {
+                        if (e.y > player.y - 0.7 && e.y < player.y + 0.1 && Math.abs(e.lane - lane) < 0.1) safe = false;
+                    });
+                    if (safe) safeLanes.push(lane);
+                }
+
+                if (safeLanes.length > 0) {
+                    let closest = safeLanes[0];
+                    let minDiff = Math.abs(closest - player.targetX);
+                    for (let lane of safeLanes) {
+                        if (Math.abs(lane - player.targetX) < minDiff) {
+                            closest = lane;
+                            minDiff = Math.abs(lane - player.targetX);
+                        }
+                    }
+                    if (closest < player.targetX) { player.move(-1); botLastAction = performance.now(); }
+                    else if (closest > player.targetX) { player.move(1); botLastAction = performance.now(); }
+                }
+            } else {
+                items.forEach(i => {
+                    if (i.active && i.y > player.y - 0.8 && i.y < player.y) {
+                        if (i.lane < player.targetX) { player.move(-1); botLastAction = performance.now(); }
+                        else if (i.lane > player.targetX) { player.move(1); botLastAction = performance.now(); }
+                    }
+                });
+            }
+        }
+
+        function update() {
+            if (gameState.mode === 'PLAYING' && gameState.isAutoPlay) {
+                handleBotTurn();
+            }
+            player.update();
+            particles.forEach(p => { p.update(player.speed); if (p.life <= 0) particles.splice(particles.indexOf(p), 1); });
+
+            if (gameState.mode === 'TUTORIAL') return;
+
+            const settings = DIFFICULTY_SETTINGS[gameState.difficulty];
+
+            // --- 적 생성 로직 개선 (피할 공간 보장) ---
+            const lastEnemy = enemies.length > 0 ? enemies[enemies.length - 1] : null;
+            // 마지막 적이 생성된 위치가 현재 위치보다 minGap 이상 차이나야 생성 시도
+            // 적은 -0.5에서 생성됨
+            if (!lastEnemy || (lastEnemy.y > -0.5 + settings.minGap)) {
+                if (Math.random() < settings.spawnRate && player.speed > 0.005) {
+                    spawnEnemies();
+                }
+            }
+
+            // 아이템 생성 확률
+            if (Math.random() < 0.002 && player.speed > 0.005) items.push(new Item());
+
+            // 적 로직
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const e = enemies[i];
+                e.update(player.speed);
+                if (e.y > 1.2) { enemies.splice(i, 1); gameState.score += 10; playSound('pass'); }
+
+                // 충돌
+                const hitBoxScale = 0.018;
+                if (Math.abs(player.x - e.lane) < hitBoxScale && Math.abs(player.y - e.y) < hitBoxScale * 1.5) {
+                    // 무적 상태가 아닐 때만 충돌 처리
+                    if (performance.now() > gameState.invincibleUntil) {
+                        handleCrash();
+                    }
+                }
+            }
+
+            // 아이템 로직
+            for (let i = items.length - 1; i >= 0; i--) {
+                const item = items[i];
+                item.update(player.speed);
+                if (item.y > 1.2) { items.splice(i, 1); }
+                else if (item.active && Math.abs(player.x - item.lane) < 0.02 && Math.abs(player.y - item.y) < 0.02) {
+                    // 아이템 획득
+                    item.active = false;
+                    gameState.timeLeft += TIME_BONUS;
+                    playSound('item');
+                    updateTimerUI();
+                    // 시각적 피드백
+                    uiElements.hudTimer.classList.add('text-green-400');
+                    setTimeout(() => uiElements.hudTimer.classList.remove('text-green-400'), 500);
+                }
+            }
+        }
+
+        function spawnEnemies() {
+            // 1마리 또는 2마리 생성 (3마리는 절대 불가)
+            // 난이도에 따라 2마리 확률 증가
+            const difficulty = gameState.difficulty;
+            const doubleChance = difficulty === 'GOD' ? 0.6 : (difficulty === 'EXPERT' ? 0.3 : 0.1);
+            const isDouble = Math.random() < doubleChance;
+
+            // 가능한 레인: 0.25, 0.5, 0.75
+            const lanes = [0.25, 0.5, 0.75];
+
+            // 레인을 랜덤하게 섞음
+            for (let i = lanes.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [lanes[i], lanes[j]] = [lanes[j], lanes[i]];
+            }
+
+            // 첫 번째 적
+            enemies.push(new Enemy(lanes[0]));
+
+            // 두 번째 적 (초보 난이도 제외하고 확률적으로 생성)
+            // 최소 1개 레인은 항상 비워둠 (lanes[2]는 사용 안함)
+            if (isDouble && difficulty !== 'BEGINNER') {
+                enemies.push(new Enemy(lanes[1]));
+            }
+        }
+
+        function handleCrash() {
+            playSound('crash');
+            gameState.lives--;
+            updateHeartsUI();
+
+            if (gameState.lives > 0) {
+                // 생명이 남았으면 무적 시간 부여
+                gameState.invincibleUntil = performance.now() + 1500; // 1.5초 무적
+            } else {
+                // 생명 소진 시 게임 오버
+                gameOver('CRASH');
+            }
+        }
+
+        function draw() {
+            const w = canvas.parentElement.clientWidth; const h = canvas.parentElement.clientHeight;
+            if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+
+            // 배경 (Wide View)
+            ctx.fillStyle = '#555'; ctx.fillRect(0, 0, w, h);
+            ctx.fillStyle = '#5C9E32'; ctx.fillRect(0, 0, w * 0.05, h); ctx.fillRect(w * 0.95, 0, w * 0.05, h);
+
+            // 차선 (Thin & Frequent for Scale)
+            const laneOffset = (gameState.distance * 1500) % 50; // Faster scroll for scale illusion
+            ctx.strokeStyle = '#fff';
+            ctx.setLineDash([15, 30]); // Shorter dashes
+            ctx.lineWidth = w * 0.002; // Thinner lines
+            ctx.lineDashOffset = -laneOffset;
+
+            // 4차선 느낌 (중앙선 + 보조선) - 3 Lane Playable but visualize wide road
+            // Playable lanes: 0.25, 0.5, 0.75
+            // Borders: 0.125, 0.375, 0.625, 0.875
+            ctx.beginPath();
+            ctx.moveTo(w * 0.375, 0); ctx.lineTo(w * 0.375, h);
+            ctx.moveTo(w * 0.625, 0); ctx.lineTo(w * 0.625, h);
+            ctx.stroke();
+
+            // 갓길 차선 (실선)
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(w * 0.125, 0); ctx.lineTo(w * 0.125, h);
+            ctx.moveTo(w * 0.875, 0); ctx.lineTo(w * 0.875, h);
+            ctx.stroke();
+
+            particles.forEach(p => p.draw(ctx, w, h));
+            items.forEach(i => i.draw(ctx, w, h));
+            if (gameState.mode === 'PLAYING') enemies.forEach(e => e.draw(ctx, w, h));
+            player.draw(ctx, w, h);
+
+            // Speed Lines
+            if (player.speed > 0.015) {
+                ctx.strokeStyle = `rgba(255, 255, 255, ${(player.speed - 0.015) * 50})`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                for (let i = 0; i < 8; i++) { // More lines
+                    const x = Math.random() * w; const y = Math.random() * h;
+                    ctx.moveTo(x, y); ctx.lineTo(x - (x - w / 2) * 0.05, y + 150);
+                }
+                ctx.stroke();
+            }
+
+            if (gameState.mode === 'PLAYING') {
+                ctx.fillStyle = '#fff'; ctx.font = 'bold 20px "Noto Sans KR"'; ctx.textAlign = 'left';
+                ctx.fillText(`SCORE: ${gameState.score}`, 20, 40);
+
+                // Speed Gauge
+                const speedPercent = Math.min(gameState.speed / 100, 1);
+                ctx.fillStyle = '#333'; ctx.fillRect(20, 60, 100, 8);
+                ctx.fillStyle = `rgb(${255 * speedPercent}, ${255 * (1 - speedPercent)}, 0)`; ctx.fillRect(20, 60, 100 * speedPercent, 8);
+            }
+        }
+
+        // --- 7. Event Handlers ---
+        function initGame() {
+            AssetManager.init(); initMidi();
+
+            // 난이도 버튼 이벤트
+            uiElements.diffButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    uiElements.diffButtons.forEach(b => b.classList.remove('selected'));
+                    e.target.classList.add('selected');
+                    gameState.difficulty = e.target.dataset.diff;
+                });
+            });
+
+            uiElements.btnPlay.addEventListener('click', onPlayClick);
+            uiElements.btnTutorial.addEventListener('click', onTutorialClick);
+            uiElements.btnRestart.addEventListener('click', onRestartClick);
+            uiElements.btnExit.addEventListener('click', () => window.history.back());
+            uiElements.btnRetry.addEventListener('click', resetGame);
+
+            uiElements.btnForceStart.addEventListener('click', () => {
+                uiElements.modalNoMidi.classList.add('hidden');
+                gameState.isAutoPlay = false;
+                if (pendingAction === 'PLAY') startGame();
+                else if (pendingAction === 'TUTORIAL') startTutorial();
+            });
+
+            uiElements.btnAutoPlay.addEventListener('click', () => {
+                uiElements.modalNoMidi.classList.add('hidden');
+                gameState.isAutoPlay = true;
+                if (pendingAction === 'PLAY') startGame();
+                else if (pendingAction === 'TUTORIAL') startTutorial();
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.repeat) return;
+                if (gameState.mode === 'PLAYING' || gameState.mode === 'TUTORIAL') {
+                    if (e.key === '0') player.move(-1);
+                    else if (e.key === '=') player.move(1);
+                    else if (e.key === '-') {
+                        gameState.isGasDown = true;
+                        if (gameState.mode === 'TUTORIAL' && gameState.tutorialStep === 1) updateTutorial({});
+                    }
+                }
+                // Tutorial Key Sim
+                if (gameState.mode === 'TUTORIAL') {
+                    if (gameState.tutorialStep === 1 && e.key === '-') advanceTutorialStep("잘했어요! 다음은 플로어탐을 쳐서 오른쪽으로 이동해보세요.");
+                    else if (gameState.tutorialStep === 2 && e.key === '=') { player.move(1); advanceTutorialStep("훌륭합니다! 마지막으로 스네어를 쳐서 왼쪽으로 이동해보세요."); }
+                    else if (gameState.tutorialStep === 3 && e.key === '0') { player.move(-1); advanceTutorialStep("완벽해요! 이제 짧은 거리를 달려봅시다!", true); }
+                }
+            });
+            document.addEventListener('keyup', (e) => { if (e.key === '-') gameState.isGasDown = false; });
+        }
+
+        function onPlayClick() {
+            initAudio();
+            if (gameState.midiConnected) {
+                gameState.isAutoPlay = false;
+                startGame();
+            }
+            else { pendingAction = 'PLAY'; uiElements.modalNoMidi.classList.remove('hidden'); }
+        }
+        function onTutorialClick() {
+            uiElements.modalHowToPlay.classList.remove('hidden');
+        }
+
+        function updateTimerUI() {
+            uiElements.timerVal.textContent = gameState.timeLeft;
+            if (gameState.timeLeft <= 10) uiElements.hudTimer.classList.add('timer-warning', 'text-red-500');
+            else uiElements.hudTimer.classList.remove('timer-warning', 'text-red-500');
+        }
+
+        function updateHeartsUI() {
+            // 하트 HTML 갱신
+            let html = '';
+            for (let i = 0; i < MAX_LIVES; i++) {
+                if (i < gameState.lives) {
+                    html += '<span class="text-2xl heart-icon">❤️</span>';
+                } else {
+                    html += '<span class="text-2xl heart-icon heart-lost">❤️</span>';
+                }
+            }
+            uiElements.hudHearts.innerHTML = html;
+        }
+
+        function startGame() {
+            gameState.mode = 'PLAYING';
+            gameState.timeLeft = INITIAL_TIME;
+            gameState.lastTimeUpdate = performance.now();
+            gameState.absolutePlayTime = 0;
+            gameState.lives = MAX_LIVES; // 라이프 초기화
+            gameState.invincibleUntil = 0;
+
+            uiElements.intro.classList.add('opacity-0', 'pointer-events-none');
+            uiElements.hudTimer.classList.remove('hidden');
+            uiElements.hudHearts.classList.remove('hidden'); // 하트 UI 보이기
+            updateTimerUI();
+            updateHeartsUI();
+
+            // --- BGM 시작 ---
+            bgm.currentTime = 0;
+            bgm.play().catch(e => console.log("BGM 재생 실패:", e));
+
+            player.reset();
+            enemies = []; items = [];
+            gameState.score = 0; gameState.distance = 0;
+            gameState.lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ... (Tutorial functions similar to previous, omitted for brevity but logic retained) ...
+        function startTutorial() {
+            gameState.mode = 'TUTORIAL'; gameState.tutorialStep = 1;
+            uiElements.intro.classList.add('opacity-0', 'pointer-events-none');
+            uiElements.tutorialBox.classList.remove('hidden');
+
+            // --- BGM 시작 ---
+            bgm.currentTime = 0;
+            bgm.play().catch(e => console.log("BGM 재생 실패:", e));
+
+            player.reset(); gameState.distance = 0; gameState.lastTime = performance.now();
+            uiElements.tutorialText.textContent = "하이햇 페달을 밟아 자동차를 출발시켜보세요!";
+            requestAnimationFrame(gameLoop);
+        }
+        function updateTutorial(note) { /* ... Logic same as before ... */
+            if (gameState.tutorialStep === 1 && MIDI_MAP.HIHAT_PEDAL.includes(note)) advanceTutorialStep("잘했어요! 다음은 플로어탐을 쳐서 오른쪽으로 이동해보세요.");
+            else if (gameState.tutorialStep === 2 && MIDI_MAP.TOM.includes(note)) advanceTutorialStep("훌륭합니다! 마지막으로 스네어를 쳐서 왼쪽으로 이동해보세요.");
+            else if (gameState.tutorialStep === 3 && MIDI_MAP.SNARE.includes(note)) advanceTutorialStep("완벽해요! 이제 짧은 거리를 달려봅시다!", true);
+        }
+        function advanceTutorialStep(message, isFinal = false) {
+            playSound('success'); gameState.tutorialStep++; uiElements.tutorialText.textContent = message;
+            if (isFinal) { gameState.isGasDown = true; setTimeout(() => { gameState.isGasDown = false; endTutorial(); }, 3000); }
+        }
+        function endTutorial() {
+            // --- BGM 정지 ---
+            bgm.pause();
+            bgm.currentTime = 0;
+
+            gameState.mode = 'INTRO'; uiElements.tutorialBox.classList.add('hidden'); uiElements.intro.classList.remove('opacity-0', 'pointer-events-none'); gameState.tutorialStep = 0;
+        }
+
+        function onRestartClick() {
+            // --- BGM 정지 ---
+            bgm.pause();
+            bgm.currentTime = 0;
+
+            gameState.mode = 'INTRO'; uiElements.intro.classList.remove('opacity-0', 'pointer-events-none');
+            uiElements.gameOver.classList.add('hidden'); uiElements.modalNoMidi.classList.add('hidden');
+            uiElements.hudTimer.classList.add('hidden');
+            uiElements.hudHearts.classList.add('hidden');
+        }
+
+        function gameOver(reason) {
+            // --- BGM 정지 ---
+            bgm.pause();
+
+            gameState.mode = 'GAMEOVER'; playSound('crash');
+            uiElements.finalScore.innerText = gameState.score;
+            uiElements.gameOverTitle.innerText = reason === 'TIME UP' ? "TIME UP!" : "GAME OVER";
+            uiElements.gameOverReason.innerText = reason === 'TIME UP' ? "시간이 초과되었습니다." : "하트가 모두 소진되었습니다!";
+            uiElements.gameOver.classList.remove('hidden');
+            if (engineGain) engineGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+        }
+        function resetGame() { uiElements.gameOver.classList.add('hidden'); onPlayClick(); }
+    </script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-07" defer></script>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-midi-status.js?v=20260618-04" data-instrument="drum" defer></script>
+</body>
+
+</html>

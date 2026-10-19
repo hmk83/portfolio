@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>스마트 아트톡톡: 벽 낙서하기</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Jua', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a2e;
+            color: white;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 기존 헤더 스타일 유지 */
+        .kakao-header {
+            background-color: #FEE500;
+            color: #3b1e1e;
+            width: 100%;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            z-index: 500;
+            flex-shrink: 0;
+            border-bottom: 2px solid #FBC02D;
+        }
+
+        /* 메인 컨테이너 (좌우 팔레트와 중앙 캔버스) */
+        #main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            position: relative;
+            background-color: #2a2a35;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 팔레트 공통 스타일 */
+        .palette-container {
+            width: 80px;
+            background: rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px 0;
+            gap: 15px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            z-index: 20;
+            overflow-y: auto;
+        }
+
+        .palette-title {
+            font-size: 1rem;
+            color: #FEE500;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        /* 도구 버튼 스타일 */
+        .tool-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #333;
+            position: relative;
+        }
+
+        .tool-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .tool-btn.active {
+            border-color: #fff;
+            transform: scale(1.15);
+            box-shadow: 0 0 15px currentColor;
+        }
+
+        .tool-btn.active::after {
+            content: '';
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 15px;
+            height: 15px;
+            background-color: #00ff00;
+            border-radius: 50%;
+            border: 2px solid #222;
+        }
+
+        .tool-icon {
+            width: 24px;
+            height: 24px;
+            color: white;
+            filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
+        }
+
+        /* 그리기 캔버스 영역 */
+        #canvas-wrapper {
+            flex: 1;
+            position: relative;
+            background-color: #e5e5f7;
+            /* 실제 담벼락 이미지 배경 */
+            background-image: url('https://jueunssam.com/wp-content/uploads/2026/new/art-160421-1.webp');
+            background-size: 100% 100%;
+            background-position: center;
+            background-repeat: no-repeat;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.5);
+        }
+
+        #drawing-board {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        /* 액션 버튼 그룹 (지우개, 저장 등) */
+        .action-buttons {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 30;
+        }
+
+        .action-btn {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(5px);
+            min-width: 140px;
+        }
+
+        .action-btn:active {
+            transform: scale(0.95);
+        }
+
+        .action-btn.active-eraser {
+            background: #ff4757;
+            border-color: #fff;
+        }
+
+        .action-btn.btn-save {
+            background: #2ed573;
+            color: #1a1a2e;
+            border-color: #fff;
+            font-weight: bold;
+        }
+
+        /* 모달 유지 */
+        .hidden {
+            display: none !important;
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 상단 헤더 -->
+    <header class="kakao-header">
+        <div class="flex items-center gap-2">
+            <i data-lucide="palette" class="text-[#3b1e1e] w-6 h-6"></i>
+            <h1 class="text-xl font-bold tracking-tight text-[#3b1e1e]">스마트 아트톡톡: 벽 낙서하기</h1>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="artApp.showExitModal()"
+                class="bg-[#3b1e1e] text-[#FEE500] px-3 py-1.5 rounded-xl text-sm font-bold shadow-sm hover:opacity-90 transition">
+                종료하기
+            </button>
+        </div>
+    </header>
+
+    <!-- 메인 컨테이너 -->
+    <div id="main-container">
+
+        <!-- 좌측 크레파스 팔레트 -->
+        <div id="left-palette" class="palette-container">
+            <div class="palette-title">크레파스</div>
+            <button class="tool-btn color-btn" data-tool="crayon" data-color="#ff4757"
+                style="color: #ff4757; background-color: #ff4757;">
+                <i data-lucide="pen-tool" class="tool-icon"></i>
+            </button>
+            <button class="tool-btn color-btn" data-tool="crayon" data-color="#ffa502"
+                style="color: #ffa502; background-color: #ffa502;">
+                <i data-lucide="pen-tool" class="tool-icon"></i>
+            </button>
+            <button class="tool-btn color-btn" data-tool="crayon" data-color="#eccc68"
+                style="color: #eccc68; background-color: #eccc68;">
+                <i data-lucide="pen-tool" class="tool-icon"></i>
+            </button>
+            <button class="tool-btn color-btn" data-tool="crayon" data-color="#2ed573"
+                style="color: #2ed573; background-color: #2ed573;">
+                <i data-lucide="pen-tool" class="tool-icon"></i>
+            </button>
+            <button class="tool-btn color-btn" data-tool="crayon" data-color="#1e90ff"
+                style="color: #1e90ff; background-color: #1e90ff;">
+                <i data-lucide="pen-tool" class="tool-icon"></i>
+            </button>
+            <button class="tool-btn color-btn" data-tool="crayon" data-color="#3742fa"
+                style="color: #3742fa; background-color: #3742fa;">
+                <i data-lucide="pen-tool" class="tool-icon"></i>
+            </button>
+            <button class="tool-btn color-btn" data-tool="crayon" data-color="#2f3542"
+                style="color: #2f3542; background-color: #2f3542;">
+                <i data-lucide="pen-tool" class="tool-icon"></i>
+            </button>
+            <button class="tool-btn color-btn" data-tool="crayon" data-color="#ffffff"
+                style="color: #ffffff; background-color: #ffffff;">
+                <i data-lucide="pen-tool" class="tool-icon text-gray-800"></i>
+            </button>
+        </div>
+
+        <!-- 중앙 캔버스 -->
+        <div id="canvas-wrapper">
+            <canvas id="drawing-board"></canvas>
+
+            <!-- 하단 액션 버튼 -->
+            <div class="action-buttons">
+                <button id="btn-eraser" class="action-btn" onclick="artApp.setEraser()">
+                    <i data-lucide="eraser"></i> 지우개
+                </button>
+                <button class="action-btn" onclick="artApp.showClearModal()">
+                    <i data-lucide="trash-2"></i> 모두 지우기
+                </button>
+                <button class="action-btn btn-save" onclick="artApp.saveCanvas()">
+                    <i data-lucide="download"></i> 저장하기
+                </button>
+            </div>
+        </div>
+
+        <!-- 우측 스프레이 팔레트 -->
+        <div id="right-palette" class="palette-container">
+            <div class="palette-title">스프레이</div>
+            <button class="tool-btn color-btn" data-tool="spray" data-color="#ff4757"
+                style="color: #ff4757; background-color: #ff4757;">
+                <i data-lucide="spray-can" class="tool-icon"></i>
+            </button>
+            <button class="tool-btn color-btn" data-tool="spray" data-color="#ffa502"
+                style="color: #ffa502; background-color: #ffa502;">
+                <i data-lucide="spray-can" class="tool-icon"></i>
+            </button>
+            <button class="tool-btn color-btn" data-tool="spray" data-color="#eccc68"
+                style="color: #eccc68; background-color: #eccc68;">
+                <i data-lucide="spray-can" class="tool-icon"></i>
+            </button>
+            <button class="tool-btn color-btn" data-tool="spray" data-color="#2ed573"
+                style="color: #2ed573; background-color: #2ed573;">
+                <i data-lucide="spray-can" class="tool-icon"></i>
+            </button>
+            <button class="tool-btn color-btn" data-tool="spray" data-color="#1e90ff"
+                style="color: #1e90ff; background-color: #1e90ff;">
+                <i data-lucide="spray-can" class="tool-icon"></i>
+            </button>
+            <button class="tool-btn color-btn" data-tool="spray" data-color="#9b59b6"
+                style="color: #9b59b6; background-color: #9b59b6;">
+                <i data-lucide="spray-can" class="tool-icon"></i>
+            </button>
+            <button class="tool-btn color-btn" data-tool="spray" data-color="#2f3542"
+                style="color: #2f3542; background-color: #2f3542;">
+                <i data-lucide="spray-can" class="tool-icon"></i>
+            </button>
+            <button class="tool-btn color-btn" data-tool="spray" data-color="#ffffff"
+                style="color: #ffffff; background-color: #ffffff;">
+                <i data-lucide="spray-can" class="tool-icon text-gray-800"></i>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- 종료 확인 모달 -->
+    <div id="modal-exit"
+        class="hidden fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-gray-900 rounded-[2rem] p-8 max-w-sm w-full text-center shadow-2xl border border-gray-700">
+            <div
+                class="w-16 h-16 mx-auto bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mb-4">
+                <i data-lucide="log-out" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-white mb-2">학습 종료</h3>
+            <p class="text-gray-300 mb-8 font-sans">정말로 학습을 종료하시겠습니까?</p>
+            <div class="flex gap-3 justify-center">
+                <button onclick="artApp.hideExitModal()"
+                    class="flex-1 bg-gray-700 text-white px-4 py-3 rounded-xl font-bold text-lg hover:bg-gray-600 transition-colors">취소</button>
+                <button onclick="artApp.exitGame()"
+                    class="flex-1 bg-red-600 text-white px-4 py-3 rounded-xl font-bold text-lg hover:bg-red-500 transition-colors">종료</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모두 지우기 확인 모달 -->
+    <div id="modal-clear"
+        class="hidden fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-gray-900 rounded-[2rem] p-8 max-w-sm w-full text-center shadow-2xl border border-gray-700">
+            <div
+                class="w-16 h-16 mx-auto bg-yellow-500/20 text-yellow-500 rounded-full flex items-center justify-center mb-4">
+                <i data-lucide="trash-2" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-white mb-2">모두 지우기</h3>
+            <p class="text-gray-300 mb-8 font-sans">캔버스에 그린 내용을 모두 지우시겠습니까?<br><span class="text-sm text-gray-500">이 작업은
+                    되돌릴 수 없습니다.</span></p>
+            <div class="flex gap-3 justify-center">
+                <button onclick="artApp.hideClearModal()"
+                    class="flex-1 bg-gray-700 text-white px-4 py-3 rounded-xl font-bold text-lg hover:bg-gray-600 transition-colors">취소</button>
+                <button onclick="artApp.confirmClearCanvas()"
+                    class="flex-1 bg-red-600 text-white px-4 py-3 rounded-xl font-bold text-lg hover:bg-red-500 transition-colors">지우기</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        class GraffitiApp {
+            constructor() {
+                this.canvas = document.getElementById('drawing-board');
+                this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+
+                this.isDrawing = false;
+                this.currentTool = 'crayon'; // 'crayon', 'spray', 'eraser'
+                this.currentColor = '#ff4757';
+                this.brushSize = 12;
+
+                this.lastX = 0;
+                this.lastY = 0;
+                this.sprayInterval = null;
+
+                this.initCanvas();
+                this.initEvents();
+                this.selectInitialTool();
+            }
+
+            initCanvas() {
+                const wrapper = document.getElementById('canvas-wrapper');
+                this.canvas.width = wrapper.offsetWidth;
+                this.canvas.height = wrapper.offsetHeight;
+
+                window.addEventListener('resize', () => {
+                    // 캔버스 크기가 0일 때 발생하는 InvalidStateError 방지
+                    if (this.canvas.width === 0 || this.canvas.height === 0 || wrapper.offsetWidth === 0 || wrapper.offsetHeight === 0) {
+                        this.canvas.width = wrapper.offsetWidth;
+                        this.canvas.height = wrapper.offsetHeight;
+                        return;
+                    }
+
+                    // 리사이즈 시 기존 그림 유지
+                    const tempCanvas = document.createElement('canvas');
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCanvas.width = this.canvas.width;
+                    tempCanvas.height = this.canvas.height;
+                    tempCtx.drawImage(this.canvas, 0, 0);
+
+                    this.canvas.width = wrapper.offsetWidth;
+                    this.canvas.height = wrapper.offsetHeight;
+
+                    if (tempCanvas.width > 0 && tempCanvas.height > 0) {
+                        this.ctx.drawImage(tempCanvas, 0, 0);
+                    }
+                });
+            }
+
+            initEvents() {
+                // 컬러/도구 선택 버튼 이벤트 연결
+                const buttons = document.querySelectorAll('.color-btn');
+                buttons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const target = e.currentTarget;
+                        this.currentTool = target.dataset.tool;
+                        this.currentColor = target.dataset.color;
+
+                        // 지우개 모드 해제
+                        document.getElementById('btn-eraser').classList.remove('active-eraser');
+
+                        // 활성화 상태 표시
+                        buttons.forEach(b => b.classList.remove('active'));
+                        target.classList.add('active');
+                    });
+                });
+
+                // 캔버스 드로잉 이벤트 (마우스 & 터치)
+                this.canvas.addEventListener('mousedown', this.startDrawing.bind(this));
+                this.canvas.addEventListener('mousemove', this.draw.bind(this));
+                this.canvas.addEventListener('mouseup', this.stopDrawing.bind(this));
+                this.canvas.addEventListener('mouseout', this.stopDrawing.bind(this));
+
+                this.canvas.addEventListener('touchstart', this.startDrawing.bind(this), { passive: false });
+                this.canvas.addEventListener('touchmove', this.draw.bind(this), { passive: false });
+                this.canvas.addEventListener('touchend', this.stopDrawing.bind(this));
+                this.canvas.addEventListener('touchcancel', this.stopDrawing.bind(this));
+            }
+
+            selectInitialTool() {
+                // 초기값: 좌측 첫 번째 크레파스 선택
+                const firstBtn = document.querySelector('.color-btn');
+                if (firstBtn) firstBtn.click();
+            }
+
+            getCoordinates(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                let clientX = e.clientX;
+                let clientY = e.clientY;
+
+                if (e.touches && e.touches.length > 0) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                }
+
+                return {
+                    x: clientX - rect.left,
+                    y: clientY - rect.top
+                };
+            }
+
+            startDrawing(e) {
+                e.preventDefault();
+                this.isDrawing = true;
+                const coords = this.getCoordinates(e);
+                this.lastX = coords.x;
+                this.lastY = coords.y;
+
+                if (this.currentTool === 'spray') {
+                    this.spray(coords.x, coords.y);
+                    this.sprayInterval = setInterval(() => {
+                        this.spray(this.lastX, this.lastY);
+                    }, 50);
+                } else {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.lastX, this.lastY);
+                    this.draw(e);
+                }
+            }
+
+            draw(e) {
+                e.preventDefault();
+                if (!this.isDrawing) return;
+
+                const coords = this.getCoordinates(e);
+                this.lastX = coords.x;
+                this.lastY = coords.y;
+
+                if (this.currentTool === 'crayon') {
+                    this.ctx.lineCap = 'round';
+                    this.ctx.lineJoin = 'round';
+                    this.ctx.lineWidth = this.brushSize;
+                    this.ctx.strokeStyle = this.currentColor;
+
+                    this.ctx.lineTo(this.lastX, this.lastY);
+                    this.ctx.stroke();
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.lastX, this.lastY);
+                } else if (this.currentTool === 'eraser') {
+                    this.ctx.lineCap = 'round';
+                    this.ctx.lineJoin = 'round';
+                    this.ctx.lineWidth = this.brushSize * 3; // 지우개는 더 크게
+
+                    this.ctx.globalCompositeOperation = 'destination-out';
+                    this.ctx.lineTo(this.lastX, this.lastY);
+                    this.ctx.stroke();
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.lastX, this.lastY);
+                    this.ctx.globalCompositeOperation = 'source-over';
+                }
+            }
+
+            stopDrawing(e) {
+                if (e) e.preventDefault();
+                this.isDrawing = false;
+                this.ctx.beginPath();
+                if (this.sprayInterval) {
+                    clearInterval(this.sprayInterval);
+                    this.sprayInterval = null;
+                }
+            }
+
+            spray(x, y) {
+                const density = 40;
+                const radius = 25;
+                this.ctx.fillStyle = this.currentColor;
+
+                for (let i = 0; i < density; i++) {
+                    const offsetX = (Math.random() - 0.5) * radius * 2;
+                    const offsetY = (Math.random() - 0.5) * radius * 2;
+
+                    // 원형 범위 안에 들어오는 입자만 그리기
+                    if (offsetX * offsetX + offsetY * offsetY <= radius * radius) {
+                        this.ctx.fillRect(x + offsetX, y + offsetY, 2, 2);
+                    }
+                }
+            }
+
+            setEraser() {
+                this.currentTool = 'eraser';
+                const buttons = document.querySelectorAll('.color-btn');
+                buttons.forEach(b => b.classList.remove('active'));
+                document.getElementById('btn-eraser').classList.add('active-eraser');
+            }
+
+            // --- 모두 지우기 모달 로직 ---
+            showClearModal() {
+                document.getElementById('modal-clear').classList.remove('hidden');
+            }
+
+            hideClearModal() {
+                document.getElementById('modal-clear').classList.add('hidden');
+            }
+
+            confirmClearCanvas() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.hideClearModal();
+            }
+
+            resetCanvas() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.selectInitialTool();
+            }
+
+            // 다운로드를 실행하는 보조 함수 (파일명 JUEUNSSAM- 추가)
+            downloadDataUrl(dataUrl) {
+                const link = document.createElement('a');
+
+                // 현재 날짜 및 시간을 조합하여 고유 파일명 생성
+                const now = new Date();
+                const timeStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+
+                link.download = `JUEUNSSAM-${timeStr}.jpg`;
+                link.href = dataUrl;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            // --- 배경 이미지 포함 캔버스 저장 (CORS 프록시 우회) ---
+            async saveCanvas() {
+                const btn = document.querySelector('.btn-save');
+                const originalText = btn.innerHTML;
+
+                // 저장 버튼 상태 변경 (로딩 효과)
+                btn.innerHTML = '<i data-lucide="loader-circle" class="animate-spin w-5 h-5"></i> 저장중...';
+                btn.style.pointerEvents = 'none';
+                lucide.createIcons();
+
+                const bgUrl = 'https://jueunssam.com/wp-content/uploads/2026/new/art-160421-1.webp';
+
+                // CORS를 피하기 위한 여러 가지 프록시 목록 구성
+                const proxyUrls = [
+                    bgUrl, // 1차: 원본 요청
+                    'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(bgUrl), // 2차: 범용 프록시
+                    'https://corsproxy.io/?' + encodeURIComponent(bgUrl), // 3차: 대체 프록시
+                    'https://api.allorigins.win/raw?url=' + encodeURIComponent(bgUrl) // 4차: 또 다른 대체 프록시
+                ];
+
+                // 안전하게 이미지를 로드하고 Tainting을 피하는 헬퍼 함수
+                const loadImageRobustly = async (url) => {
+                    try {
+                        // Fetch를 이용해 Blob으로 가져오면 캔버스 오염을 훨씬 안전하게 우회 가능
+                        const response = await fetch(url);
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        const blob = await response.blob();
+                        const objectUrl = URL.createObjectURL(blob);
+
+                        return new Promise((resolve, reject) => {
+                            const img = new Image();
+                            img.onload = () => {
+                                URL.revokeObjectURL(objectUrl);
+                                resolve(img);
+                            };
+                            img.onerror = () => {
+                                URL.revokeObjectURL(objectUrl);
+                                reject(new Error('Image decode error'));
+                            };
+                            img.src = objectUrl;
+                        });
+                    } catch (e) {
+                        // Fetch가 실패할 경우 (strict CORS 등) 기존 crossOrigin 방식으로 재시도
+                        return new Promise((resolve, reject) => {
+                            const img = new Image();
+                            img.crossOrigin = 'anonymous';
+                            img.onload = () => resolve(img);
+                            img.onerror = () => reject(new Error('Image load error'));
+                            img.src = url;
+                        });
+                    }
+                };
+
+                try {
+                    let img = null;
+                    // 준비된 여러 가지 우회 URL을 순차적으로 시도하여 가장 먼저 성공하는 것을 사용
+                    for (const url of proxyUrls) {
+                        try {
+                            img = await loadImageRobustly(url);
+                            if (img) break; // 성공 시 루프 중단
+                        } catch (e) {
+                            console.warn("이미지 로드 실패, 다음 프록시 서버로 재시도합니다:", url);
+                        }
+                    }
+
+                    if (!img) {
+                        throw new Error("모든 이미지 로드 방식(프록시 포함)이 실패했습니다.");
+                    }
+
+                    // 배경과 낙서를 합칠 가상의 캔버스 생성
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = this.canvas.width;
+                    tempCanvas.height = this.canvas.height;
+                    const ctx = tempCanvas.getContext('2d');
+
+                    // 1. 배경 이미지를 캔버스 사이즈에 맞게 그리기 (100% 100%)
+                    ctx.drawImage(img, 0, 0, tempCanvas.width, tempCanvas.height);
+
+                    // 2. 그 위에 사용자가 그린 낙서 합성
+                    ctx.drawImage(this.canvas, 0, 0);
+
+                    // 3. 최종 합성 이미지를 JPG로 변환 후 다운로드 실행
+                    this.downloadDataUrl(tempCanvas.toDataURL('image/jpeg', 0.9));
+
+                } catch (e) {
+                    console.error("배경 이미지 로드에 완전히 실패했습니다. 투명한 배경 대신 흰색 배경으로 저장합니다.", e);
+
+                    // 최후의 수단: 배경 로드에 모두 실패해도 사용자 낙서는 안전하게 흰 배경으로 저장
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = this.canvas.width;
+                    tempCanvas.height = this.canvas.height;
+                    const ctx = tempCanvas.getContext('2d');
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                    ctx.drawImage(this.canvas, 0, 0);
+
+                    this.downloadDataUrl(tempCanvas.toDataURL('image/jpeg', 0.9));
+                } finally {
+                    // 저장 완료 후 버튼 상태 텍스트 원상 복구
+                    btn.innerHTML = originalText;
+                    btn.style.pointerEvents = 'auto';
+                    lucide.createIcons();
+                }
+            }
+
+            // 모달 로직
+            showExitModal() {
+                document.getElementById('modal-exit').classList.remove('hidden');
+            }
+
+            hideExitModal() {
+                document.getElementById('modal-exit').classList.add('hidden');
+            }
+
+            exitGame() {
+                if (document.referrer) {
+                    window.location.href = document.referrer;
+                } else {
+                    window.history.back();
+                    setTimeout(() => {
+                        window.location.href = "https://jueunssam.com/";
+                    }, 500);
+                }
+            }
+        }
+
+        window.artApp = new GraffitiApp();
+    </script>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-03" defer></script>
+</body>
+
+</html>

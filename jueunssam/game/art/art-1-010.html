@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>꼬마 화가의 선 그리기 놀이</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* [Core Reset & Safe Area] */
+        :root {
+            --gnb-height: 60px;
+            --app-bg: #fdf2f8;
+        }
+
+        body {
+            font-family: 'Jua', sans-serif;
+            background-color: var(--app-bg);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* [GNB Styles] */
+        #gnb {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: var(--gnb-height);
+            background-color: #FEE500;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        #game-container {
+            position: absolute;
+            top: var(--gnb-height);
+            left: 0;
+            width: 100%;
+            height: calc(100vh - var(--gnb-height));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            background-color: var(--app-bg);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 20000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            max-width: 90vw;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .btn-press {
+            transition: transform 0.1s;
+        }
+
+        .btn-press:active {
+            transform: scale(0.95);
+        }
+
+        .tool-btn {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            width: 120px;
+            height: 120px;
+        }
+
+        .tool-btn:active {
+            transform: scale(0.9);
+        }
+
+        .pop-in {
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .draw-anim {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: draw 2s ease-in-out forwards;
+        }
+
+        @keyframes draw {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- [1. GNB] -->
+    <nav id="gnb">
+        <div class="flex items-center gap-2">
+            <h1
+                class="text-xl md:text-2xl font-bold text-gray-800 whitespace-nowrap overflow-hidden text-ellipsis max-w-[50vw]">
+                🖍️ <span data-i18n="appTitle">선 그리기 놀이</span>
+            </h1>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="btn-lang-toggle" class="btn-press px-3 py-1 bg-white rounded-lg shadow text-sm font-bold">
+                <span data-i18n="langToggle">English</span>
+            </button>
+            <button id="btn-info" class="btn-press p-2 bg-white rounded-lg shadow" aria-label="도움말">
+                <i data-lucide="help-circle" class="w-5 h-5"></i>
+            </button>
+            <button id="btn-restart" class="btn-press p-2 bg-white rounded-lg shadow" aria-label="다시하기">
+                <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+            </button>
+            <button id="btn-exit" class="btn-press p-2 bg-white rounded-lg shadow" aria-label="종료">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- [2. Game Container] -->
+    <div id="game-container">
+        <div class="w-full h-full p-4 flex flex-col items-center justify-center">
+
+            <!-- Question Box -->
+            <div class="bg-white rounded-3xl shadow-xl p-6 mb-6 text-center" style="max-width: 700px;">
+                <p class="text-2xl" style="color: #666;" id="mission-text">선을 찾아보세요!</p>
+            </div>
+
+            <!-- Drawing Area -->
+            <div class="bg-white rounded-3xl p-6 mb-6 shadow-xl" style="width: 90%; max-width: 800px; height: 250px;">
+                <div id="canvas-placeholder" class="text-gray-300 flex flex-col items-center justify-center h-full">
+                    <i data-lucide="palette" class="w-20 h-20 opacity-50"></i>
+                    <span class="text-xl" data-i18n="canvasPlaceholder">여기에 그림이 그려져요!</span>
+                </div>
+                <svg id="line-svg" class="hidden w-full h-full" viewBox="0 0 300 150"
+                    preserveAspectRatio="xMidYMid meet">
+                    <defs>
+                        <mask id="mask-dotted" maskUnits="userSpaceOnUse">
+                            <path d="M20 75 L280 75" stroke="white" stroke-width="25" stroke-linecap="round" fill="none"
+                                class="draw-anim" />
+                        </mask>
+                    </defs>
+                </svg>
+            </div>
+
+            <!-- Tools Palette -->
+            <div class="flex gap-4 flex-wrap justify-center" id="palette">
+                <!-- Tool buttons will be added here by JS -->
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- [4. Info Modal] -->
+    <div id="info-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 600px;">
+            <h3 class="text-2xl font-bold mb-4" style="color: #333;" data-i18n="infoTitle">사용 방법</h3>
+            <ul class="text-lg space-y-3" style="color: #666; line-height: 1.8;">
+                <li data-i18n="info1">❶ 선생님이 어떤 선을 그리고 싶은지 말풍선으로 알려줘요</li>
+                <li data-i18n="info2">❷ 화면 아래에서 곧은 선, 물결 선, 지그재그, 소용돌이, 점선 중에서 선택하세요</li>
+                <li data-i18n="info3">❸ 올바른 선을 선택하면 화면에 아름다운 색깔 선이 그려져요</li>
+                <li data-i18n="info4">❹ 틀린 선을 선택하면 화면이 흔들리고 다시 도전할 수 있어요</li>
+                <li data-i18n="info5">❺ 5개의 퀴즈를 모두 맞추면 성공이에요</li>
+                <li data-i18n="info6">❻ 다음 단계 버튼을 눌러 자유 그리기 모드로 갈 수 있어요</li>
+                <li data-i18n="info7">❼ 자유 그리기 모드에서는 원하는 색과 선으로 마음껏 그림을 그릴 수 있어요!</li>
+            </ul>
+            <button id="btn-close-info"
+                class="btn-press mt-6 px-6 py-3 bg-blue-500 text-white rounded-full font-bold w-full"
+                onclick="hideModal('info-modal')">
+                <span data-i18n="btnClose">닫기</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- [5. Exit Confirm Modal] -->
+    <div id="exit-modal" class="modal-overlay hidden">
+        <div class="modal-content text-center" style="max-width: 400px;">
+            <h3 class="text-2xl font-bold mb-4" style="color: #333;" data-i18n="exitTitle">정말 종료하시겠어요?</h3>
+            <div class="flex gap-4 mt-6">
+                <button id="btn-exit-confirm"
+                    class="btn-press flex-1 px-6 py-3 bg-red-500 text-white rounded-full font-bold">
+                    <span data-i18n="btnYes">예</span>
+                </button>
+                <button id="btn-exit-cancel"
+                    class="btn-press flex-1 px-6 py-3 bg-gray-400 text-white rounded-full font-bold">
+                    <span data-i18n="btnNo">아니오</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- [6. Restart Confirm Modal] -->
+    <div id="restart-modal" class="modal-overlay hidden">
+        <div class="modal-content text-center" style="max-width: 400px;">
+            <h3 class="text-2xl font-bold mb-4" style="color: #333;" data-i18n="restartTitle">다시 시작하시겠어요?</h3>
+            <div class="flex gap-4 mt-6">
+                <button id="btn-restart-confirm"
+                    class="btn-press flex-1 px-6 py-3 bg-blue-500 text-white rounded-full font-bold">
+                    <span data-i18n="btnYes">예</span>
+                </button>
+                <button id="btn-restart-cancel"
+                    class="btn-press flex-1 px-6 py-3 bg-gray-400 text-white rounded-full font-bold">
+                    <span data-i18n="btnNo">아니오</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- [7. Success Modal] -->
+    <div id="success-modal" class="modal-overlay hidden">
+        <div class="modal-content text-center"
+            style="max-width: 500px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <h2 class="text-4xl font-bold mb-4 text-white">🎉 <span data-i18n="successTitle">정답!</span></h2>
+            <p class="text-2xl text-white mb-6" id="success-message"></p>
+            <button id="btn-next-mission"
+                class="btn-press px-8 py-4 bg-yellow-400 text-gray-800 text-xl rounded-full shadow-lg font-bold">
+                <span data-i18n="btnNext">다음 ➡️</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- [8. Complete Modal] -->
+    <div id="complete-modal" class="modal-overlay hidden">
+        <div class="modal-content text-center"
+            style="max-width: 500px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <h2 class="text-4xl font-bold mb-4 text-white">🏆 <span data-i18n="completeTitle">모든 퀴즈 완료!</span></h2>
+            <p class="text-2xl text-white mb-6" data-i18n="completeDesc">선 그리기 마스터가 되었어요!</p>
+            <button id="btn-replay"
+                class="btn-press px-8 py-4 bg-white text-purple-600 text-xl rounded-full shadow-lg font-bold">
+                <span data-i18n="btnReplay">🔄 다시 도전하기</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ===========================
+        // [Configuration & I18N Data]
+        // ===========================
+        const GOOGLE_API_KEY = 'AIzaSyDNmp5eOzPHJzoPI0kn4pnkmDlPvP5FVSM';
+
+        const I18N_DATA = {
+            ko: {
+                appTitle: '꼬마 화가의 선 그리기 놀이',
+                langToggle: 'English',
+                introTitle: '꼬마 화가의 선 그리기 놀이',
+                introDesc: '다양한 선을 찾아 그려보세요!',
+                btnStart: '학습 시작',
+                btnHowToPlay: '사용 방법',
+                canvasPlaceholder: '여기에 그림이 그려져요!',
+                infoTitle: '사용 방법',
+                info1: '❶ 선생님이 어떤 선을 그리고 싶은지 말풍선으로 알려줘요',
+                info2: '❷ 화면 아래에서 곧은 선, 물결 선, 지그재그, 소용돌이, 점선 중에서 선택하세요',
+                info3: '❸ 올바른 선을 선택하면 화면에 아름다운 색깔 선이 그려져요',
+                info4: '❹ 틀린 선을 선택하면 화면이 흔들리고 다시 도전할 수 있어요',
+                info5: '❺ 5개의 퀴즈를 모두 맞추면 성공이에요',
+                info6: '❻ 다음 단계 버튼을 눌러 자유 그리기 모드로 갈 수 있어요',
+                info7: '❼ 자유 그리기 모드에서는 원하는 색과 선으로 마음껏 그림을 그릴 수 있어요!',
+                btnClose: '닫기',
+                exitTitle: '정말 종료하시겠어요?',
+                restartTitle: '다시 시작하시겠어요?',
+                btnYes: '예',
+                btnNo: '아니오',
+                successTitle: '정답!',
+                btnNext: '다음 ➡️',
+                completeTitle: '모든 퀴즈 완료!',
+                completeDesc: '선 그리기 마스터가 되었어요!',
+                btnReplay: '🔄 다시 도전하기'
+            },
+            en: {
+                appTitle: 'Little Painter Line Drawing',
+                langToggle: '한국어',
+                introTitle: 'Little Painter Line Drawing',
+                introDesc: 'Find and draw different types of lines!',
+                btnStart: 'Start Learning',
+                btnHowToPlay: 'How to Play',
+                canvasPlaceholder: 'Drawing will appear here!',
+                infoTitle: 'How to Play',
+                info1: '❶ The teacher tells you what line they want to draw in a speech bubble',
+                info2: '❷ Choose from straight line, wavy line, zigzag, spiral, or dotted line at the bottom',
+                info3: '❸ When you select the correct line, a beautiful colored line is drawn on the screen',
+                info4: '❹ If you choose the wrong line, the screen shakes and you can try again',
+                info5: '❺ You succeed when you answer all 5 quizzes correctly',
+                info6: '❻ Press the Next Stage button to go to free drawing mode',
+                info7: '❼ In free drawing mode, you can draw as you wish with any color and line!',
+                btnClose: 'Close',
+                exitTitle: 'Do you really want to exit?',
+                restartTitle: 'Do you want to restart?',
+                btnYes: 'Yes',
+                btnNo: 'No',
+                successTitle: 'Correct!',
+                btnNext: 'Next ➡️',
+                completeTitle: 'All Quizzes Complete!',
+                completeDesc: 'You are a line drawing master!',
+                btnReplay: '🔄 Play Again'
+            }
+        };
+
+        const LINE_TYPES = [
+            {
+                id: 'straight',
+                name: '곧은 선',
+                eng: 'Straight Line',
+                iconPath: '<path d="M5 50 L95 50" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>',
+                drawPath: '<path d="M10 75 L290 75" stroke="#3B82F6" stroke-width="15" stroke-linecap="round" fill="none" class="draw-anim"/>',
+                color: 'bg-blue-100 text-blue-500 border-blue-200'
+            },
+            {
+                id: 'wavy',
+                name: '물결 선',
+                eng: 'Wavy Line',
+                iconPath: '<path d="M5 50 Q27.5 20 50 50 T95 50" stroke="currentColor" stroke-width="8" stroke-linecap="round" fill="none"/>',
+                drawPath: '<path d="M10 75 Q45 20 80 75 T150 75 T220 75 T290 75" stroke="#22C55E" stroke-width="15" stroke-linecap="round" fill="none" class="draw-anim"/>',
+                color: 'bg-green-100 text-green-500 border-green-200'
+            },
+            {
+                id: 'zigzag',
+                name: '지그재그',
+                eng: 'Zigzag Line',
+                iconPath: '<path d="M5 50 L27.5 20 L50 80 L72.5 20 L95 50" stroke="currentColor" stroke-width="8" stroke-linecap="round" fill="none" stroke-linejoin="round"/>',
+                drawPath: '<path d="M10 75 L45 10 L80 140 L115 10 L150 140 L185 10 L220 140 L255 10 L290 75" stroke="#EF4444" stroke-width="15" stroke-linecap="round" fill="none" stroke-linejoin="round" class="draw-anim"/>',
+                color: 'bg-red-100 text-red-500 border-red-200'
+            },
+            {
+                id: 'spiral',
+                name: '소용돌이',
+                eng: 'Spiral',
+                iconPath: '<path d="M50 50 m-25 0 a 25 25 0 1 0 50 0 a 25 25 0 1 0 -50 0" stroke="currentColor" stroke-width="8" stroke-linecap="round" fill="none" opacity="0.5"/> <path d="M50 50 m-15 0 a 15 15 0 1 0 30 0 a 15 15 0 1 0 -30 0" stroke="currentColor" stroke-width="8" stroke-linecap="round" fill="none"/>',
+                drawPath: '<path d="M150 75 m0 0 l1 0 a1 1 0 0 1 -1 1 a2 2 0 0 1 -2 -2 a3 3 0 0 1 3 -3 a5 5 0 0 1 5 5 a8 8 0 0 1 -8 8 a12 12 0 0 1 -12 -12 a18 18 0 0 1 18 -18 a25 25 0 0 1 25 25 a35 35 0 0 1 -35 35 a48 48 0 0 1 -48 -48 a65 65 0 0 1 65 -65" stroke="#A855F7" stroke-width="8" stroke-linecap="round" fill="none" class="draw-anim"/>',
+                color: 'bg-purple-100 text-purple-500 border-purple-200'
+            },
+            {
+                id: 'dotted',
+                name: '점 선',
+                eng: 'Dotted Line',
+                iconPath: '<path d="M10 50 L20 50 M40 50 L50 50 M70 50 L80 50" stroke="currentColor" stroke-width="10" stroke-linecap="round"/>',
+                drawPath: '<path d="M20 75 L280 75" stroke="#F59E0B" stroke-width="15" stroke-linecap="round" stroke-dasharray="0 30" mask="url(#mask-dotted)" />',
+                color: 'bg-yellow-100 text-yellow-600 border-yellow-200'
+            }
+        ];
+
+        const MISSIONS = [
+            { targetId: 'straight', textKo: '기차길처럼 쭉 뻗은 <span class="text-blue-500 font-bold">곧은 선</span>을 찾아볼까?', textEn: 'Find the <span class="text-blue-500 font-bold">straight line</span> like train tracks!' },
+            { targetId: 'wavy', textKo: '바다 위 꿀렁꿀렁 <span class="text-green-500 font-bold">물결 선</span>은 어디 있을까?', textEn: 'Where is the <span class="text-green-500 font-bold">wavy line</span> like ocean waves?' },
+            { targetId: 'zigzag', textKo: '악어 이빨처럼 뾰족뾰족 <span class="text-red-500 font-bold">지그재그 선</span>이 필요해!', textEn: 'I need a <span class="text-red-500 font-bold">zigzag line</span> like crocodile teeth!' },
+            { targetId: 'spiral', textKo: '빙글빙글 달팽이 집 같은 <span class="text-purple-500 font-bold">소용돌이 선</span>을 그려줘.', textEn: 'Draw a <span class="text-purple-500 font-bold">spiral</span> like a snail shell.' },
+            { targetId: 'dotted', textKo: '콩콩콩 발자국 같은 <span class="text-yellow-600 font-bold">점 선</span>을 찍어보자.', textEn: 'Let\'s make a <span class="text-yellow-600 font-bold">dotted line</span> like footprints.' }
+        ];
+
+        // ===========================
+        // [Global State]
+        // ===========================
+        let currentLang = 'ko';
+        let googleTTSAvailable = true;
+        let availableVoices = [];
+        let ttsAudio = null;
+
+        let currentMissionIndex = 0;
+        let currentMissions = [];
+
+        // ===========================
+        // [Initialization]
+        // ===========================
+        window.addEventListener('DOMContentLoaded', () => {
+            // Load voices
+            window.speechSynthesis.onvoiceschanged = () => {
+                availableVoices = window.speechSynthesis.getVoices();
+            };
+            availableVoices = window.speechSynthesis.getVoices();
+
+            // Initialize Icons
+            lucide.createIcons();
+
+            // Create palette
+            createPalette();
+
+            // Event Listeners
+            document.getElementById('btn-lang-toggle').addEventListener('click', toggleLanguage);
+            document.getElementById('btn-info').addEventListener('click', () => showModal('info-modal'));
+            document.getElementById('btn-restart').addEventListener('click', () => showModal('restart-modal'));
+            document.getElementById('btn-exit').addEventListener('click', () => showModal('exit-modal'));
+
+            document.getElementById('btn-close-info').addEventListener('click', () => hideModal('info-modal'));
+
+            document.getElementById('btn-exit-confirm').addEventListener('click', confirmExit);
+            document.getElementById('btn-exit-cancel').addEventListener('click', () => hideModal('exit-modal'));
+
+            document.getElementById('btn-restart-confirm').addEventListener('click', confirmRestart);
+            document.getElementById('btn-restart-cancel').addEventListener('click', () => hideModal('restart-modal'));
+
+            document.getElementById('btn-next-mission').addEventListener('click', nextMission);
+            document.getElementById('btn-replay').addEventListener('click', confirmRestart);
+
+            // Intro Event Listeners
+            document.getElementById('btn-start-intro').addEventListener('click', () => {
+                document.getElementById('intro-screen').style.display = 'none';
+                speak('introDesc');
+                currentMissions = shuffleArray([...MISSIONS]);
+                currentMissionIndex = 0;
+                updateMission();
+                const mission = currentMissions[0];
+                const textWithoutTags = mission[currentLang === 'ko' ? 'textKo' : 'textEn'].replace(/<[^>]+>/g, '');
+                speak(textWithoutTags, true);
+            });
+            document.getElementById('btn-how-to-play').addEventListener('click', () => {
+                showModal('info-modal');
+                const infoText = [
+                    I18N_DATA[currentLang].info1,
+                    I18N_DATA[currentLang].info2,
+                    I18N_DATA[currentLang].info3,
+                    I18N_DATA[currentLang].info4,
+                    I18N_DATA[currentLang].info5,
+                    I18N_DATA[currentLang].info6,
+                    I18N_DATA[currentLang].info7
+                ].join('. ');
+                speak(infoText, true);
+            });
+        });
+
+        function createPalette() {
+            const palette = document.getElementById('palette');
+            LINE_TYPES.forEach(line => {
+                const btn = document.createElement('div');
+                btn.className = `tool-btn rounded-3xl flex items-center justify-center border-4 ${line.color}`;
+                btn.innerHTML = `
+                    <svg viewBox="0 0 100 100" class="w-24 h-24 overflow-visible">
+                        ${line.iconPath}
+                    </svg>
+                `;
+                btn.onclick = () => checkAnswer(line);
+                palette.appendChild(btn);
+            });
+        }
+
+        // ===========================
+        // [Language & I18N]
+        // ===========================
+        function toggleLanguage() {
+            currentLang = currentLang === 'ko' ? 'en' : 'ko';
+            updateUI();
+            updateMission();
+        }
+
+        function updateUI() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                el.textContent = I18N_DATA[currentLang][key] || key;
+            });
+            lucide.createIcons();
+        }
+
+        // ===========================
+        // [TTS System]
+        // ===========================
+        function stopTTS() {
+            if (ttsAudio) {
+                ttsAudio.pause();
+                ttsAudio = null;
+            }
+            window.speechSynthesis.cancel();
+        }
+
+        async function speak(keyOrText, isRaw = false) {
+            stopTTS();
+
+            const text = isRaw ? keyOrText : (I18N_DATA[currentLang][keyOrText] || keyOrText);
+            if (!text) return;
+
+            if (!googleTTSAvailable) {
+                fallbackSpeak(text);
+                return;
+            }
+
+            const langCode = currentLang === 'ko' ? 'ko-KR' : 'en-US';
+            const voiceName = currentLang === 'ko' ? 'ko-KR-Standard-A' : 'en-US-Standard-E';
+
+            try {
+                const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        input: { text: text },
+                        voice: { languageCode: langCode, name: voiceName },
+                        audioConfig: { audioEncoding: 'MP3' }
+                    })
+                });
+
+                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+
+                const data = await response.json();
+                if (data.audioContent) {
+                    const audioBlob = await fetch(`data:audio/mp3;base64,${data.audioContent}`).then(res => res.blob());
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    ttsAudio = new Audio(audioUrl);
+                    ttsAudio.play().catch(e => console.error("Audio Error:", e));
+                } else {
+                    fallbackSpeak(text);
+                }
+            } catch (e) {
+                console.warn("Google TTS failed:", e);
+                googleTTSAvailable = false;
+                fallbackSpeak(text);
+            }
+        }
+
+        function fallbackSpeak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = currentLang === 'ko' ? 'ko-KR' : 'en-US';
+            utterance.rate = 0.9;
+
+            if (availableVoices.length === 0) {
+                availableVoices = window.speechSynthesis.getVoices();
+            }
+
+            if (currentLang === 'en') {
+                const targetVoices = ["Google US English", "Samantha", "Microsoft Zira"];
+                let selectedVoice = availableVoices.find(v => targetVoices.some(t => v.name.includes(t)));
+                if (!selectedVoice) selectedVoice = availableVoices.find(v => v.lang === 'en-US');
+                if (selectedVoice) utterance.voice = selectedVoice;
+            } else {
+                const koVoice = availableVoices.find(v => v.name.includes('Google 한국어') || v.lang === 'ko-KR');
+                if (koVoice) utterance.voice = koVoice;
+            }
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // ===========================
+        // [Modal Management]
+        // ===========================
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function hideModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        function confirmExit() {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.close();
+            }
+        }
+
+        function confirmRestart() {
+            hideModal('restart-modal');
+            hideModal('complete-modal');
+            currentMissionIndex = 0;
+            document.getElementById('intro-screen').classList.remove('hidden');
+        }
+
+        // ===========================
+        // [Game Logic]
+        // ===========================
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function updateMission() {
+            const mission = currentMissions[currentMissionIndex];
+            document.getElementById('mission-text').innerHTML = mission[currentLang === 'ko' ? 'textKo' : 'textEn'];
+        }
+
+        function checkAnswer(selectedLine) {
+            const mission = currentMissions[currentMissionIndex];
+            const isCorrect = selectedLine.id === mission.targetId;
+
+            const svgContainer = document.getElementById('line-svg');
+            const placeholder = document.getElementById('canvas-placeholder');
+
+            placeholder.classList.add('hidden');
+            svgContainer.classList.remove('hidden');
+
+            // Preserve mask when setting innerHTML
+            svgContainer.innerHTML = `
+                <defs>
+                    <mask id="mask-dotted" maskUnits="userSpaceOnUse">
+                        <path d="M20 75 L280 75" stroke="white" stroke-width="25" stroke-linecap="round" fill="none" class="draw-anim"/>
+                    </mask>
+                </defs>
+                ${selectedLine.drawPath}
+            `;
+
+            if (isCorrect) {
+                setTimeout(() => {
+                    showSuccess(selectedLine);
+                }, 2000);
+            } else {
+                setTimeout(() => {
+                    resetCanvas();
+                    speak(currentLang === 'ko' ? '다시 시도해보세요!' : 'Try again!', true);
+                }, 2000);
+            }
+        }
+
+        function resetCanvas() {
+            const svgContainer = document.getElementById('line-svg');
+            const placeholder = document.getElementById('canvas-placeholder');
+            svgContainer.classList.add('hidden');
+            placeholder.classList.remove('hidden');
+        }
+
+        function showSuccess(line) {
+            const message = currentLang === 'ko'
+                ? `맞아요! 멋진 ${line.name}이에요!`
+                : `Correct! It's a beautiful ${line.eng}!`;
+
+            document.getElementById('success-message').textContent = message;
+            showModal('success-modal');
+            speak(message, true);
+        }
+
+        function nextMission() {
+            hideModal('success-modal');
+            currentMissionIndex++;
+
+            if (currentMissionIndex >= currentMissions.length) {
+                showComplete();
+            } else {
+                resetCanvas();
+                updateMission();
+                const mission = currentMissions[currentMissionIndex];
+                const textWithoutTags = mission[currentLang === 'ko' ? 'textKo' : 'textEn'].replace(/<[^>]+>/g, '');
+                speak(textWithoutTags, true);
+            }
+        }
+
+        function showComplete() {
+            showModal('complete-modal');
+            speak('completeTitle', false);
+        }
+
+        // Initialize UI
+        updateUI();
+    </script>
+
+    <!-- [3. Intro Screen] -->
+    <div id="intro-screen"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: linear-gradient(135deg, #fef3c7 0%, #fef9e7 100%); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <i data-lucide="pen-tool" style="width: 8rem; height: 8rem; color: #059669; margin-bottom: 1.5rem;"
+            class="bounce"></i>
+        <h1
+            style="font-size: 3.5rem; font-weight: bold; color: #059669; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem;">
+            <span data-i18n="appTitle">꼬마 화가의 선 그리기 놀이</span>
+        </h1>
+        <p style="font-size: 1.5rem; color: #666; margin-bottom: 3rem;" data-i18n="introDesc">
+            다양한 선을 찾아 그려보세요!
+        </p>
+        <div style="display: flex; gap: 1rem;">
+            <button id="btn-how-to-play" class="btn-press"
+                style="background: #facc15; color: white; font-size: 1.875rem; padding: 1rem 2rem; border-radius: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-weight: bold; border: none; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="help-circle" style="width: 2rem; height: 2rem;"></i>
+                <span data-i18n="btnHowToPlay">설명 보기</span>
+            </button>
+            <button id="btn-start-intro" class="btn-press"
+                style="background: #059669; color: white; font-size: 1.875rem; padding: 1rem 3rem; border-radius: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-weight: bold; border: none; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="play" style="width: 2rem; height: 2rem;"></i>
+                <span data-i18n="btnStart">시작하기</span>
+            </button>
+        </div>
+    </div>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-03" defer></script>
+</body>
+
+</html>

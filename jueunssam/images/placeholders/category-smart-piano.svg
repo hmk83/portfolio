@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400" fill="none">
+  <rect width="600" height="400" rx="32" fill="#EFF6FF"/>
+  <rect x="118" y="124" width="364" height="156" rx="24" fill="#DBEAFE"/>
+  <rect x="138" y="144" width="324" height="116" rx="16" fill="#FFF"/>
+  <path d="M176 144H200V224H176V144ZM220 144H244V224H220V144ZM264 144H288V224H264V144ZM332 144H356V224H332V144ZM376 144H400V224H376V144Z" fill="#1E3A8A"/>
+  <text x="300" y="332" text-anchor="middle" fill="#1D4ED8" font-family="Pretendard, Arial, sans-serif" font-size="30" font-weight="700">SMART PIANO</text>
+</svg>

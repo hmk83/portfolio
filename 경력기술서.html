@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Senior UX Planner - Career Description</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Pretendard Font -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .project-card[id], .company-section[id] {
+            scroll-margin-top: 140px;
+        }
+
+        body {
+            font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+            line-height: 1.6;
+            padding-bottom: 100px; /* Space for bottom nav */
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Animations */
+        .reveal-text {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .reveal-text.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .project-card {
+            background: white;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .project-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -8px rgba(37, 99, 235, 0.15);
+            border-color: #bfdbfe;
+        }
+
+        .badge-outline {
+            border: 1px solid #e2e8f0;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #64748b;
+            background: #f8fafc;
+        }
+
+        /* Timeline Connector for Projects */
+        .company-section {
+            position: relative;
+            padding-left: 24px;
+            border-left: 2px solid #e2e8f0;
+            margin-left: 12px;
+            padding-bottom: 40px;
+        }
+        .company-section:last-child {
+            border-left: 2px solid transparent;
+        }
+        .company-marker {
+            position: absolute;
+            left: -9px;
+            top: 0;
+            width: 16px;
+            height: 16px;
+            background: #3b82f6;
+            border: 4px solid #dbeafe;
+            border-radius: 50%;
+        }
+
+        /* Project Meta Info (Unified Role Style) */
+        .project-meta {
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #f1f5f9;
+            font-size: 0.75rem; /* text-xs */
+            color: #64748b; /* text-slate-500 */
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .project-meta strong {
+            font-weight: 600;
+            color: #475569;
+        }
+
+        /* Top Button */
+        .top-btn {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            z-index: 90;
+            background-color: white;
+            color: #334155;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+        }
+        .top-btn.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        .top-btn:hover { background-color: #2563eb; color: white; transform: translateY(-3px); }
+
+        /* Quick Nav Button Style */
+        .quick-nav-btn {
+            transition: all 0.2s;
+        }
+        .quick-nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-blue-100 selection:text-blue-900">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center bg-white/90 backdrop-blur-md border-b border-slate-100 transition-all duration-300">
+        <a href="#" class="text-base md:text-lg font-bold tracking-tight text-slate-800 flex items-center gap-2 hover:opacity-70 transition-opacity">
+            <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+            UX PLANNER.<span class="text-blue-600">PROJECTS</span>
+        </a>
+        <div class="flex gap-4 items-center">
+            <div class="text-[11px] md:text-xs text-blue-700 font-bold bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 tracking-wide">
+                FULL HISTORY
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="pt-32 pb-10 px-6 md:px-20 max-w-5xl mx-auto">
+        <div class="reveal-text">
+            <h1 class="text-3xl md:text-5xl font-bold text-slate-900 mb-6 leading-tight">
+                Project History<span class="text-blue-600">.</span>
+            </h1>
+            <p class="text-slate-600 text-lg max-w-2xl leading-relaxed mb-8">
+                19년간의 경험이 담긴 프로젝트 상세 기술서입니다.<br>
+                <span class="text-sm text-slate-400 mt-2 block">* 최근 경력순으로 정렬되어 있습니다.</span>
+            </p>
+            
+            <!-- Top Quick Links (Major Projects) -->
+            <div class="flex flex-col md:flex-row gap-3 md:items-center">
+                <span class="text-sm font-bold text-slate-400 mr-2 uppercase tracking-wider mb-2 md:mb-0">Major Projects:</span>
+                <div class="flex flex-wrap gap-2">
+                    <a href="#jooeun-collab" class="nav-link quick-nav-btn px-3 py-2 bg-white border border-blue-200 text-blue-700 text-xs md:text-sm font-bold rounded-lg hover:bg-blue-50">
+                        <i class="fas fa-bolt mr-1.5 text-blue-400"></i>주은교육
+                    </a>
+                    <a href="#meta-platform" class="nav-link quick-nav-btn px-3 py-2 bg-white border border-purple-200 text-purple-700 text-xs md:text-sm font-bold rounded-lg hover:bg-purple-50">
+                        <i class="fas fa-layer-group mr-1.5 text-purple-400"></i>메타쿱
+                    </a>
+                    <a href="#cartax-main" class="nav-link quick-nav-btn px-3 py-2 bg-white border border-slate-300 text-slate-700 text-xs md:text-sm font-bold rounded-lg hover:bg-slate-50">
+                        <i class="fas fa-car mr-1.5 text-slate-400"></i>카택스
+                    </a>
+                    <a href="#smart-s1" class="nav-link quick-nav-btn px-3 py-2 bg-white border border-cyan-200 text-cyan-700 text-xs md:text-sm font-bold rounded-lg hover:bg-cyan-50">
+                        <i class="fas fa-shield-alt mr-1.5 text-cyan-400"></i>스마트에스원
+                    </a>
+                    <a href="#word-app" class="nav-link quick-nav-btn px-3 py-2 bg-white border border-pink-200 text-pink-700 text-xs md:text-sm font-bold rounded-lg hover:bg-pink-50">
+                        <i class="fas fa-comments mr-1.5 text-pink-400"></i>말?말!말.
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="px-6 md:px-20 max-w-5xl mx-auto pb-20">
+
+        <!-- 1. Jooeun Education Section -->
+        <div id="company-jooeun" class="company-section reveal-text">
+            <div class="company-marker bg-blue-600 border-blue-100"></div>
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-slate-800 inline-flex items-center gap-2">
+                    주은교육 주식회사
+                    <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full font-medium">Current</span>
+                </h2>
+                <p class="text-slate-500 text-sm mt-1">2025.05 ~ 재직중</p>
+            </div>
+
+            <div class="grid gap-6">
+                <!-- Personal Project: HAHA LAB -->
+                <div id="hahalab-personal" class="project-card rounded-xl p-6 md:p-8 border-l-4 border-l-emerald-500">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2">
+                        <h3 class="text-xl font-bold text-slate-900">하하랩 언어재활 서비스 개인 프로젝트</h3>
+                        <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">Personal Project</span>
+                    </div>
+                    <div class="mb-4">
+                        <p class="text-slate-600 text-sm leading-relaxed">
+                            하하랩은 thehahalab.com으로 운영 중인 개인 프로젝트로, 언어재활 수업 콘텐츠와 서비스 UX를 직접 실험하는 공간입니다.
+                            제작 동기는 AI 도구를 지속적으로 공부하기 위한 채찍이자, 기획자가 GPT·Gemini·Codex·Antigravity를 활용해 실제 산출물을 만들고 검증했다는 증거를 남기는 데 있습니다.
+                        </p>
+                    </div>
+                    <div class="mb-4 overflow-hidden rounded-lg border border-emerald-100 bg-emerald-50">
+                        <img src="images/portfolio/hahalab-site.png" alt="하하랩 실제 운영 사이트 화면" class="w-full h-auto object-cover">
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-6 bg-emerald-50 p-4 rounded-lg border border-emerald-100 mb-4">
+                        <div>
+                            <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider block mb-2">Key Tasks</span>
+                            <ul class="text-sm text-slate-600 space-y-1 list-disc list-inside marker:text-emerald-400">
+                                <li>언어재활 서비스 문제 정의 및 학습 흐름 설계</li>
+                                <li>AI 도구 기반 화면·기능 제작 실험</li>
+                                <li>개인 프로젝트를 통한 지속 학습 및 결과 증명</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider block mb-2">Meaning</span>
+                            <p class="text-sm text-slate-700 font-medium">
+                                개발 전문 지식보다 PM 관점의 문제 분해, 화면 설계, 테스트 기준으로 AI와 협업해 서비스 가능성을 검증하는 프로젝트입니다.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="project-meta">
+                        <span><strong>구분:</strong> 개인 프로젝트</span>
+                        <span class="mx-1 text-slate-300">|</span>
+                        <span><strong>역할:</strong> 서비스 기획, AI 활용 설계, UI/UX 실험, 검증</span>
+                    </div>
+                </div>
+
+                <!-- Project: 협업툴 -->
+                <div id="jooeun-collab" class="project-card rounded-xl p-6 md:p-8 border-l-4 border-l-blue-500">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2">
+                        <h3 class="text-xl font-bold text-slate-900">AI 기반 사내 협업 툴 구축·검증</h3>
+                        <span class="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">2025.11 ~ 진행중</span>
+                    </div>
+                    <div class="mb-4">
+                        <p class="text-slate-600 text-sm leading-relaxed">
+                            GPT, Gemini, Codex, Antigravity를 활용해 반복 업무와 커뮤니케이션 흐름을 정리하고, 사내 협업 툴을 직접 구축·검증한 프로젝트입니다.
+                            개발자가 아닌 PM 관점에서 현업 요구사항, 권한, 업무 흐름, 테스트 기준을 정의해 실무 사용 가능성을 검증했습니다.
+                        </p>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-6 bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4">
+                        <div>
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Key Tasks</span>
+                            <ul class="text-sm text-slate-600 space-y-1 list-disc list-inside marker:text-slate-400">
+                                <li>반복 업무·운영 병목 분석 및 협업 플로우 설계</li>
+                                <li>GPT/Gemini/Codex/Antigravity 활용 화면·기능 구현 반복</li>
+                                <li>CS/운영팀 대상 베타 테스트, 오류 재현, 개선 검증</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Outcome</span>
+                            <ul class="text-sm text-slate-800 font-medium space-y-1">
+                                <li class="flex items-start gap-2">
+                                    <i class="fas fa-check-circle text-blue-500 mt-1"></i>
+                                    <span>PM 주도로 사내 협업 툴 구축 및 실무 검증 체계 마련</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <i class="fas fa-check-circle text-blue-500 mt-1"></i>
+                                    <span>반복 커뮤니케이션과 운영 업무를 줄이는 자동화 기반 확보</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- Unified Footer -->
+                    <div class="project-meta">
+                        <span><strong>기간:</strong> 2025.11 ~ 진행중</span>
+                        <span class="mx-1 text-slate-300">|</span>
+                        <span><strong>역할:</strong> 문제 정의, 서비스 기획, AI 코딩 활용, UI/UX 설계, QA</span>
+                    </div>
+                </div>
+
+                <!-- Project: 주은쌤 웹학습 -->
+                <div class="project-card rounded-xl p-6 md:p-8 border border-blue-100">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2">
+                        <h3 class="text-lg font-bold text-slate-800">주은쌤 웹학습 콘텐츠 직접 제작·운영</h3>
+                        <span class="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100">운영중</span>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="flex flex-wrap gap-2 mb-2">
+                            <span class="badge-outline">AI Service</span>
+                            <span class="badge-outline">Web Learning</span>
+                            <span class="badge-outline">콘텐츠 제작</span>
+                        </div>
+                        <p class="text-sm text-slate-600">
+                            주은쌤 사이트의 핵심 메뉴인 웹학습에서 스마트피아노·스마트드럼·아트톡톡 기반 E-플레이, E-러닝, E-게임 콘텐츠를 다수 직접 제작했습니다.
+                            기획, 화면 구성, 학습 흐름, 테스트, 운영 반영까지 맡아 교육 현장에서 바로 사용할 수 있는 웹학습 경험으로 검증했습니다.
+                        </p>
+                        <div class="overflow-hidden rounded-lg border border-blue-100 bg-blue-50">
+                            <img src="images/portfolio/jueunssam-web-learning-cards.png" alt="주은쌤 웹학습 콘텐츠 카드 화면" class="w-full h-auto object-cover">
+                        </div>
+                        <div class="pt-3 border-t border-slate-100">
+                            <span class="text-xs font-bold text-blue-600 uppercase">Focus:</span>
+                            <span class="text-sm text-slate-800 font-medium ml-1">웹학습 콘텐츠 제작, 학습 흐름 설계, 현장 피드백 기반 개선</span>
+                        </div>
+                    </div>
+                    <div class="project-meta">
+                        <span><strong>역할:</strong> 웹학습 기획, 콘텐츠 제작, AI 활용 설계, 운영 검증, 개선 관리</span>
+                    </div>
+                </div>
+
+                <!-- Project: 스마트 드럼 -->
+                <div class="project-card rounded-xl p-6 md:p-8">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2">
+                        <h3 class="text-lg font-bold text-slate-800">스마트 드럼</h3>
+                        <span class="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded">2025.05 ~ 2025.06</span>
+                    </div>
+                    <div class="space-y-4">
+                         <div class="flex flex-wrap gap-2 mb-2">
+                            <span class="badge-outline">고도화</span>
+                            <span class="badge-outline">PMO</span>
+                        </div>
+                        <p class="text-sm text-slate-600">기존 솔루션 고도화 전략 수립 및 유관부서 커뮤니케이션 총괄</p>
+                         <div class="pt-3 border-t border-slate-100">
+                            <span class="text-xs font-bold text-blue-600 uppercase">성과:</span>
+                            <span class="text-sm text-slate-800 font-medium ml-1">초등학교 및 특수학교 납품 성공</span>
+                        </div>
+                    </div>
+                    <!-- Unified Footer -->
+                    <div class="project-meta">
+                        <span><strong>기간:</strong> 2025.05 ~ 2025.06</span>
+                        <span class="mx-1 text-slate-300">|</span>
+                        <span><strong>역할:</strong> PMO, 고도화 기획, 커뮤니케이션</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Coinevest Section -->
+        <div id="company-coinevest" class="company-section reveal-text mt-12">
+            <div class="company-marker bg-white border-slate-300"></div>
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-slate-800">주식회사 코인베스트</h2>
+                <p class="text-slate-500 text-sm mt-1">2020.10 ~ 2024.09</p>
+            </div>
+
+            <div class="grid gap-6">
+                <!-- Project: 메타쿱 관련 (클릭 라이브커머스, 상생배달, 홀빅 페이스터) -->
+                <div id="meta-platform" class="project-card rounded-xl p-6 md:p-8 border-l-4 border-l-purple-500 bg-purple-50/10">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between mb-2">
+                        <h3 class="text-xl font-bold text-slate-900">클릭 라이브커머스 / 상생배달 / 홀빅 페이스터</h3>
+                        <span class="text-xs font-medium text-slate-500">2023.11 ~ 2025.03</span>
+                    </div>
+                    <p class="text-sm text-slate-500 mb-6">메타쿱 관련 서비스 아키텍처 및 플랫폼 기획</p>
+
+                    <div class="space-y-6">
+                        <!-- Sub Item -->
+                        <div>
+                            <h4 class="text-sm font-bold text-purple-700 mb-1">클릭 라이브커머스</h4>
+                            <p class="text-sm text-slate-600 mb-2">포인트 충전/소모 기반의 방송 송출 서비스</p>
+                            <ul class="text-xs text-slate-500 list-disc list-inside">
+                                <li>A/B 테스트를 통한 UI 최적화</li>
+                                <li>APP/WEB 디자인(80%) 및 기능 명세</li>
+                            </ul>
+                        </div>
+                        <hr class="border-slate-100">
+                        <!-- Sub Item -->
+                        <div>
+                            <h4 class="text-sm font-bold text-purple-700 mb-1">상생배달 플랫폼</h4>
+                            <p class="text-sm text-slate-600 mb-2">사장님 전용 앱/웹 UX 재구성</p>
+                            <ul class="text-xs text-slate-500 list-disc list-inside">
+                                <li>업무용 시스템 개선을 통한 편의성 향상</li>
+                                <li>영상 콘텐츠 제작 포함</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- Unified Footer -->
+                    <div class="project-meta border-t-purple-200 mt-6">
+                        <span><strong>기간:</strong> 2023.11 ~ 2025.03</span>
+                        <span class="mx-1 text-purple-300">|</span>
+                        <span><strong>역할:</strong> 서비스 기획, UI/UX 설계, APP/WEB 디자인(80%), QA</span>
+                    </div>
+                </div>
+
+                <!-- Project: 메타마피아 -->
+                <div class="project-card rounded-xl p-6 md:p-8">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800">메타마피아 (Meta Mafia)</h3>
+                            <p class="text-sm text-slate-500">윤지성 모델 NFT 기반 커뮤니티 서비스</p>
+                        </div>
+                        <span class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded">2022.04 ~ 2024.12</span>
+                    </div>
+                    <div class="flex gap-4 items-center bg-slate-50 p-3 rounded mb-2">
+                        <i class="fas fa-trophy text-yellow-500"></i>
+                        <span class="text-sm font-bold text-slate-700">MAF 코인 해외거래소 상장 기여</span>
+                    </div>
+                    <!-- Unified Footer -->
+                    <div class="project-meta">
+                        <span><strong>기간:</strong> 2022.04 ~ 2024.12</span>
+                        <span class="mx-1 text-slate-300">|</span>
+                        <span><strong>역할:</strong> 기획, UI/UX 설계, 디자인(80%), QA</span>
+                    </div>
+                </div>
+
+                <!-- Project: DRK 의료서비스 -->
+                <div class="project-card rounded-xl p-6 md:p-8">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800">DRK 의료서비스</h3>
+                            <p class="text-sm text-slate-500">당뇨 환우를 위한 건강 관리 및 리워드 앱</p>
+                        </div>
+                        <span class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded">2023.05 ~ 2024.02</span>
+                    </div>
+                     <ul class="text-sm text-slate-600 space-y-1 list-disc list-inside mb-2">
+                        <li>당뇨 수치, 칼로리 분석, 산소포화도 예측 로직 기획</li>
+                        <li>병원 예약 시스템 UX 재구성을 통한 관리자 편의성 증대</li>
+                    </ul>
+                    <!-- Unified Footer -->
+                    <div class="project-meta">
+                        <span><strong>기간:</strong> 2023.05 ~ 2024.02</span>
+                        <span class="mx-1 text-slate-300">|</span>
+                        <span><strong>역할:</strong> 기획, UI/UX 설계, 디자인(50%), QA</span>
+                    </div>
+                </div>
+                
+                 <!-- Project: 결제나라 -->
+                <div class="project-card rounded-xl p-6 md:p-8">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800">결제나라</h3>
+                            <p class="text-sm text-slate-500">립페이 간편결제 및 PG 솔루션</p>
+                        </div>
+                        <span class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded">2021 ~ 2022</span>
+                    </div>
+                    <div class="text-sm text-slate-600 mb-2">
+                        <p class="mb-2">삼성 디자인 가이드라인 분석 적용 및 프로토타이핑을 통한 초기 문제점 50% 사전 발굴 성과.</p>
+                    </div>
+                    <!-- Unified Footer -->
+                    <div class="project-meta">
+                        <span><strong>기간:</strong> 2021 ~ 2022</span>
+                        <span class="mx-1 text-slate-300">|</span>
+                        <span><strong>역할:</strong> 기획, UI/UX 설계, 디자인(80%), QA</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. J-Corp Section (Selected Highlights) -->
+        <div id="company-jcorp" class="company-section reveal-text mt-12">
+            <div class="company-marker bg-white border-slate-300"></div>
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-slate-800">제이코프</h2>
+                <p class="text-slate-500 text-sm mt-1">2011.11 ~ 2019.11</p>
+                <p class="text-xs text-slate-400 mt-2">※ 주요 프로젝트 위주로 기술되었습니다.</p>
+            </div>
+
+            <div class="grid gap-6">
+                <!-- Highlight Project: 카택스 -->
+                <div id="cartax-main" class="project-card rounded-xl p-6 md:p-8 border-l-4 border-l-blue-600 relative overflow-hidden">
+                     <div class="absolute right-0 top-0 p-6 opacity-5">
+                        <i class="fas fa-car text-6xl text-blue-900"></i>
+                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2 relative z-10">
+                        <h3 class="text-xl font-bold text-slate-900">차량운행일지 - 카택스 (Cartax)</h3>
+                        <span class="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">Signature Project</span>
+                    </div>
+                    <div class="mb-4 relative z-10">
+                        <p class="text-sm text-slate-700 leading-relaxed font-medium">
+                            별도 단말기 없이 스마트폰만으로 차량 운행일지를 자동 작성하는 국내 1위 서비스
+                        </p>
+                    </div>
+                    <div class="bg-blue-50/50 rounded-lg p-4 border border-blue-100 relative z-10 mb-4">
+                        <span class="text-xs font-bold text-blue-800 uppercase block mb-2">Achievements</span>
+                        <ul class="text-sm text-slate-700 space-y-2">
+                            <li class="flex items-start gap-2">
+                                <i class="fas fa-star text-blue-500 mt-1"></i>
+                                <span>삼성웰스토리, 신세계푸드, 다우기술 등 다수 대기업 계약 체결</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="fas fa-star text-blue-500 mt-1"></i>
+                                <span>당시 누적 기업 가입수 8만개 돌파 및 B2B 시장 선점</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <!-- Unified Footer -->
+                    <div class="project-meta relative z-10">
+                        <span><strong>기간:</strong> 2016.03 ~ 2019.11</span>
+                        <span class="mx-1 text-slate-300">|</span>
+                        <!-- Added Design -->
+                        <span><strong>역할:</strong> 기획 총괄, UI/UX 설계, 디자인, QA</span>
+                    </div>
+                </div>
+
+                 <!-- Highlight Project: 스마트 에스원 (New Big Card) -->
+                 <div id="smart-s1" class="project-card rounded-xl p-6 md:p-8 border-l-4 border-l-cyan-500 relative overflow-hidden">
+                    <div class="absolute right-0 top-0 p-6 opacity-5">
+                       <i class="fas fa-shield-alt text-6xl text-cyan-900"></i>
+                   </div>
+                   <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2 relative z-10">
+                       <h3 class="text-xl font-bold text-slate-900">스마트 에스원 (Smart S1)</h3>
+                       <span class="text-xs font-bold text-cyan-600 bg-cyan-50 px-3 py-1 rounded-full border border-cyan-100">Major Project</span>
+                   </div>
+                   <div class="mb-4 relative z-10">
+                       <p class="text-sm text-slate-700 leading-relaxed font-medium">
+                        보안 전문 기업 에스원의 삼성 계열 최초 모바일 셀링 서비스 기획
+                       </p>
+                   </div>
+                   <div class="bg-cyan-50/50 rounded-lg p-4 border border-cyan-100 relative z-10 mb-4">
+                       <span class="text-xs font-bold text-cyan-800 uppercase block mb-2">Achievements</span>
+                       <ul class="text-sm text-slate-700 space-y-2">
+                           <li class="flex items-start gap-2">
+                               <i class="fas fa-check-circle text-cyan-500 mt-1"></i>
+                               <span>기존 틀을 탈피한 혁신적 UI 설계</span>
+                           </li>
+                           <li class="flex items-start gap-2">
+                               <i class="fas fa-check-circle text-cyan-500 mt-1"></i>
+                               <span>실무자 업무 효율 향상 및 탁월한 편의성 제공</span>
+                           </li>
+                       </ul>
+                   </div>
+                   <!-- Unified Footer -->
+                   <div class="project-meta relative z-10">
+                       <span><strong>기간:</strong> 2012.04 ~ 2012.07</span>
+                       <span class="mx-1 text-slate-300">|</span>
+                       <span><strong>역할:</strong> 요구사항 정의, UI/UX 설계, QA</span>
+                   </div>
+               </div>
+
+               <!-- Highlight Project: 말?말!말. (New Big Card) -->
+               <div id="word-app" class="project-card rounded-xl p-6 md:p-8 border-l-4 border-l-pink-500 relative overflow-hidden">
+                    <div class="absolute right-0 top-0 p-6 opacity-5">
+                    <i class="fas fa-comments text-6xl text-pink-900"></i>
+                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2 relative z-10">
+                        <h3 class="text-xl font-bold text-slate-900">말?말!말. (언어재활 솔루션)</h3>
+                        <span class="text-xs font-bold text-pink-600 bg-pink-50 px-3 py-1 rounded-full border border-pink-100">Major Project</span>
+                    </div>
+                    <div class="mb-4 relative z-10">
+                        <p class="text-sm text-slate-700 leading-relaxed font-medium">
+                            제이코프에서 진행한 태블릿 기반 언어 치료 및 재활 훈련 지원사업 서비스 (언어/음성/청각 훈련)
+                        </p>
+                    </div>
+                    <div class="mb-4 overflow-hidden rounded-lg border border-pink-100 bg-white relative z-10">
+                        <img src="images/portfolio/crops/jcorp-malmalmal-device.png" alt="말말말 언어재활 지원사업 서비스 화면" class="w-full h-auto object-contain">
+                    </div>
+                    <div class="bg-pink-50/50 rounded-lg p-4 border border-pink-100 relative z-10 mb-4">
+                        <span class="text-xs font-bold text-pink-800 uppercase block mb-2">Achievements</span>
+                        <ul class="text-sm text-slate-700 space-y-2">
+                            <li class="flex items-start gap-2">
+                                <i class="fas fa-trophy text-pink-500 mt-1"></i>
+                                <span>정부 지원사업 및 정보통신 보조기기 사업 선정</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="fas fa-user-md text-pink-500 mt-1"></i>
+                                <span>언어재활 전문가와 협업을 통한 전문적 UX 설계</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <!-- Unified Footer -->
+                    <div class="project-meta relative z-10">
+                        <span><strong>기간:</strong> 2014.03 ~ 2015.09</span>
+                        <span class="mx-1 text-slate-300">|</span>
+                        <!-- Added Design -->
+                        <span><strong>역할:</strong> 기능명세, UI/UX 설계, 디자인, QA</span>
+                    </div>
+                </div>
+
+                <!-- Grid for smaller projects -->
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- 힐링타임 -->
+                    <div class="project-card p-6 rounded-xl">
+                        <h4 class="font-bold text-slate-800 mb-1">힐링타임</h4>
+                        <p class="text-xs text-slate-500 mb-3">날씨 기반 감성 큐레이션 앱 (2012)</p>
+                        <p class="text-sm text-slate-600">코리아 모바일 어워드 '혁신상' 수상<br>티스토어 유료앱 4위 달성</p>
+                    </div>
+
+                    <!-- 더더더 -->
+                    <div class="project-card p-6 rounded-xl">
+                        <h4 class="font-bold text-slate-800 mb-1">더더더</h4>
+                        <p class="text-xs text-slate-500 mb-3">교통 정보 실시간 SNS (2013~2014)</p>
+                        <p class="text-sm text-slate-600">다운로드 200만 돌파, 대규모 트래픽 UI/UX 최적화</p>
+                    </div>
+                </div>
+
+                <!-- Other projects list -->
+                <div class="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-100">
+                    <p class="text-xs font-bold text-slate-400 mb-3 uppercase">Other Projects</p>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="px-2 py-1 bg-white border border-slate-200 rounded text-xs text-slate-600">티그림 (2023)</span>
+                        <span class="px-2 py-1 bg-white border border-slate-200 rounded text-xs text-slate-600">김찰스 (2023)</span>
+                        <span class="px-2 py-1 bg-white border border-slate-200 rounded text-xs text-slate-600">맘서치 (2014)</span>
+                        <span class="px-2 py-1 bg-white border border-slate-200 rounded text-xs text-slate-600">CLASS U (2014)</span>
+                        <span class="px-2 py-1 bg-white border border-slate-200 rounded text-xs text-slate-600">알스크랩 (2012)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Bottom Navigation Bar (Fixed) -->
+    <div class="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur border-t border-slate-200 z-50 px-4 py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:hidden">
+        <div class="flex justify-between gap-2 overflow-x-auto pb-1 no-scrollbar">
+            <a href="#jooeun-collab" class="nav-link flex-shrink-0 px-4 py-2 bg-blue-50 text-blue-700 text-xs font-bold rounded-lg whitespace-nowrap border border-blue-100">
+                주은교육
+            </a>
+            <a href="#meta-platform" class="nav-link flex-shrink-0 px-4 py-2 bg-purple-50 text-purple-700 text-xs font-bold rounded-lg whitespace-nowrap border border-purple-100">
+                메타쿱
+            </a>
+            <a href="#cartax-main" class="nav-link flex-shrink-0 px-4 py-2 bg-slate-50 text-slate-700 text-xs font-bold rounded-lg whitespace-nowrap border border-slate-200">
+                카택스
+            </a>
+             <a href="#smart-s1" class="nav-link flex-shrink-0 px-4 py-2 bg-cyan-50 text-cyan-700 text-xs font-bold rounded-lg whitespace-nowrap border border-cyan-200">
+                에스원
+            </a>
+        </div>
+    </div>
+    
+    <!-- Desktop Bottom Nav -->
+    <div class="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur border-t border-slate-200 z-40 px-6 py-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] hidden md:block">
+        <div class="max-w-5xl mx-auto flex items-center justify-between">
+            <span class="text-sm font-bold text-slate-400 uppercase tracking-wider">Quick Navigation</span>
+            <div class="flex gap-3">
+                 <a href="#jooeun-collab" class="nav-link px-4 py-2 bg-blue-50 text-blue-700 text-xs font-bold rounded-lg border border-blue-100 hover:bg-blue-100 transition-colors">
+                    주은교육
+                </a>
+                <a href="#meta-platform" class="nav-link px-4 py-2 bg-purple-50 text-purple-700 text-xs font-bold rounded-lg border border-purple-100 hover:bg-purple-100 transition-colors">
+                    메타쿱
+                </a>
+                <a href="#cartax-main" class="nav-link px-4 py-2 bg-slate-50 text-slate-700 text-xs font-bold rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors">
+                    카택스
+                </a>
+                <a href="#smart-s1" class="nav-link px-4 py-2 bg-cyan-50 text-cyan-700 text-xs font-bold rounded-lg border border-cyan-200 hover:bg-cyan-100 transition-colors">
+                    스마트에스원
+                </a>
+                <a href="#word-app" class="nav-link px-4 py-2 bg-pink-50 text-pink-700 text-xs font-bold rounded-lg border border-pink-200 hover:bg-pink-100 transition-colors">
+                    말?말!말.
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scroll to Top Button -->
+    <button id="topBtn" onclick="scrollToTop()" class="top-btn" title="Go to top">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <script>
+        // Reveal Animation
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: "0px 0px -50px 0px"
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.reveal-text').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Scroll to Top
+        const topBtn = document.getElementById("topBtn");
+        window.onscroll = function() {
+            if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+                topBtn.classList.add("show");
+            } else {
+                topBtn.classList.remove("show");
+            }
+        };
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Leave space for the fixed header when jumping to project details.
+        document.querySelectorAll('.nav-link').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const targetElement = document.getElementById(this.getAttribute('href').slice(1));
+                if (!targetElement) return;
+                e.preventDefault();
+                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+    </script>
+</body>
+</html>

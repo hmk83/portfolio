@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>베토벤과 함께하는 음표, 쉼표 퀴즈!</title>
+
+    <script src="https://unpkg.com/tone"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Leland 폰트 적용 (GitHub CDN) */
+        @font-face {
+            font-family: "Leland";
+            src: url("https://cdn.jsdelivr.net/gh/MuseScoreFonts/Leland@master/Leland.otf") format("opentype");
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        @font-face {
+            font-family: 'Giants';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2307-1@1.1/Giants-Regular.woff2') format('woff2');
+            font-weight: 400;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: 'Giants';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2307-1@1.1/Giants-Bold.woff2') format('woff2');
+            font-weight: 700;
+            font-display: swap;
+        }
+
+        :root {
+            --gnb-height: 70px;
+            --app-bg: #1e1b4b;
+            --p1-color: #0ea5e9;
+            --p1-shadow: #0369a1;
+            --p2-color: #f43f5e;
+            --p2-shadow: #be123c;
+        }
+
+        body {
+            font-family: 'Jua', sans-serif;
+            background: var(--app-bg);
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(236, 72, 153, 0.15) 0%, transparent 50%);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            height: 100vh;
+            width: 100vw;
+            color: #334155;
+        }
+
+        #gnb {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: var(--gnb-height);
+            background: linear-gradient(90deg, #312e81, #4c1d95);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #gnb h1 {
+            color: #fff;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            margin: 0;
+        }
+
+        #gnb i {
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+        }
+
+        .btn-restart {
+            background: linear-gradient(180deg, #8b5cf6 0%, #6d28d9 100%);
+            color: white;
+            border-radius: 999px;
+            padding: 8px 24px;
+            font-size: 18px;
+            font-weight: bold;
+            box-shadow: 0 4px 0 #4c1d95;
+            transition: all 0.1s;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-restart:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #4c1d95;
+        }
+
+        .btn-exit {
+            background: linear-gradient(180deg, #f43f5e 0%, #e11d48 100%);
+            color: white;
+            border-radius: 999px;
+            padding: 8px 24px;
+            font-size: 18px;
+            font-weight: bold;
+            box-shadow: 0 4px 0 #9f1239;
+            transition: all 0.1s;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-exit:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #9f1239;
+        }
+
+        #game-container {
+            position: absolute;
+            top: var(--gnb-height);
+            left: 0;
+            width: 100%;
+            height: calc(100vh - var(--gnb-height));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #scalable-wrapper {
+            width: 1280px;
+            height: 720px;
+            position: relative;
+            transform-origin: center center;
+            background: url('https://www.transparenttextures.com/patterns/cubes.png'), linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 0 0 8px rgba(255, 255, 255, 0.1);
+            border-radius: 32px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .instruction-bar {
+            height: 80px;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            z-index: 20;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        #instruction-text {
+            color: #f8fafc;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            font-size: 28px;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+
+        .mascot-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #fbbf24;
+            border: 4px solid #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .main-stage {
+            flex-grow: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px;
+        }
+
+        /* Leland 음악 폰트 스타일 */
+        .music-font {
+            font-family: "Leland";
+            font-size: 110px;
+            line-height: 1;
+            display: inline-block;
+            color: #0f172a;
+            filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2));
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            margin-top: 20px;
+        }
+
+        .card-panel:hover .music-font {
+            transform: scale(1.1);
+        }
+
+        /* 버저 UI */
+        .buzzer-container {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 40px;
+            z-index: 10;
+        }
+
+        .buzzer-btn {
+            width: 200px;
+            height: 180px;
+            border-radius: 50%;
+            pointer-events: auto;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            transition: all 0.1s ease-out;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            border: none;
+            margin-bottom: 20px;
+        }
+
+        .buzzer-p1 {
+            background: #3b82f6;
+            background-image: linear-gradient(to bottom, #3b82f6 0%, #2563eb 100%);
+            box-shadow: 0 20px #1d4ed8;
+        }
+
+        .buzzer-p2 {
+            background: #ec4899;
+            background-image: linear-gradient(to bottom, #ec4899 0%, #db2777 100%);
+            box-shadow: 0 20px #be185d;
+        }
+
+        .buzzer-btn:active,
+        .buzzer-btn.buzzer-active {
+            transform: translateY(20px);
+        }
+
+        .buzzer-p1:active,
+        .buzzer-p1.buzzer-active {
+            box-shadow: 0 0 #1d4ed8;
+        }
+
+        .buzzer-p2:active,
+        .buzzer-p2.buzzer-active {
+            box-shadow: 0 0 #be185d;
+        }
+
+        .buzzer-p1.penalty,
+        .buzzer-p2.penalty {
+            filter: grayscale(1) brightness(0.5);
+            opacity: 0.5;
+            pointer-events: none;
+            box-shadow: 0 0 transparent;
+            transform: translateY(20px);
+        }
+
+        .buzzer-active {
+            animation: buzzer-glow 0.5s infinite alternate;
+        }
+
+        @keyframes buzzer-glow {
+            from {
+                filter: brightness(1);
+            }
+
+            to {
+                filter: brightness(1.3) drop-shadow(0 0 20px rgba(255, 255, 255, 0.5));
+            }
+        }
+
+        /* 퀴즈 UI */
+        .card-panel {
+            width: 260px;
+            height: 260px;
+            background: radial-gradient(circle at top left, #ffffff, #f1f5f9);
+            border-radius: 40px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3), inset 0 8px 0 rgba(255, 255, 255, 1);
+            border: 6px solid rgba(255, 255, 255, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 15;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        #timer-gauge-container {
+            width: 400px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 30px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5), 0 2px 0 rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            z-index: 15;
+        }
+
+        #timer-gauge-bar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #4ade80, #22c55e);
+            transition: width 5s linear, background-color 5s linear;
+            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.4);
+            border-radius: 8px;
+        }
+
+        /* Striped effect for timer */
+        #timer-gauge-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background-image: linear-gradient(45deg,
+                    rgba(255, 255, 255, 0.15) 25%,
+                    transparent 25%,
+                    transparent 50%,
+                    rgba(255, 255, 255, 0.15) 50%,
+                    rgba(255, 255, 255, 0.15) 75%,
+                    transparent 75%,
+                    transparent);
+            background-size: 20px 20px;
+            animation: move-stripes 1s linear infinite;
+        }
+
+        @keyframes move-stripes {
+            0% {
+                background-position: 0 0;
+            }
+
+            100% {
+                background-position: 20px 0;
+            }
+        }
+
+        .choices-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            width: 100%;
+            max-width: 640px;
+            z-index: 50;
+        }
+
+        .quiz-btn {
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 20px;
+            padding: 16px;
+            font-size: 26px;
+            font-weight: bold;
+            box-shadow: 0 8px 0 #94a3b8, 0 10px 15px rgba(0, 0, 0, 0.2), inset 0 4px 0 rgba(255, 255, 255, 1);
+            border: 4px solid #cbd5e1;
+            transition: all 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            color: #1e293b;
+            cursor: pointer;
+            text-align: center;
+            position: relative;
+            word-break: keep-all;
+            white-space: nowrap;
+        }
+
+        .quiz-btn:active {
+            transform: translateY(10px);
+            box-shadow: 0 0 0 #94a3b8, 0 5px 10px rgba(0, 0, 0, 0.2), inset 0 4px 0 rgba(255, 255, 255, 1);
+        }
+
+        .quiz-btn:hover:not(.disabled) {
+            border-color: #60a5fa;
+            background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+        }
+
+        .quiz-btn.disabled {
+            opacity: 0.6;
+            filter: grayscale(0.8);
+            pointer-events: none;
+            box-shadow: 0 6px 0 #94a3b8, inset 0 4px 0 rgba(255, 255, 255, 0.5);
+            transform: translateY(4px);
+        }
+
+        .score-badge {
+            position: absolute;
+            top: 30px;
+            font-size: 48px;
+            font-weight: 900;
+            padding: 10px 40px;
+            border-radius: 40px;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.2);
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            z-index: 15;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .score-p1 {
+            left: 50px;
+            color: #38bdf8;
+            border-bottom: 6px solid #0284c7;
+        }
+
+        .score-p2 {
+            right: 50px;
+            color: #fb7185;
+            border-bottom: 6px solid #e11d48;
+        }
+
+        /* 팝업 텍스트 연출 */
+        .popup-text {
+            position: absolute;
+            bottom: 5%;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            font-family: 'Giants', sans-serif;
+            font-size: 100px;
+            font-weight: 700;
+            font-style: italic;
+            text-transform: uppercase;
+            color: white;
+            z-index: 2000;
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center;
+        }
+
+        .popup-text.show {
+            transform: translateX(-50%) scale(1);
+            opacity: 1;
+        }
+
+        .popup-oops {
+            color: #ef4444;
+            -webkit-text-stroke: 4px #7f1d1d;
+            text-shadow: 8px 8px 0 #450a0a, 0 0 30px rgba(239, 68, 68, 0.8);
+        }
+
+        .popup-correct {
+            color: #22c55e;
+            -webkit-text-stroke: 4px #14532d;
+            text-shadow: 8px 8px 0 #064e3b, 0 0 30px rgba(34, 197, 94, 0.8);
+        }
+
+        .wrong-shake {
+            animation: shake 0.5s both;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            10%,
+            30%,
+            50%,
+            70%,
+            90% {
+                transform: translateX(-15px);
+            }
+
+            20%,
+            40%,
+            60%,
+            80% {
+                transform: translateX(15px);
+            }
+        }
+
+        .overlay-screen {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(30, 27, 75, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+            backdrop-filter: blur(10px);
+            z-index: 500;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .intro-title {
+            font-size: 80px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5), 0 10px 0 #4c1d95;
+            margin-bottom: 20px;
+            letter-spacing: -2px;
+            text-align: center;
+        }
+
+        .intro-desc {
+            font-size: 32px;
+            color: #94a3b8;
+            margin-bottom: 50px;
+            text-align: center;
+            line-height: 1.6;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .mode-btn {
+            font-size: 36px;
+            padding: 24px 48px;
+            border-radius: 40px;
+            font-weight: 900;
+            color: white;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border: 6px solid rgba(255, 255, 255, 0.2);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+        }
+
+        .mode-btn-1 {
+            background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+            box-shadow: 0 15px 0 #0369a1, 0 20px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .mode-btn-2 {
+            background: linear-gradient(180deg, #fb7185 0%, #e11d48 100%);
+            box-shadow: 0 15px 0 #be123c, 0 20px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .mode-btn:active {
+            transform: translateY(15px);
+            box-shadow: 0 0 0 transparent, 0 5px 10px rgba(0, 0, 0, 0.4);
+        }
+
+        .end-card {
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            padding: 60px;
+            border-radius: 60px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5), inset 0 10px 0 rgba(255, 255, 255, 1);
+            border: 12px solid #fbbf24;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 800px;
+            width: 90%;
+            animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .end-card h2 {
+            font-size: 80px;
+            font-weight: 900;
+            color: #1e293b;
+            text-shadow: 0 4px 0 #cbd5e1;
+            margin-bottom: 20px;
+            margin-top: 0;
+        }
+
+        .end-card .end-msg {
+            font-size: 40px;
+            color: #64748b;
+            margin-bottom: 40px;
+            font-weight: bold;
+        }
+
+        .restart-btn {
+            background: linear-gradient(180deg, #6366f1 0%, #4338ca 100%);
+            color: white;
+            padding: 24px 60px;
+            border-radius: 50px;
+            font-size: 40px;
+            font-weight: 900;
+            box-shadow: 0 12px 0 #312e81, 0 20px 30px rgba(0, 0, 0, 0.3);
+            transition: all 0.1s;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+        }
+
+        .restart-btn:active {
+            transform: translateY(12px);
+            box-shadow: 0 0 0 #312e81, 0 5px 10px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav id="gnb">
+        <div class="flex items-center gap-3">
+            <h1 class="text-3xl font-black flex items-center gap-2">
+                <i data-lucide="gamepad-2" class="text-pink-400 w-10 h-10"></i>
+                <span>베토벤과 함께하는 음표, 쉼표 퀴즈!</span>
+            </h1>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="location.reload()" class="btn-restart flex items-center gap-2">
+                <i data-lucide="rotate-ccw" class="w-5 h-5"></i> 다시하기
+            </button>
+            <button onclick="document.getElementById('exit-modal').classList.remove('hidden')" class="btn-exit flex items-center gap-2">
+                <i data-lucide="log-out" class="w-5 h-5"></i> 종료
+            </button>
+        </div>
+    </nav>
+
+    <div id="game-container">
+        <div id="scalable-wrapper">
+            <canvas id="confetti" class="absolute inset-0 pointer-events-none z-[3000]"></canvas>
+            <div id="feedback-popup" class="popup-text"></div>
+
+            <img id="character-img" src="images/Beethoven-01_1x.webp"
+                class="absolute right-10 bottom-0 h-2/3 object-contain z-[100] hidden" style="pointer-events: none;">
+
+            <div class="instruction-bar">
+                <div class="mascot-icon">
+                    <i id="mascot-lucide" data-lucide="smile" class="text-slate-800 w-8 h-8"></i>
+                </div>
+                <p id="instruction-text">모드를 선택해주세요!</p>
+            </div>
+
+            <div id="main-stage" class="main-stage hidden">
+                <div id="p1-score-display" class="score-badge score-p1">플레이어.1: 0</div>
+                <div id="p2-score-display" class="score-badge score-p2 hidden">플레이어.2: 0</div>
+
+                <div id="buzzer-container" class="buzzer-container hidden">
+                    <div id="buzzer-p1" class="buzzer-btn buzzer-p1" onclick="triggerBuzzer(1)">
+                        <i data-lucide="zap" class="w-16 h-16 mb-2"></i>
+                        <span>플레이어.1 버저</span>
+                        <span class="text-lg mt-1 opacity-80">(Space)</span>
+                    </div>
+                    <div id="buzzer-p2" class="buzzer-btn buzzer-p2" onclick="triggerBuzzer(2)">
+                        <i data-lucide="zap" class="w-16 h-16 mb-2"></i>
+                        <span>플레이어.2 버저</span>
+                        <span class="text-lg mt-1 opacity-80">(Enter)</span>
+                    </div>
+                </div>
+
+                <div id="card-panel" class="card-panel">
+                    <!-- Leland Font Character Injected Here -->
+                </div>
+
+                <div id="timer-gauge-container">
+                    <div id="timer-gauge-bar"></div>
+                </div>
+
+                <div id="choices-grid" class="choices-grid">
+                </div>
+            </div>
+
+            <div id="intro-screen" class="overlay-screen">
+                <div class="mb-8 animate-bounce">
+                    <i data-lucide="music" class="w-32 h-32 text-pink-500 drop-shadow-[0_10px_0_#be185d]"></i>
+                </div>
+                <h1 class="intro-title">베토벤과 함께하는<br>음표, 쉼표 퀴즈!</h1>
+                <p class="intro-desc">
+                    음표와 쉼표의 이름을 맞춰보세요!<br>먼저 버저를 누른 뒤 5초 안에 정답을 골라야 합니다.
+                </p>
+                <div class="flex gap-8">
+                    <button onclick="startGame(1)" class="mode-btn mode-btn-1">
+                        혼자 플레이 <i data-lucide="user" class="w-10 h-10"></i>
+                    </button>
+                    <button onclick="startGame(2)" class="mode-btn mode-btn-2">
+                        2인 대결 <i data-lucide="users" class="w-10 h-10"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="p2-intro-screen" class="overlay-screen hidden">
+                <div class="end-card" style="border-color: #ec4899; max-width: 600px; padding: 50px;">
+                    <h2 style="font-size: 48px; margin-bottom: 30px; text-align: center;">2인 대결 방법</h2>
+                    <div class="flex gap-6 w-full justify-center mb-8">
+                        <div
+                            class="flex flex-col items-center p-6 bg-sky-50 rounded-3xl border-4 border-sky-200 w-1/2 text-center">
+                            <div class="text-2xl font-bold text-sky-600 mb-2">플레이어.1<br>(왼쪽)</div>
+                            <div class="px-6 py-3 bg-sky-500 text-white font-bold rounded-xl shadow-lg mt-2">SPACE</div>
+                        </div>
+                        <div
+                            class="flex flex-col items-center p-6 bg-rose-50 rounded-3xl border-4 border-rose-200 w-1/2 text-center">
+                            <div class="text-2xl font-bold text-rose-600 mb-2">플레이어.2<br>(오른쪽)</div>
+                            <div class="px-6 py-3 bg-rose-500 text-white font-bold rounded-xl shadow-lg mt-2">ENTER
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-2xl text-slate-600 text-center mb-8 font-medium" style="line-height: 1.4;">
+                        먼저 버저를 누른 플레이어가<br>정답을 맞출 수 있습니다!
+                    </p>
+                    <button onclick="start2PGame()" class="mode-btn mode-btn-2"
+                        style="font-size: 28px; padding: 16px 40px;">
+                        시작하기 <i data-lucide="play" class="w-8 h-8"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="end-screen" class="overlay-screen hidden">
+                <div class="end-card">
+                    <div
+                        class="w-48 h-48 rounded-full overflow-hidden border-8 border-yellow-400 mb-6 shadow-2xl bg-slate-50 flex items-center justify-center">
+                        <img src="images/Beethoven-01_1x.webp" class="w-full h-full object-cover object-top"
+                            style="transform: scale(1.2) translateY(10%);">
+                    </div>
+                    <h2 id="end-title">승리!</h2>
+                    <div id="end-msg" class="end-msg">훌륭한 실력이에요!</div>
+                    <button onclick="location.reload()" class="restart-btn flex items-center gap-4">
+                        처음으로 <i data-lucide="refresh-cw" class="w-10 h-10"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="exit-modal" class="overlay-screen hidden" style="z-index: 6000;">
+                <div class="end-card" style="border-color: #f43f5e; max-width: 500px; padding: 40px;">
+                    <div class="mb-6 animate-bounce">
+                        <i data-lucide="alert-circle" class="w-24 h-24 text-rose-500 drop-shadow-md"></i>
+                    </div>
+                    <h2 style="font-size: 36px; margin-bottom: 30px; text-align: center; color: #1e293b;">학습을 종료하겠습니까?</h2>
+                    <div class="flex gap-4 mt-4 w-full justify-center">
+                        <button onclick="document.getElementById('exit-modal').classList.add('hidden')" class="quiz-btn" style="padding: 16px 32px; font-size: 24px; min-width: 140px; margin: 0;">
+                            취소
+                        </button>
+                        <button onclick="history.back()" class="mode-btn mode-btn-2" style="padding: 16px 32px; font-size: 24px; min-width: 140px; justify-content: center; margin: 0;">
+                            확인
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Leland Unicode Mapping (SMuFL)
+        const ITEMS = [
+            { id: "n1", name: "온음표", char: "\uE1D2", beats: "4박자", markType: "4", isRest: false },
+            { id: "n2", name: "점2분음표", char: "<span class='relative inline-block'>\uE1D3<span class='absolute' style='left:0.6em; bottom:0.05em; font-size:0.6em;'>\uE1E7</span></span>", beats: "3박자", markType: "3", isRest: false },
+            { id: "n3", name: "2분음표", char: "\uE1D3", beats: "2박자", markType: "2", isRest: false },
+            { id: "n4", name: "점4분음표", char: "<span class='relative inline-block'>\uE1D5<span class='absolute' style='left:0.6em; bottom:0.05em; font-size:0.6em;'>\uE1E7</span></span>", beats: "1박자반", markType: "1.5", isRest: false },
+            { id: "n5", name: "4분음표", char: "\uE1D5", beats: "1박자", markType: "1", isRest: false },
+            { id: "n6", name: "8분음표", char: "\uE1D7", beats: "반박자", markType: "0.5", isRest: false },
+            { id: "n7", name: "16분음표", char: "\uE1D9", beats: "반의반박자", markType: "0.25", isRest: false },
+            { id: "r1", name: "온쉼표", char: "\uE4F4", beats: "4박자", markType: "4", isRest: true },
+            { id: "r2", name: "점2분쉼표", char: "<span class='relative inline-block'>\uE4F5<span class='absolute' style='left:1.1em; top:0.2em; font-size:0.6em;'>\uE1E7</span></span>", beats: "3박자", markType: "3", isRest: true },
+            { id: "r3", name: "2분쉼표", char: "\uE4F5", beats: "2박자", markType: "2", isRest: true },
+            { id: "r4", name: "점4분쉼표", char: "<span class='relative inline-block'>\uE4E5<span class='absolute' style='left:0.8em; top:0.4em; font-size:0.6em;'>\uE1E7</span></span>", beats: "1박자반", markType: "1.5", isRest: true },
+            { id: "r5", name: "4분쉼표", char: "\uE4E5", beats: "1박자", markType: "1", isRest: true },
+            { id: "r6", name: "8분쉼표", char: "\uE4E6", beats: "반박자", markType: "0.5", isRest: true },
+            { id: "r7", name: "16분쉼표", char: "\uE4E7", beats: "반의반박자", markType: "0.25", isRest: true }
+        ];
+
+        function getBeatMarkSvg(markType, isRest) {
+            const dash = isRest ? 'stroke-dasharray="0,10"' : '';
+            const mainColor = "currentColor";
+            const grayColor = "#cbd5e1"; // slate-300
+
+            const mainStyle = `stroke="${mainColor}" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round" ${dash}`;
+            const grayStyle = `stroke="${grayColor}" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round" ${dash}`;
+
+            let dx = 0;
+            if (markType === "4") dx = 0;
+            else if (markType === "3") dx = 10;
+            else if (markType === "2" || markType === "1.5") dx = 20;
+            else dx = 30;
+
+            const getPath = () => {
+                switch (markType) {
+                    case "4":
+                        return `<path d="M 0 0 L 10 30 L 20 0 L 30 30 L 40 0 L 50 30 L 60 0 L 70 30 L 80 0" ${mainStyle}/>`;
+                    case "3":
+                        return `<path d="M 0 0 L 10 30 L 20 0 L 30 30 L 40 0 L 50 30 L 60 0" ${mainStyle}/>`;
+                    case "2":
+                        return `<path d="M 0 0 L 10 30 L 20 0 L 30 30 L 40 0" ${mainStyle}/>`;
+                    case "1.5":
+                        return `
+                            <path d="M 0 0 L 10 30 L 20 0 L 30 30" ${mainStyle}/>
+                            <path d="M 30 30 L 40 0" ${grayStyle} stroke-dashoffset="-94.87"/>
+                        `;
+                    case "1":
+                        return `<path d="M 0 0 L 10 30 L 20 0" ${mainStyle}/>`;
+                    case "0.5":
+                        return `
+                            <path d="M 0 0 L 10 30" ${mainStyle}/>
+                            <path d="M 10 30 L 20 0" ${grayStyle} stroke-dashoffset="-31.62"/>
+                        `;
+                    case "0.25":
+                        return `
+                            <path d="M 0 0 L 5 15" ${mainStyle}/>
+                            <path d="M 5 15 L 10 30 L 20 0" ${grayStyle} stroke-dashoffset="-15.81"/>
+                        `;
+                    default: return '';
+                }
+            };
+            return `<svg viewBox="-10 -10 100 50" style="width:100%; height:100%; overflow:visible; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+                <g transform="translate(${dx}, 0)">
+                    ${getPath()}
+                </g>
+            </svg>`;
+        }
+
+        let mode = 1;
+        let scores = { p1: 0, p2: 0 };
+        let activePlayer = null;
+        let currentItem = null;
+        let isAnswering = false;
+        let waitNext = false;
+        let penaltyState = { p1: false, p2: false };
+        let previousItem = null;
+        let timerTimeout = null;
+        const WIN_SCORE = 10;
+        const TIME_LIMIT = 5000;
+
+        let toneSynth, tonePolySynth, toneMembrane;
+
+        async function initAudio() {
+            if (!toneSynth) {
+                await Tone.start();
+                toneSynth = new Tone.Synth().toDestination();
+                tonePolySynth = new Tone.PolySynth(Tone.Synth).toDestination();
+                toneMembrane = new Tone.MembraneSynth().toDestination();
+            }
+        }
+
+        function playBuzzerSound() {
+            if (toneSynth) toneSynth.triggerAttackRelease("C4", "8n");
+        }
+
+        function playSuccessSound() {
+            if (tonePolySynth) {
+                const now = Tone.now();
+                tonePolySynth.triggerAttackRelease("C4", "8n", now);
+                tonePolySynth.triggerAttackRelease("E4", "8n", now + 0.1);
+                tonePolySynth.triggerAttackRelease("G4", "8n", now + 0.2);
+                tonePolySynth.triggerAttackRelease("C5", "4n", now + 0.3);
+            }
+        }
+
+        function playFailSound() {
+            if (toneMembrane) {
+                const now = Tone.now();
+                toneMembrane.triggerAttackRelease("G2", "8n", now);
+                toneMembrane.triggerAttackRelease("C2", "2n", now + 0.15);
+            }
+        }
+
+        async function startGame(m) {
+            mode = m;
+            await initAudio();
+            document.getElementById('intro-screen').classList.add('hidden');
+
+            if (mode === 2) {
+                document.getElementById('p2-intro-screen').classList.remove('hidden');
+                lucide.createIcons();
+            } else {
+                document.getElementById('main-stage').classList.remove('hidden');
+                document.getElementById('character-img').classList.remove('hidden');
+                nextRound();
+            }
+        }
+
+        function start2PGame() {
+            document.getElementById('p2-intro-screen').classList.add('hidden');
+            document.getElementById('main-stage').classList.remove('hidden');
+            document.getElementById('p2-score-display').classList.remove('hidden');
+            document.getElementById('buzzer-container').classList.remove('hidden');
+            nextRound();
+        }
+
+        let currentQuestionType = 0;
+
+        function nextRound() {
+            waitNext = false;
+            isAnswering = (mode === 1);
+            activePlayer = (mode === 1) ? 1 : null;
+            penaltyState = { p1: false, p2: false };
+            if (mode === 1) document.getElementById('character-img').src = 'images/Beethoven-01_1x.webp';
+
+            let availableItems = ITEMS.filter(item => previousItem ? item.id !== previousItem.id : true);
+            if (availableItems.length === 0) availableItems = ITEMS;
+            currentItem = availableItems[Math.floor(Math.random() * availableItems.length)];
+            previousItem = currentItem;
+
+            currentQuestionType = Math.floor(Math.random() * 6);
+
+            let choices = [currentItem];
+            while (choices.length < 4) {
+                let r = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+                let isDuplicate = false;
+                if (currentQuestionType === 1) {
+                    isDuplicate = choices.find(c => c.beats === r.beats);
+                } else {
+                    isDuplicate = choices.find(c => c.id === r.id);
+                }
+                if (!isDuplicate) choices.push(r);
+            }
+            choices.sort(() => Math.random() - 0.5);
+
+            renderGame(choices);
+        }
+
+        function renderGame(choices) {
+            const cardPanel = document.getElementById('card-panel');
+            cardPanel.classList.remove('wrong-shake');
+
+            let cardContent = '';
+            if (currentQuestionType <= 2) {
+                cardContent = `<span class="music-font">${currentItem.char}</span>`;
+            } else if (currentQuestionType === 3) {
+                let fSize = currentItem.name.length > 4 ? 45 : 60;
+                cardContent = `<span style="font-size: ${fSize}px; font-weight: 900; color: #1e293b; white-space: nowrap;">${currentItem.name}</span>`;
+            } else if (currentQuestionType === 4) {
+                const typeLabel = currentItem.isRest ? '쉼표' : '음표';
+                cardContent = `
+                    <div class="flex flex-col items-center justify-center">
+                        <span style="font-size: 24px; color: #64748b; margin-bottom: -10px; font-weight: 700;">${typeLabel}</span>
+                        <span style="font-size: 65px; font-weight: 900; color: #1e293b; white-space: nowrap;">${currentItem.beats}</span>
+                    </div>`;
+            } else if (currentQuestionType === 5) {
+                cardContent = `<div style="color: #475569; width: 250px; height: 120px;" class="flex items-center justify-center">${getBeatMarkSvg(currentItem.markType, currentItem.isRest)}</div>`;
+            }
+            cardPanel.innerHTML = cardContent;
+
+            const grid = document.getElementById('choices-grid');
+            grid.innerHTML = '';
+            choices.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = `quiz-btn ${!isAnswering ? 'disabled' : ''} flex items-center justify-center`;
+
+                if (currentQuestionType === 0 || currentQuestionType === 4 || currentQuestionType === 5) {
+                    btn.innerText = item.name;
+                } else if (currentQuestionType === 1) {
+                    btn.innerText = item.beats;
+                } else if (currentQuestionType === 2) {
+                    btn.innerHTML = `<div style="color: currentColor; width: 100px; height: 50px;" class="flex items-center justify-center mx-auto">${getBeatMarkSvg(item.markType, item.isRest)}</div>`;
+                } else if (currentQuestionType === 3) {
+                    btn.innerHTML = `<span class="music-font" style="font-size: 70px; line-height: 1;">${item.char}</span>`;
+                }
+
+                btn.onclick = () => checkAnswer(item.id, btn);
+                grid.appendChild(btn);
+            });
+
+            stopTimer();
+            document.getElementById('timer-gauge-container').style.opacity = "0";
+
+            if (mode === 2) {
+                updateBuzzers();
+                updateInstruction("버저를 누르세요!", "zap");
+            } else {
+                updateInstruction("음표의 이름을 맞춰보세요!", "music");
+            }
+        }
+
+        function triggerBuzzer(p) {
+            if (mode !== 2 || isAnswering || waitNext || penaltyState[`p${p}`]) return;
+
+            isAnswering = true;
+            activePlayer = p;
+
+            playBuzzerSound();
+
+            const b1 = document.getElementById('buzzer-p1');
+            const b2 = document.getElementById('buzzer-p2');
+
+            if (p === 1) {
+                b1.classList.add('buzzer-active');
+                b2.style.opacity = "0.2";
+            } else {
+                b2.classList.add('buzzer-active');
+                b1.style.opacity = "0.2";
+            }
+
+            document.querySelectorAll('.quiz-btn').forEach(btn => btn.classList.remove('disabled'));
+            updateInstruction(`플레이어.${p}님! 5초 안에 골라주세요!`, "mouse-pointer-2");
+            startTimer();
+        }
+
+        function startTimer() {
+            const container = document.getElementById('timer-gauge-container');
+            const bar = document.getElementById('timer-gauge-bar');
+
+            container.style.opacity = "1";
+            bar.style.transition = "none";
+            bar.style.width = "100%";
+            bar.style.background = "linear-gradient(90deg, #4ade80, #22c55e)";
+
+            setTimeout(() => {
+                bar.style.transition = `width ${TIME_LIMIT}ms linear, background ${TIME_LIMIT}ms linear`;
+                bar.style.width = "0%";
+                bar.style.background = "linear-gradient(90deg, #f87171, #ef4444)";
+            }, 50);
+
+            timerTimeout = setTimeout(() => {
+                if (isAnswering) handleFailure();
+            }, TIME_LIMIT);
+        }
+
+        function stopTimer() {
+            clearTimeout(timerTimeout);
+            const bar = document.getElementById('timer-gauge-bar');
+            bar.style.transition = "none";
+        }
+
+        function checkAnswer(id, btn) {
+            if (!isAnswering || waitNext) return;
+            if (id === currentItem.id) handleSuccess(btn);
+            else handleFailure(btn);
+        }
+
+        function handleSuccess(btn) {
+            waitNext = true;
+            stopTimer();
+            playSuccessSound();
+            fireConfetti();
+
+            btn.style.background = "linear-gradient(180deg, #4ade80 0%, #22c55e 100%)";
+            btn.style.color = "white";
+            btn.style.borderColor = "#16a34a";
+
+            if (mode === 1) {
+                document.getElementById('character-img').src = 'images/Beethoven-02_1x.webp';
+            } else if (mode === 2) {
+                const charImg = document.getElementById('character-img');
+                charImg.src = 'images/Beethoven-02_1x.webp';
+                charImg.classList.remove('hidden');
+            }
+
+            const popup = document.getElementById('feedback-popup');
+            popup.innerText = "PERFECT!";
+            popup.className = "popup-text popup-correct show";
+
+            scores[`p${activePlayer}`]++;
+            updateScores();
+
+            setTimeout(() => {
+                document.getElementById('feedback-popup').classList.remove('show');
+                if (mode === 2) document.getElementById('character-img').classList.add('hidden');
+                if (scores[`p${activePlayer}`] >= WIN_SCORE) showEnd(activePlayer);
+                else nextRound();
+            }, 1000);
+        }
+
+        function handleFailure(btn) {
+            stopTimer();
+            playFailSound();
+
+            if (btn) btn.classList.add('wrong-shake');
+            document.getElementById('card-panel').classList.add('wrong-shake');
+
+            if (mode === 1) {
+                document.getElementById('character-img').src = 'images/Beethoven-03_1x.webp';
+            } else if (mode === 2) {
+                const charImg = document.getElementById('character-img');
+                charImg.src = 'images/Beethoven-03_1x.webp';
+                charImg.classList.remove('hidden');
+            }
+
+            const popup = document.getElementById('feedback-popup');
+            popup.innerText = "OOPS!";
+            popup.className = "popup-text popup-oops show";
+
+            setTimeout(() => {
+                document.getElementById('feedback-popup').classList.remove('show');
+                document.getElementById('card-panel').classList.remove('wrong-shake');
+                if (mode === 2) document.getElementById('character-img').classList.add('hidden');
+
+                if (mode === 2) {
+                    penaltyState[`p${activePlayer}`] = true;
+                    isAnswering = false;
+                    activePlayer = null;
+
+                    if (penaltyState.p1 && penaltyState.p2) {
+                        penaltyState = { p1: false, p2: false };
+                        updateInstruction("둘 다 오답! 다시 버저를 누르세요!", "zap");
+                        resetBuzzersForOpportunity();
+                    } else {
+                        resetBuzzersForOpportunity();
+                        updateInstruction("기회가 넘어갔습니다! 버저를 누르세요!", "zap");
+                    }
+                } else {
+                    setTimeout(nextRound, 800);
+                }
+            }, 1000);
+        }
+
+        function resetBuzzersForOpportunity() {
+            document.getElementById('timer-gauge-container').style.opacity = "0";
+            document.querySelectorAll('.quiz-btn').forEach(btn => {
+                btn.classList.add('disabled');
+                btn.classList.remove('wrong-shake');
+                btn.style.background = "";
+                btn.style.color = "";
+                btn.style.borderColor = "";
+            });
+            updateBuzzers();
+        }
+
+        function updateBuzzers() {
+            const b1 = document.getElementById('buzzer-p1');
+            const b2 = document.getElementById('buzzer-p2');
+            b1.classList.remove('buzzer-active');
+            b2.classList.remove('buzzer-active');
+            b1.style.opacity = "1";
+            b2.style.opacity = "1";
+
+            if (penaltyState.p1) b1.classList.add('penalty');
+            else b1.classList.remove('penalty');
+
+            if (penaltyState.p2) b2.classList.add('penalty');
+            else b2.classList.remove('penalty');
+        }
+
+        function updateScores() {
+            document.getElementById('p1-score-display').innerText = `플레이어.1: ${scores.p1}`;
+            document.getElementById('p2-score-display').innerText = `플레이어.2: ${scores.p2}`;
+        }
+
+        function updateInstruction(txt, icon) {
+            document.getElementById('instruction-text').innerText = txt;
+            document.getElementById('mascot-lucide').setAttribute('data-lucide', icon);
+            lucide.createIcons();
+        }
+
+        function showEnd(winner) {
+            const screen = document.getElementById('end-screen');
+            screen.classList.remove('hidden');
+            const title = document.getElementById('end-title');
+            if (mode === 2) {
+                title.innerText = `플레이어.${winner} 최종 승리!`;
+                title.style.color = winner === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+            }
+            lucide.createIcons();
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (mode === 2 && !isAnswering && !waitNext) {
+                if (e.code === 'Space') { e.preventDefault(); triggerBuzzer(1); }
+                else if (e.key === 'Enter') { e.preventDefault(); triggerBuzzer(2); }
+            }
+        });
+
+        function resize() {
+            const wrap = document.getElementById('scalable-wrapper');
+            const cont = document.getElementById('game-container');
+            const scale = Math.min(cont.clientWidth / 1280, cont.clientHeight / 720);
+            wrap.style.transform = `scale(${scale})`;
+        }
+        window.addEventListener('resize', resize);
+        window.onload = () => { resize(); lucide.createIcons(); };
+
+        const canvas = document.getElementById("confetti");
+        const ctx = canvas.getContext("2d");
+        let particles = [];
+        function fireConfetti() {
+            for (let i = 0; i < 120; i++) {
+                particles.push({
+                    x: 640, y: 320,
+                    dx: (Math.random() - 0.5) * 40, dy: (Math.random() - 0.5) * 40,
+                    color: `hsl(${Math.random() * 360}, 100%, 50%)`, life: 150
+                });
+            }
+            if (particles.length <= 120) updateConfetti();
+        }
+        function updateConfetti() {
+            ctx.clearRect(0, 0, 1280, 720);
+            particles.forEach((p, i) => {
+                p.x += p.dx; p.y += p.dy; p.dy += 0.5; p.life--;
+                ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI * 2); ctx.fill();
+                if (p.life <= 0) particles.splice(i, 1);
+            });
+            if (particles.length > 0) requestAnimationFrame(updateConfetti);
+        }
+        canvas.width = 1280; canvas.height = 720;
+    </script>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-07" defer></script>
+</body>
+
+</html>

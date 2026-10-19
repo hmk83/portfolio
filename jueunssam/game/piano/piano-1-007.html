@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>주은쌤의 절대음감: 2단계 (두 음 기억하기)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --gnb-height: 60px;
+        }
+
+        /* 기본 설정 */
+        body {
+            font-family: 'Jua', sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+            /* 배경색 변경 (파란 계열) */
+            user-select: none;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+            touch-action: none;
+        }
+
+        /* GNB */
+        #gnb {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: var(--gnb-height);
+            background-color: #FEE500;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        #gnb .flex {
+            display: flex;
+            align-items: center;
+        }
+
+        #gnb .gap-2 {
+            gap: 0.5rem;
+        }
+
+        .btn-press:active {
+            transform: scale(0.95);
+        }
+
+        /* GNB 하단 여백 추가 */
+        #intro-screen {
+            padding-top: var(--gnb-height);
+        }
+
+        #game-screen {
+            padding-top: var(--gnb-height);
+        }
+
+        /* 가로 모드 강제 오버레이 */
+        #orientation-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.98);
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        @media (orientation: portrait) {
+            #orientation-overlay {
+                display: flex;
+            }
+        }
+
+        /* 피아노 프레임 */
+        .piano-frame {
+            background: #2d3748;
+            padding: 1.5vmin;
+            border-radius: 2vmin;
+            box-shadow:
+                0 20px 50px rgba(0, 0, 0, 0.5),
+                inset 0 1px 1px rgba(255, 255, 255, 0.2);
+            position: relative;
+            perspective: 1000px;
+            width: 95vw;
+            max-width: 1000px;
+            transition: transform 0.3s;
+        }
+
+        .piano-board {
+            display: flex;
+            position: relative;
+            height: 35vh;
+            background: #1a202c;
+            border-radius: 0 0 1vmin 1vmin;
+            overflow: hidden;
+        }
+
+        .white-key {
+            flex: 1;
+            background: linear-gradient(to bottom, #fff 0%, #f7fafc 100%);
+            border: 1px solid #cbd5e0;
+            border-radius: 0 0 1vmin 1vmin;
+            margin: 0 0.2vmin;
+            height: 100%;
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            padding-bottom: 2vmin;
+            transition: all 0.1s;
+            box-shadow:
+                inset 0 -5px 10px rgba(0, 0, 0, 0.1),
+                0 2px 5px rgba(0, 0, 0, 0.2);
+            cursor: default;
+        }
+
+        .white-key:active,
+        .white-key.active {
+            background: linear-gradient(to bottom, #f7fafc 0%, var(--active-color, #ffd1d1) 100%);
+            transform: scaleY(0.96);
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
+            border-bottom: 0.8vmin solid var(--active-color, #ffd1d1);
+        }
+
+        /* 튜토리얼 하이라이트 (깜빡임 효과) */
+        @keyframes guide-pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+                border-color: #60a5fa;
+                transform: scale(1);
+            }
+
+            50% {
+                box-shadow: 0 0 20px 10px rgba(59, 130, 246, 0);
+                border-color: #3b82f6;
+                transform: scale(1.02);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+                border-color: #60a5fa;
+                transform: scale(1);
+            }
+        }
+
+        .white-key.guide-highlight {
+            background: #fff;
+            z-index: 60;
+            border: 4px solid #3b82f6;
+            animation: guide-pulse 1.5s infinite;
+        }
+
+        /* 테스트 모드: 라벨 숨기기 */
+        .piano-keys-hidden .key-label {
+            display: none !important;
+        }
+
+        .black-key {
+            position: absolute;
+            top: 0;
+            width: 8%;
+            height: 60%;
+            background: linear-gradient(to bottom, #4a5568 0%, #1a202c 100%);
+            border-radius: 0 0 1vmin 1vmin;
+            z-index: 20;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5), inset 1px 1px 2px rgba(255, 255, 255, 0.2);
+            pointer-events: none;
+        }
+
+        .bk-0 {
+            left: calc(12.5% - 4%);
+        }
+
+        .bk-1 {
+            left: calc(25% - 4%);
+        }
+
+        .bk-2 {
+            left: calc(50% - 4%);
+        }
+
+        .bk-3 {
+            left: calc(62.5% - 4%);
+        }
+
+        .bk-4 {
+            left: calc(75% - 4%);
+        }
+
+        .text-outline {
+            text-shadow: 2px 2px 0px white, -1px -1px 0 white, 1px -1px 0 white, -1px 1px 0 white, 1px 1px 0 white;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.95);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #2563eb;
+            border: 2px solid #2563eb;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        @keyframes sound-wave {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.2);
+                opacity: 0.7;
+            }
+
+            100% {
+                transform: scale(1.4);
+                opacity: 0;
+            }
+        }
+
+        .animate-sound-wave {
+            animation: sound-wave 1s infinite ease-out;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            10%,
+            30%,
+            50%,
+            70%,
+            90% {
+                transform: translateX(-5px);
+            }
+
+            20%,
+            40%,
+            60%,
+            80% {
+                transform: translateX(5px);
+            }
+        }
+
+        .animate-shake {
+            animation: shake 0.4s cubic-bezier(.36, .07, .19, .97) both;
+        }
+
+        .bubble {
+            position: relative;
+            background: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .bubble:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border: 20px solid transparent;
+            border-top-color: #ffffff;
+            border-bottom: 0;
+            margin-left: -20px;
+            margin-bottom: -20px;
+        }
+
+        /* 넌터처블 텍스트 */
+        .untouchable-text {
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* 진행 표시등 */
+        .step-dot {
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 50%;
+            background-color: #e2e8f0;
+            border: 3px solid #cbd5e0;
+            transition: all 0.3s;
+        }
+
+        .step-dot.active {
+            background-color: #3b82f6;
+            border-color: #2563eb;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+            transform: scale(1.2);
+        }
+
+        .step-dot.success {
+            background-color: #10b981;
+            border-color: #059669;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- GNB -->
+    <nav id="gnb">
+        <div class="flex items-center gap-2">
+            <i data-lucide="music" class="text-gray-800 w-6 h-6"></i>
+            <h1 class="text-xl md:text-2xl font-bold text-gray-800" data-i18n="appTitle">주은쌤의 절대음감 2단계</h1>
+        </div>
+        <div class="flex gap-2">
+            <button id="btn-lang"
+                class="bg-white border-2 border-gray-800 rounded-full px-4 py-1.5 text-sm font-bold shadow-sm hover:bg-gray-100 btn-press"
+                data-i18n="langBtn">English</button>
+            <button id="btn-restart"
+                class="hidden bg-gray-800 text-white rounded-full px-4 py-1.5 text-sm font-bold shadow-sm hover:bg-gray-700 btn-press"
+                data-i18n="restart">처음으로</button>
+            <button id="btn-exit"
+                class="bg-red-500 text-white rounded-full px-4 py-1.5 text-sm font-bold shadow-sm hover:bg-red-600 btn-press"
+                data-i18n="exit">종료</button>
+        </div>
+    </nav>
+
+    <div id="orientation-overlay">
+        <i data-lucide="smartphone" class="w-24 h-24 text-blue-500 mb-4 animate-spin-slow"></i>
+        <h2 class="text-3xl font-bold text-gray-800">화면을 가로로 돌려주세요!</h2>
+        <p class="text-xl text-gray-600 mt-2">넓은 화면에서 피아노를 연주할 수 있어요.</p>
+    </div>
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- 인트로 화면 -->
+    <section id="intro-screen"
+        class="fixed inset-0 z-40 flex flex-col items-center justify-center transition-opacity duration-500 bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div class="text-center space-y-4 max-w-4xl px-4 w-full">
+            <div class="inline-block p-4 rounded-full bg-white shadow-xl mb-2 animate-bounce">
+                <i data-lucide="music" class="w-16 h-16 text-blue-600"></i>
+            </div>
+            <h1 class="text-5xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 drop-shadow-sm pb-2"
+                data-i18n="introTitle">
+                주은쌤의 절대음감
+            </h1>
+            <h2 class="text-3xl md:text-4xl font-bold text-blue-700 mt-2" data-i18n="introSubtitle">2단계: 두 음 기억하기</h2>
+            <p class="text-2xl text-gray-600 font-medium mt-4" data-i18n="introDesc">두 개의 소리를 잘 듣고, 순서대로 찾아보세요!</p>
+
+            <div class="py-6 space-y-4 flex flex-col items-center w-full">
+                <div id="midi-status"
+                    class="flex items-center gap-2 px-6 py-3 rounded-full bg-white/80 text-gray-500 font-bold transition-all duration-300 shadow-sm">
+                    <i data-lucide="cable" class="w-5 h-5"></i>
+                    <span data-i18n="midiChecking">피아노 연결을 확인중입니다...</span>
+                </div>
+                <div class="flex gap-4 mt-6">
+                    <button id="btn-start" onclick="enterGame()"
+                        class="btn-primary px-10 py-4 rounded-2xl text-3xl font-bold flex items-center gap-3 transform transition hover:scale-105">
+                        <i data-lucide="play" class="w-8 h-8 fill-current"></i> <span data-i18n="start">시작하기</span>
+                    </button>
+                    <button onclick="toggleModal('modal-help')"
+                        class="btn-secondary px-8 py-4 rounded-2xl text-2xl font-bold hover:bg-blue-50 transition-colors"
+                        data-i18n="howToPlay">
+                        방법 보기
+                    </button>
+                </div>
+            </div>
+            <div class="absolute bottom-6 left-0 w-full text-center">
+                <p class="text-xl font-bold text-blue-800/30 tracking-widest uppercase untouchable-text">SOL EAR
+                    TRAINING LEVEL 2</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 게임 메인 화면 -->
+    <section id="game-screen" class="hidden fixed inset-0 bg-blue-50 flex flex-col">
+        <header class="h-24 bg-white shadow-sm flex items-center justify-between px-6 shrink-0 z-30 relative">
+            <div class="flex items-center gap-4 w-1/3">
+                <button onclick="goHome()"
+                    class="p-3 rounded-full hover:bg-gray-100 transition-colors border-2 border-transparent hover:border-gray-200">
+                    <i data-lucide="home" class="w-8 h-8 text-gray-600"></i>
+                </button>
+                <div class="flex flex-col">
+                    <span class="text-sm text-gray-400 font-bold" data-i18n="mode">MODE</span>
+                    <span id="mode-badge" class="text-2xl font-bold text-blue-600" data-i18n="practice">2단계 연습</span>
+                </div>
+                <div id="game-midi-status"
+                    class="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 text-gray-400 text-sm font-bold ml-2">
+                    <div class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
+                    <span>연결됨</span>
+                </div>
+            </div>
+
+            <div class="w-1/3 flex justify-center">
+                <div id="question-display" class="hidden flex-row gap-4 items-center animate-bounce-slow">
+                    <button id="btn-replay-sound" onclick="playTargetSoundWithVisual()"
+                        class="relative group bg-blue-100 hover:bg-blue-200 text-blue-600 px-8 py-2 rounded-2xl transition-all shadow-md active:scale-95 mt-2 flex flex-col items-center gap-1 justify-center min-w-[120px]">
+                        <i data-lucide="volume-2" class="w-8 h-8"></i>
+                        <span class="text-lg font-bold">다시 듣기</span>
+                        <div id="sound-wave-effect"
+                            class="absolute inset-0 border-4 border-blue-400 rounded-2xl opacity-0 pointer-events-none">
+                        </div>
+                    </button>
+                    <!-- 전체 듣기 버튼 -->
+                    <button id="btn-play-scale" onclick="playFullScale()"
+                        class="relative group bg-indigo-100 hover:bg-indigo-200 text-indigo-600 px-8 py-2 rounded-2xl transition-all shadow-md active:scale-95 mt-2 flex flex-col items-center gap-1 justify-center min-w-[120px]">
+                        <i data-lucide="music-4" class="w-8 h-8"></i>
+                        <span class="text-lg font-bold">전체 듣기</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 w-1/3">
+                <button id="btn-test-start" onclick="startTest()"
+                    class="hidden bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white px-6 py-3 rounded-full text-2xl font-bold shadow-md transition-all flex items-center gap-2 transform hover:scale-105">
+                    <i data-lucide="check-square" class="w-6 h-6"></i> 테스트 도전
+                </button>
+                <button id="btn-test-stop" onclick="stopTestRequest()"
+                    class="hidden bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-full text-2xl font-bold shadow-md transition-all flex items-center gap-2">
+                    <i data-lucide="pause" class="w-6 h-6 fill-current"></i> 그만하기
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-grow flex flex-col items-center justify-center p-4 relative w-full">
+            <!-- 점수판 -->
+            <div id="score-board"
+                class="hidden absolute top-4 right-8 bg-white/90 backdrop-blur p-4 rounded-2xl shadow-lg border-2 border-indigo-200 z-20">
+                <div class="flex items-center gap-6">
+                    <div class="text-center">
+                        <div class="text-lg text-gray-500 font-bold" id="label-left">남은 문제</div>
+                        <div class="text-3xl font-black text-gray-800" id="val-left"></div>
+                    </div>
+                    <div class="w-px h-12 bg-gray-200"></div>
+                    <div class="text-center">
+                        <div class="text-lg text-gray-500 font-bold" id="label-right">점수</div>
+                        <div class="text-3xl font-black text-blue-600" id="val-right">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="feedback-overlay"
+                class="absolute inset-0 pointer-events-none flex items-center justify-center z-50 opacity-0 transition-opacity duration-300">
+                <div id="feedback-icon-container" class="w-64 h-64 drop-shadow-2xl flex items-center justify-center">
+                </div>
+            </div>
+
+            <div id="guide-container"
+                class="hidden absolute inset-0 z-40 pointer-events-none flex flex-col items-center justify-start pt-10">
+                <div class="absolute inset-0 bg-black/40 transition-opacity duration-500"></div>
+                <div class="relative z-50 flex flex-col items-center pointer-events-auto max-w-2xl w-full">
+                    <div class="bubble bg-white p-8 w-full text-center mb-6 border-4 border-blue-200 shadow-2xl">
+                        <h3 id="guide-bubble-title" class="text-3xl font-bold text-blue-600 mb-4">안녕?</h3>
+                        <p id="guide-bubble-content"
+                            class="text-2xl text-gray-700 font-medium leading-relaxed break-keep">내용</p>
+
+                        <div id="guide-replay-container" class="mt-4 hidden">
+                            <button onclick="playTargetSound()"
+                                class="flex items-center gap-2 mx-auto bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-6 py-2 rounded-full font-bold transition-colors">
+                                <i data-lucide="volume-2" class="w-6 h-6"></i> 소리 다시 듣기
+                            </button>
+                        </div>
+
+                        <div class="mt-6 flex justify-center gap-4">
+                            <button id="btn-guide-next" onclick="nextGuideStep()"
+                                class="bg-blue-500 hover:bg-blue-600 text-white px-10 py-3 rounded-2xl shadow-lg transition-transform active:scale-95 mx-auto text-xl font-bold">
+                                다음
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-white p-3 rounded-full border-4 border-blue-300 shadow-xl">
+                        <i data-lucide="music" class="w-20 h-20 text-blue-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="w-full max-w-3xl text-center mb-6 z-30 pointer-events-none flex flex-col items-center">
+                <h2 id="instruction-text"
+                    class="text-4xl md:text-5xl font-black text-gray-800 text-outline transition-all duration-300 filter drop-shadow-lg mb-4">
+                    준비되었나요?</h2>
+
+                <!-- 2단계 진행 표시등 -->
+                <div id="step-indicators" class="hidden flex gap-4 mt-2">
+                    <div id="step-dot-0" class="step-dot"></div>
+                    <div id="step-dot-1" class="step-dot"></div>
+                </div>
+            </div>
+
+            <div class="piano-frame z-30">
+                <div class="w-full h-8 bg-gray-800 rounded-t-lg mb-1 flex justify-center items-center">
+                    <div class="text-gray-500 text-sm font-bold tracking-[0.5em] uppercase untouchable-text">JUEUNSSAM
+                        PIANO</div>
+                </div>
+                <div class="piano-board" id="piano-keys-container"></div>
+            </div>
+
+            <div id="connection-banner"
+                class="hidden absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800/80 text-white px-6 py-2 rounded-full text-lg z-50">
+                <i data-lucide="info" class="w-5 h-5 inline mr-2"></i> 피아노가 연결되지 않았어요.
+            </div>
+        </main>
+    </section>
+
+    <!-- 모달들 -->
+    <div id="modal-help"
+        class="hidden fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-[2rem] p-10 max-w-2xl w-full shadow-2xl">
+            <div class="flex justify-between items-center mb-8 border-b pb-4">
+                <h3 class="text-4xl font-bold text-blue-600 flex items-center gap-3"><i data-lucide="book-open"
+                        class="w-10 h-10"></i> 게임 방법</h3>
+                <button onclick="toggleModal('modal-help')"
+                    class="text-gray-400 hover:text-gray-600 bg-gray-100 rounded-full p-2"><i data-lucide="x"
+                        class="w-8 h-8"></i></button>
+            </div>
+            <ul class="space-y-6 text-2xl text-gray-700 leading-relaxed">
+                <li class="flex items-start gap-4"><span
+                        class="bg-blue-100 text-blue-600 rounded-full w-10 h-10 flex items-center justify-center font-bold shrink-0 text-xl shadow-sm">1</span><span><strong>소리
+                            듣기</strong><br><span class="text-lg text-gray-500">두 개의 피아노 소리가 순서대로 나요.</span></span>
+                </li>
+                <li class="flex items-start gap-4"><span
+                        class="bg-blue-100 text-blue-600 rounded-full w-10 h-10 flex items-center justify-center font-bold shrink-0 text-xl shadow-sm">2</span><span><strong>기억하기</strong><br><span
+                            class="text-lg text-gray-500">첫 번째 음과 두 번째 음을 잘 기억하세요.</span></span></li>
+                <li class="flex items-start gap-4"><span
+                        class="bg-blue-100 text-blue-600 rounded-full w-10 h-10 flex items-center justify-center font-bold shrink-0 text-xl shadow-sm">3</span><span><strong>연주하기</strong><br><span
+                            class="text-lg text-gray-500">순서대로 건반을 눌러 정답을 맞춰보세요!</span></span></li>
+            </ul>
+            <div class="mt-10 text-center"><button onclick="toggleModal('modal-help')"
+                    class="bg-blue-500 text-white px-12 py-4 rounded-2xl font-bold text-2xl shadow-xl hover:bg-blue-600 transform transition active:scale-95">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-stop"
+        class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-[2rem] p-10 max-w-lg w-full shadow-2xl text-center border-4 border-red-100">
+            <h3 class="text-4xl font-bold text-gray-800 mb-4">그만 할까요?</h3>
+            <p class="text-gray-500 text-xl mb-10 font-medium">지금 나가면 점수가 사라져요 😢</p>
+            <div class="flex flex-col gap-4">
+                <button onclick="resumeTest()"
+                    class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 py-4 rounded-xl font-bold text-2xl transition-colors">계속
+                    할래요</button>
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="restartTest()"
+                        class="bg-yellow-400 hover:bg-yellow-500 text-white py-4 rounded-xl font-bold text-xl shadow-md transition-colors">처음부터
+                        다시</button>
+                    <button onclick="quitTest()"
+                        class="bg-red-500 hover:bg-red-600 text-white py-4 rounded-xl font-bold text-xl shadow-md transition-colors">종료하기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-result"
+        class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div
+            class="bg-white rounded-[2.5rem] p-10 max-w-xl w-full shadow-2xl text-center relative overflow-hidden transform transition-all scale-100">
+            <div class="absolute top-0 left-0 w-full h-6 bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-500">
+            </div>
+            <i data-lucide="trophy" class="w-32 h-32 text-yellow-400 mx-auto mb-6 animate-bounce"></i>
+            <h2 class="text-5xl font-bold text-gray-800 mb-2">테스트 종료!</h2>
+            <div class="bg-blue-50 rounded-3xl p-8 my-8 border-2 border-blue-100 space-y-4">
+                <div class="flex justify-between items-center px-4 border-b border-blue-200 pb-2">
+                    <div class="text-blue-600 font-bold text-xl">소요 시간</div>
+                    <div class="text-gray-500 font-bold text-lg" id="result-time">00초</div>
+                </div>
+                <div class="flex justify-between items-center px-4 border-b border-blue-200 pb-2">
+                    <div class="text-blue-600 font-bold text-xl">맞은 개수</div>
+                    <div class="text-gray-800 font-black text-2xl" id="result-count">0 / 10</div>
+                </div>
+                <div class="pt-2">
+                    <div class="text-blue-600 font-bold text-xl mb-1">최종 점수</div>
+                    <div class="text-7xl font-black text-blue-600 tracking-tighter" id="result-score">100</div>
+                </div>
+                <div class="text-2xl font-bold text-gray-700 break-keep pt-2" id="result-message">메시지</div>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="startTest()"
+                    class="flex-1 bg-violet-500 hover:bg-violet-600 text-white py-5 rounded-2xl font-bold text-2xl shadow-lg transition transform active:scale-95">다시
+                    도전</button>
+                <button onclick="quitTest()"
+                    class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-600 py-5 rounded-2xl font-bold text-2xl shadow-sm transition transform active:scale-95">처음으로</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Configuration & Data
+         */
+        const GOOGLE_API_KEY = "AIzaSyAE0nnpOYZRfLkfM09O3NQjpWnN1kUqR3E";
+
+        const I18N = {
+            ko: {
+                langBtn: "English",
+                appTitle: "주은쌤의 절대음감 2단계",
+                introTitle: "주은쌤의 절대음감",
+                introSubtitle: "2단계: 두 음 기억하기",
+                introDesc: "두 개의 소리를 잘 듣고, 순서대로 찾아보세요!",
+                start: "시작하기",
+                howToPlay: "방법 보기",
+                restart: "처음으로",
+                exit: "종료",
+                midiChecking: "피아노 연결을 확인중입니다...",
+                midiConnected: "피아노 연결됨!",
+                midiDisconnected: "미연결",
+                mode: "모드",
+                practice: "2단계 연습",
+                test: "2단계 테스트",
+                replay: "다시 듣기",
+                testStart: "테스트 시작",
+                stop: "그만하기",
+                question: "문제",
+                score: "점수",
+                step1: "1번째",
+                step2: "2번째"
+            },
+            en: {
+                langBtn: "한국어",
+                appTitle: "Perfect Pitch Level 2",
+                introTitle: "Perfect Pitch Training",
+                introSubtitle: "Level 2: Remember Two Notes",
+                introDesc: "Listen carefully and find the two notes in order!",
+                start: "Start",
+                howToPlay: "How to Play",
+                restart: "Restart",
+                exit: "Exit",
+                midiChecking: "Checking piano...",
+                midiConnected: "Piano Connected!",
+                midiDisconnected: "Not Connected",
+                mode: "MODE",
+                practice: "Level 2 Practice",
+                test: "Level 2 Test",
+                replay: "Replay",
+                testStart: "Start Test",
+                stop: "Stop",
+                question: "Question",
+                score: "Score",
+                step1: "1st",
+                step2: "2nd"
+            }
+        };
+
+        let currentLang = 'ko';
+        let googleTTSAvailable = true;
+        let ttsAudio = null;
+
+        const NOTES = [
+            { note: 'C', name: '도', color: '#ff6b6b', freq: 261.63 },
+            { note: 'D', name: '레', color: '#ff9f43', freq: 293.66 },
+            { note: 'E', name: '미', color: '#feca57', freq: 329.63 },
+            { note: 'F', name: '파', color: '#48dbfb', freq: 349.23 },
+            { note: 'G', name: '솔', color: '#54a0ff', freq: 392.00 },
+            { note: 'A', name: '라', color: '#5f27cd', freq: 440.00 },
+            { note: 'B', name: '시', color: '#9d65c9', freq: 493.88 },
+            { note: 'C2', name: '도', color: '#ff6b6b', freq: 523.25 }
+        ];
+
+        let audioCtx = null;
+        let midiAccess = null;
+        let isMidiConnected = false;
+
+        let gameState = 'intro';
+        let targetSequence = []; // 2단계 타겟 (배열)
+        let userStep = 0; // 현재 입력 단계 (0 or 1)
+        let isWaitingForInput = false;
+
+        // 테스트 모드 변수
+        let testQuestions = []; // [[idx1, idx2], ...]
+        let testCurrentQ = 0;
+        let testCorrectCount = 0;
+        const testTotal = 10;
+        let testStartTime = 0;
+        let testScore = 0;
+
+        // 연습 모드 변수
+        let practiceTotal = 0;
+        let practiceCorrect = 0;
+
+        let guideStep = 0;
+        let tutorialQuizCount = 0;
+
+        const els = {
+            introScreen: document.getElementById('intro-screen'),
+            gameScreen: document.getElementById('game-screen'),
+            midiStatus: document.getElementById('midi-status'),
+            gameMidiStatus: document.getElementById('game-midi-status'),
+            keysContainer: document.getElementById('piano-keys-container'),
+            instruction: document.getElementById('instruction-text'),
+            questionDisplay: document.getElementById('question-display'),
+            btnReplay: document.getElementById('btn-replay-sound'),
+            btnTestStart: document.getElementById('btn-test-start'),
+            btnTestStop: document.getElementById('btn-test-stop'),
+            scoreBoard: document.getElementById('score-board'),
+            labelLeft: document.getElementById('label-left'),
+            valLeft: document.getElementById('val-left'),
+            labelRight: document.getElementById('label-right'),
+            valRight: document.getElementById('val-right'),
+            feedbackOverlay: document.getElementById('feedback-overlay'),
+            feedbackIcon: document.getElementById('feedback-icon-container'),
+            resultScore: document.getElementById('result-score'),
+            resultCount: document.getElementById('result-count'),
+            resultMessage: document.getElementById('result-message'),
+            resultTime: document.getElementById('result-time'),
+            modeBadge: document.getElementById('mode-badge'),
+            connectionBanner: document.getElementById('connection-banner'),
+            guideContainer: document.getElementById('guide-container'),
+            guideTitle: document.getElementById('guide-bubble-title'),
+            guideContent: document.getElementById('guide-bubble-content'),
+            guideReplayContainer: document.getElementById('guide-replay-container'),
+            btnGuideNext: document.getElementById('btn-guide-next'),
+            soundWave: document.getElementById('sound-wave-effect'),
+            stepIndicators: document.getElementById('step-indicators'),
+            stepDot0: document.getElementById('step-dot-0'),
+            stepDot1: document.getElementById('step-dot-1')
+        };
+
+        const canvas = document.getElementById('confetti-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        window.onload = function () {
+            lucide.createIcons();
+            initParticles();
+            checkMidiSupport();
+            generateKeys();
+        };
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function checkMidiSupport() {
+            if (navigator.requestMIDIAccess) {
+                navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
+            }
+        }
+
+        function onMIDISuccess(midi) {
+            midiAccess = midi;
+            updateMidiStatus();
+            midi.onstatechange = updateMidiStatus;
+            const inputs = midiAccess.inputs.values();
+            for (let input of inputs) { input.onmidimessage = onMIDIMessage; }
+        }
+
+        function onMIDIFailure() { console.warn("MIDI not supported"); }
+
+        function updateMidiStatus() {
+            if (!midiAccess) return;
+            let inputs = midiAccess.inputs;
+            let hasInput = false;
+            for (let entry of inputs) hasInput = true;
+            isMidiConnected = hasInput;
+
+            const t = I18N[currentLang];
+
+            if (hasInput) {
+                els.midiStatus.className = "flex items-center gap-2 px-6 py-3 rounded-full bg-green-100 text-green-600 font-bold shadow-sm border border-green-200";
+                els.midiStatus.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i><span>${t.midiConnected}</span>`;
+                els.gameMidiStatus.className = "flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-green-600 text-sm font-bold ml-2";
+                els.gameMidiStatus.innerHTML = `<div class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div><span>${t.midiConnected}</span>`;
+                els.connectionBanner.classList.add('hidden');
+            } else {
+                els.midiStatus.className = "flex items-center gap-2 px-6 py-3 rounded-full bg-gray-100 text-gray-500 font-bold border border-gray-200";
+                els.midiStatus.innerHTML = `<i data-lucide="cable" class="w-5 h-5"></i><span>${t.midiChecking}</span>`;
+                els.gameMidiStatus.className = "flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 text-red-500 text-sm font-bold ml-2";
+                els.gameMidiStatus.innerHTML = `<div class="w-3 h-3 rounded-full bg-red-500"></div><span>${t.midiDisconnected}</span>`;
+            }
+            lucide.createIcons();
+        }
+
+        function onMIDIMessage(event) {
+            const [status, note, velocity] = event.data;
+            const command = status & 0xf0;
+            if (command === 144 && velocity > 0) handleNoteInput(note);
+            else if (command === 128 || (command === 144 && velocity === 0)) handleNoteOff(note);
+        }
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playNote(freq, duration = 0.5, type = 'triangle') {
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function mapMidiNoteToKeyIndex(midiNote) {
+            if (midiNote < 60 || midiNote > 72) return -1;
+            const rel = midiNote - 60;
+            const map = { 0: 0, 2: 1, 4: 2, 5: 3, 7: 4, 9: 5, 11: 6, 12: 7 };
+            return map.hasOwnProperty(rel) ? map[rel] : -1;
+        }
+
+        function handleNoteInput(midiNote) {
+            const keyIndex = mapMidiNoteToKeyIndex(midiNote);
+            processUserInput(keyIndex);
+        }
+
+        function processUserInput(keyIndex) {
+            if (keyIndex !== -1) {
+                activateKeyVisuals(keyIndex);
+
+                // 게임 로직 분기
+                if (gameState === 'guide_practice') {
+                    checkGuidePracticeInput(keyIndex);
+                } else if (gameState === 'guide_quiz') {
+                    checkGuideInput(keyIndex);
+                } else if (gameState === 'practice' || gameState === 'test') {
+                    checkGameInput(keyIndex);
+                }
+            }
+        }
+
+        function activateKeyVisuals(keyIndex) {
+            if (keyIndex !== -1) {
+                const keyEl = document.getElementById(`key-${keyIndex}`);
+                if (keyEl) {
+                    keyEl.classList.add('active');
+                    setTimeout(() => keyEl.classList.remove('active'), 200);
+                    playNote(NOTES[keyIndex].freq, 0.4);
+                    const rect = keyEl.getBoundingClientRect();
+                    spawnParticles(rect.left + rect.width / 2, rect.top + rect.height / 2, NOTES[keyIndex].color);
+                }
+            }
+        }
+
+        function handleNoteOff(midiNote) {
+            const keyIndex = mapMidiNoteToKeyIndex(midiNote);
+            if (keyIndex !== -1) {
+                const keyEl = document.getElementById(`key-${keyIndex}`);
+                if (keyEl) keyEl.classList.remove('active');
+            }
+        }
+
+        function enterGame() {
+            initAudio();
+            els.introScreen.classList.add('hidden');
+            els.gameScreen.classList.remove('hidden');
+            els.gameScreen.classList.add('flex');
+            if (!isMidiConnected) els.connectionBanner.classList.remove('hidden');
+            startGuideMode();
+        }
+
+        function playTargetSound() {
+            if (targetSequence.length === 0) return;
+            // 2음 순차 재생
+            playNote(NOTES[targetSequence[0]].freq, 0.5, 'sine');
+            setTimeout(() => {
+                playNote(NOTES[targetSequence[1]].freq, 0.5, 'sine');
+            }, 600);
+        }
+
+        function playTargetSoundWithVisual() {
+            if (isWaitingForInput) {
+                playTargetSound();
+                els.soundWave.classList.remove('animate-sound-wave');
+                void els.soundWave.offsetWidth;
+                els.soundWave.classList.add('animate-sound-wave');
+            }
+        }
+
+        function playFullScale() {
+            let delay = 0;
+            NOTES.forEach((note, i) => {
+                setTimeout(() => { activateKeyVisuals(i); }, delay);
+                delay += 500;
+            });
+        }
+
+        // --- 튜토리얼 로직 수정 (2음) ---
+        function startGuideMode() {
+            stopTTS();
+            gameState = 'guide';
+            guideStep = 0;
+            els.introScreen.classList.add('hidden');
+            els.gameScreen.classList.remove('hidden');
+            document.getElementById('btn-restart').classList.remove('hidden');
+            els.guideContainer.classList.remove('hidden');
+            els.questionDisplay.classList.remove('flex');
+            els.scoreBoard.classList.add('hidden');
+            els.stepIndicators.classList.add('hidden');
+            renderGuideStep();
+        }
+
+        function renderGuideStep() {
+            els.guideReplayContainer.classList.add('hidden');
+            clearHighlights();
+
+            if (guideStep === 0) {
+                // Intro
+                els.guideTitle.innerText = "2단계 시작!";
+                els.guideContent.innerHTML = "이제부터는 소리가 <b>두 번</b> 날 거예요.<br>두 개의 소리를 잘 기억해야 해요!";
+                els.btnGuideNext.classList.remove('hidden');
+                els.btnGuideNext.innerHTML = "연습 해보기";
+                els.btnGuideNext.onclick = () => {
+                    guideStep++;
+                    renderGuideStep();
+                };
+            }
+            else if (guideStep === 1) {
+                // Practice: Do -> Mi
+                gameState = 'guide_practice';
+                targetSequence = [0, 2]; // 도, 미
+                userStep = 0;
+
+                els.guideTitle.innerText = "따라 하기";
+                els.guideContent.innerHTML = "<b>'도'</b> 그리고 <b>'미'</b>가 순서대로 들릴 거예요.<br>듣고 똑같이 눌러보세요!";
+                els.btnGuideNext.classList.add('hidden');
+
+                els.guideReplayContainer.classList.remove('hidden');
+
+                // 힌트 표시
+                setTimeout(() => {
+                    playTargetSound();
+                    document.getElementById('key-0').classList.add('guide-highlight');
+                    document.getElementById('key-2').classList.add('guide-highlight');
+                }, 800);
+            }
+            else if (guideStep === 2) {
+                els.guideTitle.innerText = "실전 준비!";
+                els.guideContent.innerHTML = "이제 힌트 없이 소리만 듣고 맞춰보세요!<br>총 <b>3문제</b>를 낼게요.";
+                els.btnGuideNext.classList.remove('hidden');
+                els.btnGuideNext.innerHTML = "퀴즈 시작";
+                els.btnGuideNext.onclick = startTutorialQuiz;
+            }
+            else if (guideStep === 3) {
+                els.guideTitle.innerText = "준비 완료!";
+                els.guideContent.innerHTML = "이제 2단계 연습을 시작해볼까요?<br>화면 가운데 점이 진행 상황을 알려줄 거예요.";
+                els.btnGuideNext.classList.remove('hidden');
+                els.btnGuideNext.innerHTML = "연습 모드 가기";
+                els.btnGuideNext.onclick = () => {
+                    endGuide();
+                    startPracticeMode();
+                };
+            }
+        }
+
+        function checkGuidePracticeInput(inputIndex) {
+            if (inputIndex === targetSequence[userStep]) {
+                // 맞음
+                userStep++;
+                if (userStep >= targetSequence.length) {
+                    showFeedback('correct');
+                    clearHighlights();
+                    setTimeout(() => {
+                        guideStep++;
+                        renderGuideStep();
+                    }, 1000);
+                }
+            } else {
+                // 틀림
+                showFeedback('wrong');
+                userStep = 0; // 처음부터 다시
+                els.guideContent.innerHTML = "순서가 틀렸어요. 다시 들어보세요!<br><b>도</b> 다음 <b>미</b>를 눌러야 해요.";
+            }
+        }
+
+        function startTutorialQuiz() {
+            gameState = 'guide_quiz';
+            tutorialQuizCount = 3;
+            els.btnGuideNext.classList.add('hidden');
+            nextTutorialQuiz();
+        }
+
+        function nextTutorialQuiz() {
+            if (tutorialQuizCount <= 0) {
+                guideStep++;
+                gameState = 'guide';
+                renderGuideStep();
+                return;
+            }
+            generateRandomTarget();
+            userStep = 0;
+
+            els.guideTitle.innerText = `남은 문제: ${tutorialQuizCount}개`;
+            els.guideContent.innerHTML = "소리를 잘 듣고 순서대로 누르세요!";
+            els.guideReplayContainer.classList.remove('hidden');
+
+            setTimeout(() => { playTargetSound(); }, 500);
+        }
+
+        function checkGuideInput(inputIndex) {
+            if (gameState === 'guide_quiz') {
+                if (inputIndex === targetSequence[userStep]) {
+                    userStep++;
+                    if (userStep >= 2) {
+                        showFeedback('correct');
+                        tutorialQuizCount--;
+                        setTimeout(nextTutorialQuiz, 1000);
+                    }
+                } else {
+                    showFeedback('wrong');
+                    userStep = 0; // 틀리면 리셋
+                }
+            }
+        }
+
+        function endGuide() {
+            els.guideContainer.classList.add('hidden');
+            clearHighlights();
+        }
+
+        // --- 메인 게임 로직 ---
+
+        function generateRandomTarget() {
+            const idx1 = Math.floor(Math.random() * NOTES.length);
+            let idx2;
+            do {
+                idx2 = Math.floor(Math.random() * NOTES.length);
+            } while (idx1 === idx2); // 같은 음 연속 제외 (난이도 조절)
+            targetSequence = [idx1, idx2];
+        }
+
+        function updateStepIndicators() {
+            // 초기화
+            els.stepDot0.className = 'step-dot';
+            els.stepDot1.className = 'step-dot';
+
+            // 활성 상태
+            if (userStep === 0) {
+                els.stepDot0.classList.add('active');
+            } else if (userStep === 1) {
+                els.stepDot0.classList.add('success');
+                els.stepDot1.classList.add('active');
+            } else if (userStep === 2) {
+                els.stepDot0.classList.add('success');
+                els.stepDot1.classList.add('success');
+            }
+        }
+
+        function startPracticeMode() {
+            stopTTS();
+            gameState = 'practice';
+            practiceTotal = 0;
+            practiceCorrect = 0;
+            updateScoreBoard('practice');
+
+            els.scoreBoard.classList.remove('hidden');
+            els.stepIndicators.classList.remove('hidden'); // 점 표시 보이기
+            els.modeBadge.innerText = "2단계 연습";
+
+            els.btnTestStop.classList.add('hidden');
+            els.btnTestStop.classList.remove('flex');
+
+            els.btnTestStart.classList.remove('hidden');
+            els.btnTestStart.classList.add('flex');
+            els.questionDisplay.classList.remove('hidden');
+            els.questionDisplay.classList.add('flex');
+            els.btnReplay.classList.remove('cursor-not-allowed', 'opacity-50');
+            els.btnReplay.disabled = false;
+
+            nextQuestion();
+        }
+
+        function nextQuestion() {
+            generateRandomTarget();
+            userStep = 0;
+            updateStepIndicators();
+            isWaitingForInput = true;
+            els.instruction.innerText = "어떤 소리일까요?";
+            setTimeout(() => { playTargetSoundWithVisual(); }, 500);
+        }
+
+        function checkGameInput(inputIndex) {
+            if (!isWaitingForInput) return;
+
+            // 현재 단계의 정답과 비교
+            if (inputIndex === targetSequence[userStep]) {
+                userStep++;
+                updateStepIndicators();
+
+                // 2개 다 맞춤
+                if (userStep >= 2) {
+                    showFeedback('correct');
+                    isWaitingForInput = false;
+
+                    if (gameState === 'practice') {
+                        practiceTotal++;
+                        practiceCorrect++;
+                        updateScoreBoard('practice');
+                        setTimeout(nextQuestion, 1000);
+                    } else if (gameState === 'test') {
+                        testCorrectCount++;
+                        testScore += 10;
+                        updateScoreBoard('test');
+                        setTimeout(nextTestQuestion, 1000);
+                    }
+                }
+            } else {
+                // 틀림
+                showFeedback('wrong');
+                userStep = 0; // 리셋
+                updateStepIndicators();
+
+                if (gameState === 'practice') {
+                    els.instruction.innerText = "다시 들어보세요!";
+                    // 연습 모드는 실패 카운트 없이 다시 시도 기회 부여 (단, 진행도는 올라갈 수 있음, 여기선 단순화)
+                } else if (gameState === 'test') {
+                    // 테스트 모드는 한번이라도 틀리면 해당 문제 오답 처리 후 다음 문제로
+                    isWaitingForInput = false;
+                    setTimeout(nextTestQuestion, 1000);
+                }
+            }
+        }
+
+        function startTest() {
+            stopTTS();
+            gameState = 'test';
+            testScore = 0;
+            testCorrectCount = 0;
+            testCurrentQ = 0;
+            testStartTime = Date.now();
+            updateScoreBoard('test');
+
+            // 문제 미리 생성
+            testQuestions = [];
+            for (let i = 0; i < testTotal; i++) {
+                const idx1 = Math.floor(Math.random() * NOTES.length);
+                let idx2;
+                do { idx2 = Math.floor(Math.random() * NOTES.length); } while (idx1 === idx2);
+                testQuestions.push([idx1, idx2]);
+            }
+
+            els.modeBadge.innerText = "2단계 테스트";
+            els.scoreBoard.classList.remove('hidden');
+            els.stepIndicators.classList.remove('hidden');
+
+            els.btnTestStart.classList.add('hidden');
+            els.btnTestStop.classList.remove('hidden');
+            els.btnTestStop.classList.add('flex');
+            els.btnReplay.classList.add('cursor-not-allowed', 'opacity-50');
+            els.btnReplay.disabled = true;
+            els.questionDisplay.classList.remove('hidden');
+            els.questionDisplay.classList.add('flex');
+            els.keysContainer.classList.add('piano-keys-hidden');
+
+            nextTestQuestion();
+        }
+
+        function nextTestQuestion() {
+            if (testCurrentQ >= testTotal) {
+                finishTest();
+                return;
+            }
+            targetSequence = testQuestions[testCurrentQ];
+            testCurrentQ++;
+            updateScoreBoard('test');
+
+            userStep = 0;
+            updateStepIndicators();
+
+            els.instruction.innerText = `문제 ${testCurrentQ}. 두 음을 찾으세요!`;
+            isWaitingForInput = true;
+            setTimeout(() => {
+                playTargetSound();
+                els.soundWave.classList.remove('animate-sound-wave');
+                void els.soundWave.offsetWidth;
+                els.soundWave.classList.add('animate-sound-wave');
+            }, 800);
+        }
+
+        function updateScoreBoard(mode) {
+            if (mode === 'practice') {
+                els.labelLeft.innerText = "진행";
+                els.valLeft.innerText = practiceTotal;
+                els.labelRight.innerText = "정답";
+                els.valRight.innerText = practiceCorrect;
+            } else if (mode === 'test') {
+                els.labelLeft.innerText = "문제";
+                els.valLeft.innerText = `${testCurrentQ} / ${testTotal}`;
+                els.labelRight.innerText = "정답";
+                els.valRight.innerText = testCorrectCount;
+            }
+        }
+
+        function finishTest() {
+            const duration = Math.floor((Date.now() - testStartTime) / 1000);
+            els.resultScore.innerText = testScore + "점";
+            els.resultCount.innerText = `${testCorrectCount} / ${testTotal} 개`;
+            els.resultTime.innerText = `${duration}초`;
+
+            let msg = "참 잘했어요!";
+            if (testScore === 100) msg = "놀라워요! 2단계 마스터! 🏆";
+            else if (testScore >= 80) msg = "아주 훌륭한 청음 실력! 👍";
+            else if (testScore >= 50) msg = "조금 더 연습하면 완벽해질 거예요 💪";
+            else msg = "천천히 다시 연습해봐요 🌱";
+
+            els.resultMessage.innerText = msg;
+            toggleModal('modal-result', true);
+
+            if (testScore >= 80) fireConfettiBurst();
+        }
+
+        function goHome() {
+            if (gameState === 'test') { toggleModal('modal-stop', true); return; }
+            resetToHome();
+        }
+
+        function resetToHome() {
+            gameState = 'intro';
+            els.gameScreen.classList.add('hidden');
+            els.introScreen.classList.remove('hidden');
+            toggleModal('modal-stop', false);
+            toggleModal('modal-result', false);
+            toggleModal('modal-help', false);
+            els.scoreBoard.classList.add('hidden');
+            els.stepIndicators.classList.add('hidden');
+            els.btnTestStart.classList.add('hidden');
+            els.btnTestStop.classList.add('hidden');
+            els.guideContainer.classList.add('hidden');
+            els.questionDisplay.classList.add('hidden');
+            els.keysContainer.classList.remove('piano-keys-hidden');
+            clearHighlights();
+        }
+
+        function generateKeys() {
+            els.keysContainer.innerHTML = '';
+            NOTES.forEach((note, i) => {
+                const key = document.createElement('div');
+                key.id = `key-${i}`;
+                key.className = 'white-key group';
+                key.style.setProperty('--active-color', note.color);
+                const label = document.createElement('span');
+                label.className = `key-label text-4xl font-black mt-auto mb-6 text-gray-300 transform group-hover:scale-110 transition-all select-none pointer-events-none`;
+                label.innerText = note.name;
+                key.appendChild(label);
+                els.keysContainer.appendChild(key);
+            });
+            [0, 1, 2, 3, 4].forEach(i => {
+                const bk = document.createElement('div');
+                bk.className = `black-key bk-${i}`;
+                els.keysContainer.appendChild(bk);
+            });
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.guide-highlight').forEach(k => k.classList.remove('guide-highlight'));
+        }
+
+        function showFeedback(type) {
+            const container = els.feedbackIcon;
+            const screen = els.gameScreen;
+
+            if (type === 'correct') {
+                container.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full text-green-500"><circle cx="12" cy="12" r="10"/></svg>`;
+            } else {
+                container.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full text-red-500"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`;
+                screen.classList.add('animate-shake');
+                setTimeout(() => screen.classList.remove('animate-shake'), 400);
+            }
+            els.feedbackOverlay.style.opacity = '1';
+            els.feedbackOverlay.classList.remove('hidden');
+            setTimeout(() => { els.feedbackOverlay.style.opacity = '0'; }, 600);
+        }
+
+        function toggleModal(id, force) {
+            const el = document.getElementById(id);
+            if (force !== undefined) el.classList.toggle('hidden', !force);
+            else el.classList.toggle('hidden');
+        }
+
+        function initParticles() { resizeCanvas(); loopParticles(); }
+        function spawnParticles(x, y, color) {
+            for (let i = 0; i < 20; i++) particles.push({ x, y, vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10, life: 1, color, size: Math.random() * 8 + 2 });
+        }
+        function fireConfettiBurst() { for (let i = 0; i < 150; i++) spawnParticles(window.innerWidth / 2, window.innerHeight / 2, '#3b82f6'); }
+        function loopParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life -= 0.02;
+                if (p.life <= 0) { particles.splice(i, 1); continue; }
+                ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+            }
+            requestAnimationFrame(loopParticles);
+        }
+
+        function stopTestRequest() { stopTTS(); toggleModal('modal-stop', true); }
+        function resumeTest() { stopTTS(); toggleModal('modal-stop', false); }
+        function restartTest() { stopTTS(); toggleModal('modal-stop', false); startTest(); }
+        function quitTest() { stopTTS(); toggleModal('modal-stop', false); toggleModal('modal-result', false); startPracticeMode(); }
+
+        function resetToIntro() {
+            stopTTS();
+            gameState = 'intro';
+            els.gameScreen.classList.add('hidden');
+            els.introScreen.classList.remove('hidden');
+            els.guideContainer.classList.add('hidden');
+            els.scoreBoard.classList.add('hidden');
+            els.btnTestStart.classList.add('hidden');
+            els.btnTestStop.classList.add('hidden');
+            toggleModal('modal-stop', false);
+            toggleModal('modal-result', false);
+        }
+
+        /* TTS Functions */
+        function stopTTS() {
+            if (ttsAudio) {
+                ttsAudio.pause();
+                ttsAudio = null;
+            }
+            window.speechSynthesis.cancel();
+        }
+
+        async function speak(textKey, isRawText = false) {
+            stopTTS();
+            let text = isRawText ? textKey : (I18N[currentLang][textKey] || textKey);
+            text = text.replace(/<[^>]*>/g, '');
+            text = text.replace(/\([^)]*\)/g, '');
+
+            if (!googleTTSAvailable) {
+                fallbackSpeak(text);
+                return;
+            }
+
+            const langCode = currentLang === 'ko' ? 'ko-KR' : 'en-US';
+            const voiceName = currentLang === 'ko' ? 'ko-KR-Standard-A' : 'en-US-Standard-E';
+
+            try {
+                const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        input: { text: text },
+                        voice: { languageCode: langCode, name: voiceName },
+                        audioConfig: { audioEncoding: 'MP3' }
+                    })
+                });
+                if (!response.ok) throw new Error('API Error');
+                const data = await response.json();
+                const audioBlob = await fetch(`data:audio/mp3;base64,${data.audioContent}`).then(r => r.blob());
+                ttsAudio = new Audio(URL.createObjectURL(audioBlob));
+                ttsAudio.play();
+            } catch (e) {
+                console.warn('Google TTS Failed, switching to fallback', e);
+                googleTTSAvailable = false;
+                fallbackSpeak(text);
+            }
+        }
+
+        function fallbackSpeak(text) {
+            const ut = new SpeechSynthesisUtterance(text);
+            ut.lang = currentLang === 'ko' ? 'ko-KR' : 'en-US';
+            const voices = window.speechSynthesis.getVoices();
+            if (currentLang === 'en') {
+                const voice = voices.find(v => v.name.includes('Samantha') || v.name.includes('Google US English'));
+                if (voice) ut.voice = voice;
+            }
+            window.speechSynthesis.speak(ut);
+        }
+
+        function updateTexts() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (I18N[currentLang][key]) el.innerHTML = I18N[currentLang][key];
+            });
+        }
+
+        function toggleLanguage() {
+            stopTTS();
+            currentLang = currentLang === 'ko' ? 'en' : 'ko';
+            const btn = document.getElementById('btn-lang');
+            btn.innerText = currentLang === 'ko' ? 'English' : '한국어';
+            updateTexts();
+            updateMidiStatus(); // MIDI 상태 텍스트도 업데이트
+            speak(currentLang === 'ko' ? '한국어' : 'English', true);
+        }
+
+        /* GNB Event Handlers */
+        document.getElementById('btn-lang').addEventListener('click', toggleLanguage);
+        document.getElementById('btn-restart').addEventListener('click', () => {
+            stopTTS();
+            resetToIntro();
+            document.getElementById('btn-restart').classList.add('hidden');
+        });
+        document.getElementById('btn-exit').addEventListener('click', () => {
+            stopTTS();
+            if (confirm(currentLang === 'ko' ? '정말 종료할까요?' : 'Really Exit?')) {
+                history.back();
+            }
+        });
+
+        window.speechSynthesis.getVoices();
+    </script>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-07" defer></script>
+    <script src="../../js/web-learning-midi-status.js?v=20260618-04" data-instrument="piano" defer></script>
+</body>
+
+</html>

@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>드럼 악보 표기법연주</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- ABCJS for Sheet Music Rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/abcjs/6.2.2/abcjs-basic-min.js"></script>
+
+    <!-- Font Definition -->
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&family=Bungee&display=swap"
+        rel="stylesheet">
+    <style>
+        @font-face {
+            font-family: 'Sacheonhanggong';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2506-1@1.0/SacheonHangGong-Regular.woff2') format('woff2');
+            font-weight: normal;
+            font-display: swap;
+        }
+
+        :root {
+            --primary-bg: #f8fbff;
+            --accent-blue: #3498db;
+            --bubble-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Sacheonhanggong', sans-serif;
+            overflow: hidden;
+            user-select: none;
+            touch-action: none;
+            /* Disable double-tap zoom */
+            background-color: var(--primary-bg);
+        }
+
+        /* Kakao Style Header - Fixed */
+        .kakao-header {
+            background-color: #FEE500;
+            border-bottom: 2px solid #F7DC00;
+            color: #3b1e1e;
+            width: 100%;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+            z-index: 10001;
+            flex-shrink: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Clean White/Gray Background Animation */
+        .bg-clean-animate {
+            background: linear-gradient(120deg, #ffffff, #f3f4f6, #e5e7eb, #ffffff);
+            background-size: 400% 400%;
+            animation: cleanGradient 15s ease infinite;
+        }
+
+        @keyframes cleanGradient {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .bubble {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 50%;
+            pointer-events: none;
+            will-change: transform;
+            /* Performance Optimization */
+        }
+
+        /* Sheet Music Container */
+        #music-container {
+            position: relative;
+            width: 100%;
+            height: 420px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            border: 1px solid #e5e7eb;
+            margin-top: 1rem;
+            will-change: contents;
+            /* Hint for browser rendering */
+        }
+
+        #sheet-music {
+            position: absolute;
+            left: 50%;
+            white-space: nowrap;
+            transition: transform 0.15s linear;
+            /* Smoother linear transition for rhythm games */
+            will-change: transform;
+        }
+
+        /* Current Note Highlight Animation */
+        .current-target-note {
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: pulseNote 1.5s infinite;
+            z-index: 10;
+        }
+
+        .current-target-note path {
+            filter: drop-shadow(0 0 4px rgba(79, 70, 229, 0.6));
+            stroke-width: 2px;
+        }
+
+        @keyframes pulseNote {
+            0% {
+                transform: scale(1.5);
+            }
+
+            50% {
+                transform: scale(1.7);
+            }
+
+            100% {
+                transform: scale(1.5);
+            }
+        }
+
+        .play-line-marker {
+            position: absolute;
+            left: 50%;
+            top: 10%;
+            bottom: 10%;
+            width: 0;
+            border-left: 2px dashed rgba(239, 68, 68, 0.4);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .effect-container {
+            position: absolute;
+            pointer-events: none;
+            z-index: 50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hit-anim {
+            animation: hitBurst 0.4s ease-out forwards;
+            will-change: transform, opacity;
+        }
+
+        @keyframes hitBurst {
+            0% {
+                transform: scale(0.5);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.5);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+
+        .shake-screen {
+            animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both;
+        }
+
+        @keyframes shake {
+
+            10%,
+            90% {
+                transform: translate3d(-1px, 0, 0);
+            }
+
+            20%,
+            80% {
+                transform: translate3d(2px, 0, 0);
+            }
+
+            30%,
+            50%,
+            70% {
+                transform: translate3d(-4px, 0, 0);
+            }
+
+            40%,
+            60% {
+                transform: translate3d(4px, 0, 0);
+            }
+        }
+
+        /* Landscape Mode Optimization */
+        @media (max-height: 500px) and (orientation: landscape) {
+
+            .hide-landscape,
+            .kakao-header {
+                display: none !important;
+            }
+
+            #page-app {
+                padding: 0 !important;
+                justify-content: center;
+            }
+
+            main {
+                padding: 10px !important;
+                height: 100vh;
+                justify-content: center;
+            }
+
+            #info-display {
+                margin-bottom: 5px !important;
+                height: auto !important;
+            }
+
+            #note-name-kr {
+                font-size: 2.5rem !important;
+                margin-bottom: 0 !important;
+            }
+
+            #music-container {
+                height: 65vh !important;
+                margin-top: 0 !important;
+                border: none;
+                background: transparent;
+                box-shadow: none;
+            }
+
+            #sheet-music {
+                top: 50%;
+                transform: translateY(-50%);
+            }
+        }
+
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .btn-mode-active {
+            background-color: #4f46e5;
+            color: white;
+            border: 2px solid #4f46e5;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-mode-inactive {
+            background-color: white;
+            color: #4b5563;
+            border: 2px solid #e5e7eb;
+        }
+    </style>
+    <script>
+        // === HISTORY STATE PROTECTION ===
+        try {
+            window.history.replaceState(null, null, "/");
+            window.onpopstate = function () {
+                window.history.replaceState(null, null, "/");
+            };
+        } catch (e) {
+            console.warn("History API access restricted");
+        }
+    </script>
+</head>
+
+<body class="bg-clean-animate h-screen w-screen flex flex-col text-gray-800">
+
+    <!-- Kakao Header (Global) -->
+    <header class="kakao-header">
+        <div class="flex items-center gap-2">
+            <i data-lucide="drum" class="w-6 h-6 text-[#3b1e1e]"></i>
+            <h1 class="text-xl md:text-2xl font-bold tracking-tight text-[#3b1e1e]">
+                드럼 악보 표기법연주
+            </h1>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="app.goHome(); event.stopPropagation();" id="btn-home"
+                class="hidden bg-white border-2 border-[#3b1e1e] text-[#3b1e1e] px-3 py-1.5 rounded-lg text-sm font-bold transition hover:bg-gray-50 flex items-center gap-1">
+                처음으로 <i data-lucide="home" class="w-4 h-4"></i>
+            </button>
+            <button onclick="app.exitApp(); event.stopPropagation();"
+                class="bg-[#3b1e1e] text-white px-3 py-1.5 rounded-lg text-sm font-bold transition hover:opacity-90 flex items-center gap-1">
+                나가기 <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- PAGE: INTRO -->
+    <div id="page-intro" class="flex-1 flex flex-col justify-center items-center text-center p-4 relative z-10"
+        style="padding-top: 70px;">
+        <div class="mb-8">
+            <span class="text-5xl md:text-7xl">🥁</span>
+        </div>
+        <h1 class="text-5xl md:text-7xl mb-4 drop-shadow-sm tracking-wider text-indigo-900 font-bold"
+            style="font-family: 'Nanum Gothic', sans-serif;">드럼 악보 표기법연주</h1>
+        <p class="text-xl md:text-2xl font-light mb-8 opacity-80 tracking-widest text-indigo-700">DRUM SHEET MUSIC
+            NOTATION</p>
+
+        <!-- MIDI Connection Status on Intro -->
+        <div class="mb-8 p-4 bg-white/60 backdrop-blur rounded-xl border border-indigo-100 shadow-sm w-full max-w-md">
+            <p class="text-sm text-gray-500 mb-2 font-bold">MIDI 연결 상태</p>
+            <div id="intro-midi-status"
+                class="flex items-center gap-2 justify-center px-4 py-3 bg-gray-200 rounded-lg text-gray-500 font-bold transition-colors duration-300">
+                <i data-lucide="cable" class="w-5 h-5"></i>
+                <span>연결 확인 중...</span>
+            </div>
+            <p class="text-xs text-gray-400 mt-2">* 전자드럼을 USB로 연결하면 더 정확하게 연습할 수 있어요.</p>
+        </div>
+
+        <!-- 버튼 즉시 활성화 -->
+        <div class="flex gap-4">
+            <button id="btn-start-app" onclick="app.tryStartApp()"
+                class="px-12 py-5 bg-[#3b1e1e] text-[#FEE500] text-2xl rounded-full shadow-xl hover:opacity-90 hover:scale-105 transition transform font-bold">
+                학습시작
+            </button>
+            <button onclick="app.showHowToModal(); event.stopPropagation();"
+                class="px-8 py-5 bg-white text-[#3b1e1e] border-2 border-[#3b1e1e] text-xl rounded-full shadow-xl hover:bg-gray-50 hover:scale-105 transition transform font-bold flex items-center gap-2">
+                <i data-lucide="help-circle" class="w-6 h-6"></i> 학습방법
+            </button>
+        </div>
+
+        <div class="absolute bottom-8 text-sm opacity-60 text-gray-600" style="margin-bottom: 80px;">
+            Created by <span class="font-bold text-lg text-indigo-600">JUEUNSSAM</span>
+        </div>
+        <div id="bubbles" class="absolute inset-0 -z-10 overflow-hidden pointer-events-none"></div>
+    </div>
+
+    <!-- PAGE: LEARNING / TEST -->
+    <div id="page-app" class="hidden flex-1 flex-col h-full">
+
+        <!-- SUB HEADER (Controls) -->
+        <div
+            class="bg-white/90 backdrop-blur-md shadow-sm p-2 flex justify-between items-center z-20 border-b border-gray-100 hide-landscape">
+            <!-- Mode Toggle -->
+            <div id="staff-mode-controls" class="flex gap-1">
+                <button id="btn-color-staff" onclick="app.setNotationMode('color')"
+                    class="px-3 py-1.5 rounded-lg font-bold text-xs transition-all btn-mode-active">
+                    🌈 컬러오선
+                </button>
+                <button id="btn-normal-staff" onclick="app.setNotationMode('normal')"
+                    class="px-3 py-1.5 rounded-lg font-bold text-xs transition-all btn-mode-inactive">
+                    🎵 오선
+                </button>
+            </div>
+
+            <!-- MIDI Status Small -->
+            <div id="midi-status-mini"
+                class="text-[10px] font-mono px-2 py-1 bg-gray-200 rounded text-gray-500 flex items-center gap-1">
+                <span>🎹 MIDI:</span> <span id="midi-state-text-mini">OFF</span>
+            </div>
+
+            <!-- Test Controls -->
+            <div id="controls-default">
+                <button onclick="app.startTestConfig()"
+                    class="bg-rose-500 hover:bg-rose-600 text-white px-4 py-1.5 rounded-full shadow-md font-bold transition text-xs whitespace-nowrap flex items-center gap-1">
+                    <i data-lucide="play-circle" class="w-3 h-3"></i> 테스트 시작
+                </button>
+            </div>
+            <div id="controls-test" class="hidden flex items-center gap-2">
+                <span class="text-rose-600 font-bold animate-pulse text-xs whitespace-nowrap">테스트 중</span>
+                <button onclick="app.confirmQuitTest()"
+                    class="bg-gray-700 hover:bg-gray-800 text-white px-3 py-1.5 rounded-lg shadow-md font-bold transition text-xs whitespace-nowrap">
+                    종료
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col items-center justify-center p-4 w-full max-w-7xl mx-auto relative"
+            style="padding-top: 70px;">
+
+            <!-- Info Text Display -->
+            <div id="info-display" class="text-center mb-4 h-32 flex flex-col justify-center transition-all">
+                <div id="note-name-kr"
+                    class="text-5xl md:text-7xl font-bold text-gray-800 mb-1 drop-shadow-sm transition-all duration-200">
+                    준비</div>
+                <div id="note-name-en"
+                    class="text-xl md:text-2xl text-gray-500 font-light uppercase tracking-widest transition-all duration-200">
+                    Ready</div>
+                <div id="note-instruction"
+                    class="text-base md:text-lg text-rose-500 font-bold h-6 transition-all duration-200 opacity-0">
+                </div>
+            </div>
+
+            <!-- Score Board (Test Mode) -->
+            <div id="score-board"
+                class="hidden absolute top-4 right-4 bg-white/90 backdrop-blur p-3 rounded-xl shadow-lg border border-indigo-100 z-30">
+                <div class="text-[10px] text-gray-500 font-bold tracking-wider mb-1">SCORE</div>
+                <div class="text-2xl font-black text-indigo-600"><span id="score-current">0</span> <span
+                        class="text-gray-300 text-lg font-normal">/</span> <span id="score-total"
+                        class="text-lg text-gray-400">0</span></div>
+            </div>
+
+            <!-- Sheet Music Area -->
+            <div id="music-container">
+                <div class="play-line-marker"></div>
+                <div id="sheet-music" class="flex items-center"></div>
+                <div id="effects-layer" class="absolute inset-0 pointer-events-none flex items-center justify-center">
+                </div>
+            </div>
+
+            <div class="mt-4 text-gray-400 text-xs text-center hide-landscape font-bold">
+                스마트드럼 MIDI 연결 시 더욱 정확한 연습이 가능합니다.
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAL: No MIDI Warning -->
+    <div id="modal-no-midi" class="hidden fixed inset-0 z-[60] flex items-center justify-center modal-backdrop">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center border-2 border-rose-100">
+            <div class="flex justify-center mb-4 text-rose-500">
+                <i data-lucide="cable" class="w-16 h-16 opacity-50"></i>
+            </div>
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">MIDI 연결 안됨</h2>
+            <p class="mb-6 text-gray-600 leading-relaxed font-bold">
+                드럼이 연결되지 않아<br>정상적인 플레이가 불가능합니다.
+            </p>
+            <p class="mb-8 text-sm text-gray-400">
+                (화면 터치 및 키보드 입력이 제한됩니다)
+            </p>
+            <div class="flex flex-col gap-3">
+                <button onclick="app.startAutoPlay()"
+                    class="w-full py-4 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition shadow-lg text-lg animate-pulse">
+                    <i data-lucide="bot" class="inline-block w-6 h-6 mr-2"></i>자동 연주 (봇) 구경하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALs (Config, Result, Quit) -->
+    <div id="modal-test-config" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center border border-gray-100">
+            <h2 class="text-3xl font-bold mb-6 text-indigo-900">테스트 설정</h2>
+            <p class="mb-8 text-gray-600 leading-relaxed">총 4마디의 연주가 진행됩니다.<br>원하는 악보 타입을 선택해주세요.</p>
+            <div class="flex flex-col gap-3">
+                <button onclick="app.startTest('color')"
+                    class="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl text-lg font-bold hover:scale-[1.02] transition shadow-lg flex items-center justify-center gap-2"><span>🌈</span>
+                    컬러오선악보</button>
+                <button onclick="app.startTest('normal')"
+                    class="w-full py-4 bg-slate-800 text-white rounded-xl text-lg font-bold hover:scale-[1.02] transition shadow-lg flex items-center justify-center gap-2"><span>🎵</span>
+                    오선악보</button>
+            </div>
+            <button onclick="app.closeModal('modal-test-config')"
+                class="mt-6 text-gray-400 hover:text-gray-600 font-medium text-sm">취소</button>
+        </div>
+    </div>
+
+    <div id="modal-result" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div
+            class="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full text-center transform transition-all scale-100 border-4 border-indigo-50">
+            <h2 id="result-title" class="text-3xl font-bold mb-2 text-indigo-900">결과</h2>
+            <div id="result-message" class="text-lg text-gray-600 mb-8 font-medium">수고하셨습니다!</div>
+            <div class="relative inline-block mb-8">
+                <svg class="w-32 h-32 transform -rotate-90">
+                    <circle cx="64" cy="64" r="60" stroke="#f3f4f6" stroke-width="8" fill="none" />
+                    <circle id="score-circle" cx="64" cy="64" r="60" stroke="#4f46e5" stroke-width="8" fill="none"
+                        stroke-dasharray="377" stroke-dashoffset="377" class="transition-all duration-1000 ease-out" />
+                </svg>
+                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                    <span id="result-score" class="text-4xl font-black text-indigo-600">0</span>
+                    <span class="text-sm text-gray-400 block">점</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="app.retryTest()"
+                    class="py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">다시하기</button>
+                <button onclick="app.goHome()"
+                    class="py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">처음으로</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-quit" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full text-center">
+            <h3 class="text-xl font-bold mb-4 text-gray-800">테스트를 종료하시겠습니까?</h3>
+            <p class="text-gray-500 mb-6 text-sm">지금 종료하면 현재 점수는 저장되지 않습니다.</p>
+            <div class="flex gap-3 justify-center">
+                <button onclick="app.quitTest()"
+                    class="flex-1 px-4 py-3 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 transition shadow-md shadow-rose-200">종료하기</button>
+                <button onclick="app.closeModal('modal-quit')"
+                    class="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- How To Modal (귀여운 학습방법 모달) -->
+    <div id="modal-how-to"
+        class="hidden fixed inset-0 z-[10002] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+        onclick="app.closeHowToModal()">
+        <div class="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-3xl p-6 md:p-8 max-w-2xl w-full shadow-2xl border-4 border-[#FEE500] relative animate-bounce-in max-h-[90vh] overflow-y-auto"
+            onclick="event.stopPropagation();">
+            <!-- 닫기 버튼 - 크기 및 위치 개선 -->
+            <button onclick="app.closeHowToModal()"
+                class="absolute top-2 right-2 md:top-4 md:right-4 z-10 text-gray-600 hover:text-gray-800 transition bg-white rounded-full p-2 shadow-lg">
+                <i data-lucide="x" class="w-6 h-6 md:w-8 md:h-8"></i>
+            </button>
+
+            <!-- 귀여운 헤더 -->
+            <div class="text-center mb-6">
+                <div class="text-5xl md:text-6xl mb-3">🎵🎮</div>
+                <h2 class="text-2xl md:text-3xl font-black text-[#3b1e1e] mb-2">학습방법</h2>
+                <p class="text-sm text-gray-600 font-bold">실시간 연주 모드 사용법</p>
+            </div>
+
+            <!-- 학습 단계 - 3단계로 변경, 2x2 그리드 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div
+                    class="bg-white rounded-2xl p-4 shadow-md border-2 border-yellow-200 hover:scale-105 transition transform">
+                    <div class="flex items-start gap-3">
+                        <div
+                            class="bg-[#FEE500] text-[#3b1e1e] rounded-full w-10 h-10 flex items-center justify-center font-black text-lg flex-shrink-0">
+                            1</div>
+                        <div>
+                            <h3 class="font-bold text-base md:text-lg text-[#3b1e1e] mb-1">악보 보고 연주하기 🎼</h3>
+                            <p class="text-xs md:text-sm text-gray-700">화면 중앙의 악보를 보세요. 빛나는 음표가 현재 쳐야 할 드럼입니다!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-white rounded-2xl p-4 shadow-md border-2 border-yellow-200 hover:scale-105 transition transform">
+                    <div class="flex items-start gap-3">
+                        <div
+                            class="bg-[#FEE500] text-[#3b1e1e] rounded-full w-10 h-10 flex items-center justify-center font-black text-lg flex-shrink-0">
+                            2</div>
+                        <div>
+                            <h3 class="font-bold text-base md:text-lg text-[#3b1e1e] mb-1">음성 안내 듣기 👂</h3>
+                            <p class="text-xs md:text-sm text-gray-700">각 드럼 이름을 음성으로 알려드려요. 하이햇은 발 동작도 안내합니다!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-white rounded-2xl p-4 shadow-md border-2 border-yellow-200 hover:scale-105 transition transform md:col-span-2">
+                    <div class="flex items-start gap-3">
+                        <div
+                            class="bg-[#FEE500] text-[#3b1e1e] rounded-full w-10 h-10 flex items-center justify-center font-black text-lg flex-shrink-0">
+                            3</div>
+                        <div>
+                            <h3 class="font-bold text-base md:text-lg text-[#3b1e1e] mb-1">테스트 모드 도전 🎯</h3>
+                            <p class="text-xs md:text-sm text-gray-700">연습이 끝났다면 테스트 시작 버튼을 눌러 실력을 확인해보세요!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 확인 버튼 -->
+            <button onclick="app.closeHowToModal()"
+                class="w-full bg-[#3b1e1e] text-[#FEE500] py-3 md:py-4 rounded-2xl font-black text-lg md:text-xl hover:opacity-90 transition shadow-lg">
+                알겠어요! 연주할게요 🥁
+            </button>
+        </div>
+    </div>
+
+    <!-- Exit Confirmation Modal (나가기 확인 모달) -->
+    <div id="modal-exit"
+        class="hidden fixed inset-0 z-[10003] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border-4 border-rose-200 relative animate-bounce-in"
+            onclick="event.stopPropagation();">
+            <!-- 귀여운 헤더 -->
+            <div class="text-center mb-6">
+                <div class="text-6xl mb-3">👋😢</div>
+                <h2 class="text-3xl font-black text-[#3b1e1e] mb-2">정말 나가시나요?</h2>
+                <p class="text-base text-gray-600 font-medium">연주 중인 내용이 저장되지 않을 수 있어요!</p>
+            </div>
+
+            <!-- 버튼 그룹 -->
+            <div class="flex gap-3">
+                <button onclick="app.cancelExit()"
+                    class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-4 rounded-2xl font-bold text-lg transition shadow-md">
+                    계속 연주하기 🥁
+                </button>
+                <button onclick="app.confirmExit()"
+                    class="flex-1 bg-rose-500 hover:bg-rose-600 text-white py-4 rounded-2xl font-bold text-lg transition shadow-lg">
+                    나가기 👋
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes bounce-in {
+            0% {
+                transform: scale(0.3);
+                opacity: 0;
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+
+            70% {
+                transform: scale(0.9);
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .animate-bounce-in {
+            animation: bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+    </style>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        class DrumSampler {
+            constructor() {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.buffers = {};
+                this.urls = {
+                    'kick': 'https://cdn.jsdelivr.net/gh/wesbos/JavaScript30@master/01%20-%20JavaScript%20Drum%20Kit/sounds/kick.wav',
+                    'snare': 'https://cdn.jsdelivr.net/gh/wesbos/JavaScript30@master/01%20-%20JavaScript%20Drum%20Kit/sounds/snare.wav',
+                    'hh': 'https://cdn.jsdelivr.net/gh/wesbos/JavaScript30@master/01%20-%20JavaScript%20Drum%20Kit/sounds/hihat.wav',
+                    'hh_open': 'https://cdn.jsdelivr.net/gh/wesbos/JavaScript30@master/01%20-%20JavaScript%20Drum%20Kit/sounds/openhat.wav',
+                    'tom1': 'https://cdn.jsdelivr.net/gh/wesbos/JavaScript30@master/01%20-%20JavaScript%20Drum%20Kit/sounds/tom.wav',
+                    'ride': 'https://cdn.jsdelivr.net/gh/wesbos/JavaScript30@master/01%20-%20JavaScript%20Drum%20Kit/sounds/ride.wav',
+                    'tink': 'https://cdn.jsdelivr.net/gh/wesbos/JavaScript30@master/01%20-%20JavaScript%20Drum%20Kit/sounds/tink.wav'
+                };
+            }
+
+            // Load resources quietly in background without blocking
+            async loadAll() {
+                const fetchSound = (key, url) => {
+                    return fetch(url)
+                        .then(res => {
+                            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                            return res.arrayBuffer();
+                        })
+                        .then(buf => this.ctx.decodeAudioData(buf))
+                        .then(audioBuf => { this.buffers[key] = audioBuf; })
+                        .catch(err => console.warn(`Silent load fail: ${key}`));
+                };
+
+                const promises = Object.entries(this.urls).map(([key, url]) => fetchSound(key, url));
+                // We do NOT await this. It happens in background.
+            }
+
+            resume() { if (this.ctx.state === 'suspended') this.ctx.resume(); }
+
+            play(drumType) {
+                this.resume();
+
+                let buffer = null;
+                let rate = 1.0;
+
+                // Sound Mapping
+                if (drumType === 'kick') buffer = this.buffers['kick'];
+                else if (drumType === 'snare') buffer = this.buffers['snare'];
+                else if (drumType === 'hh') buffer = this.buffers['hh'];
+                else if (drumType === 'hh_open') buffer = this.buffers['hh_open'];
+                else if (drumType === 'tom1') buffer = this.buffers['tom1'];
+                else if (drumType === 'tom2') { buffer = this.buffers['tom1']; rate = 0.8; }
+                else if (drumType === 'floor') { buffer = this.buffers['tom1']; rate = 0.6; }
+                else if (drumType === 'ride') buffer = this.buffers['ride'];
+                else if (drumType === 'crash') { buffer = this.buffers['ride']; rate = 0.8; }
+
+                if (buffer) {
+                    const source = this.ctx.createBufferSource();
+                    source.buffer = buffer;
+                    source.playbackRate.value = rate;
+                    source.connect(this.ctx.destination);
+                    source.start(0);
+                } else {
+                    this.playSynth(drumType);
+                }
+            }
+
+            playSynth(type) {
+                const t = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                if (type === 'kick' || type === 'floor') {
+                    osc.frequency.setValueAtTime(150, t);
+                    osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.5);
+                    gain.gain.setValueAtTime(1, t);
+                    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+                } else if (type === 'snare' || type === 'tom1' || type === 'tom2') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(type === 'snare' ? 200 : 100, t);
+                    gain.gain.setValueAtTime(0.5, t);
+                    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+                } else {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(800, t);
+                    osc.frequency.exponentialRampToValueAtTime(200, t + 0.3);
+                    gain.gain.setValueAtTime(0.3, t);
+                    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+                }
+                osc.start(t);
+                osc.stop(t + 0.5);
+            }
+        }
+
+        const GAME_DRUMS = [
+            { id: 'crash', label: '크래쉬', color: '#ef4444', note: "^a", key: 'R', midi: [49, 52, 55, 57] },
+            { id: 'tom1', label: '탐 1', color: '#f97316', note: "f", key: 'T', midi: [48, 50] },
+            { id: 'tom2', label: '탐 2', color: '#facc15', note: "d", key: 'Y', midi: [45, 47] },
+            { id: 'ride', label: '라이드', color: '#16a34a', note: "b", key: 'U', midi: [51, 59] },
+            { id: 'snare', label: '스네어', color: '#2563eb', note: "c", key: 'F', midi: [38, 40] },
+            { id: 'hh', label: '하이햇 클로즈', color: '#ec4899', note: "g", key: 'G', midi: [42] },
+            { id: 'hh_open', label: '하이햇 오픈', color: '#db2777', note: "g", key: 'J', midi: [46] },
+            { id: 'floor', label: '플로어', color: '#9333ea', note: "A", key: 'H', midi: [41, 43] },
+            { id: 'kick', label: '킥', color: '#9ca3af', note: "F", key: 'B', midi: [35, 36] }
+        ];
+
+        class App {
+            constructor() {
+                this.synth = new DrumSampler();
+                this.state = 'intro';
+                this.notationMode = 'color';
+                this.notes = [];
+                this.noteIndex = 0;
+                this.score = { correct: 0, total: 0 };
+                this.isTest = false;
+                this.sequence = ['crash', 'tom1', 'tom2', 'ride', 'snare', 'hh', 'hh_open', 'floor', 'kick'];
+                this.isDemoSequence = true;
+                this.renderScale = 2.5;
+                this.inputLock = false;
+                this.midiConnected = false;
+                this.manualInputAllowed = false; // MIDI 필수: 수동 입력 비활성화
+                this.currentTTS = null; // TTS 음성 객체
+
+                this.bindKeys();
+                this.renderBubbles();
+            }
+
+            // Immediately start app logic without waiting
+            init() {
+                // Fire and forget sound loading (non-blocking)
+                this.synth.loadAll();
+                this.checkMIDI();
+            }
+
+            checkMIDI() {
+                if (navigator.requestMIDIAccess) {
+                    navigator.requestMIDIAccess().then((midiAccess) => {
+                        this.updateMidiUI(midiAccess.inputs.size > 0);
+
+                        midiAccess.onstatechange = (e) => {
+                            // Check if at least one input is connected
+                            let isConnected = false;
+                            midiAccess.inputs.forEach(input => {
+                                if (input.state === 'connected' && input.connection === 'open') isConnected = true;
+                            });
+                            // Also check just presence
+                            if (midiAccess.inputs.size > 0) isConnected = true;
+
+                            this.updateMidiUI(isConnected);
+                        };
+
+                        // Bind inputs
+                        for (let input of midiAccess.inputs.values()) {
+                            input.onmidimessage = this.handleMidiMessage.bind(this);
+                        }
+                    }).catch(e => {
+                        console.warn("MIDI Access Failed", e);
+                        this.updateMidiUI(false);
+                    });
+                } else {
+                    this.updateMidiUI(false);
+                }
+            }
+
+            updateMidiUI(connected) {
+                this.midiConnected = connected;
+                const introStatus = document.getElementById('intro-midi-status');
+                const miniStatus = document.getElementById('midi-state-text-mini');
+                const miniBox = document.getElementById('midi-status-mini');
+
+                if (connected) {
+                    introStatus.className = "flex items-center gap-2 justify-center px-6 py-2 bg-green-100 rounded-lg text-green-700 font-bold border border-green-200";
+                    introStatus.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i> <span>MIDI 연결됨</span>`;
+
+                    miniStatus.innerText = "ON";
+                    miniStatus.className = "text-green-600 font-bold";
+                    miniBox.className = "text-[10px] font-mono px-2 py-1 bg-green-50 rounded border border-green-200 flex items-center gap-1";
+                } else {
+                    introStatus.className = "flex items-center gap-2 justify-center px-6 py-2 bg-rose-100 rounded-lg text-rose-600 font-bold border border-rose-200 animate-pulse";
+                    introStatus.innerHTML = `<i data-lucide="alert-circle" class="w-5 h-5"></i> <span>MIDI 연결 안됨</span>`;
+
+                    miniStatus.innerText = "OFF";
+                    miniStatus.className = "text-rose-500 font-bold";
+                    miniBox.className = "text-[10px] font-mono px-2 py-1 bg-rose-50 rounded border border-rose-100 flex items-center gap-1";
+                }
+                lucide.createIcons();
+            }
+
+            renderBubbles() {
+                const container = document.getElementById('bubbles');
+                for (let i = 0; i < 15; i++) {
+                    const b = document.createElement('div');
+                    b.className = 'bubble';
+                    const size = Math.random() * 100 + 50;
+                    b.style.width = `${size}px`; b.style.height = `${size}px`;
+                    b.style.left = `${Math.random() * 100}%`; b.style.top = `${Math.random() * 100}%`;
+                    b.style.animation = `cleanGradient ${Math.random() * 10 + 10}s infinite reverse`;
+                    container.appendChild(b);
+                }
+            }
+
+            handleMidiMessage(event) {
+                const command = event.data[0];
+                const note = event.data[1];
+                const velocity = (event.data.length > 2) ? event.data[2] : 0;
+
+                if (command >= 144 && command <= 159 && velocity > 0) {
+                    const drum = GAME_DRUMS.find(d => d.midi && d.midi.includes(note));
+                    if (drum) {
+                        this.handleInput(drum.id, true); // true = isMidi
+                    }
+                }
+            }
+
+            bindKeys() {
+                window.addEventListener('keydown', (e) => {
+                    if (this.state === 'intro') return;
+                    // IF Manual input not allowed (MIDI only mode), ignore keys
+                    if (!this.manualInputAllowed) return;
+
+                    const key = e.key.toUpperCase();
+                    const drum = GAME_DRUMS.find(d => d.key === key);
+                    if (drum) this.handleInput(drum.id, false);
+                    if (key === 'ESCAPE' && this.isTest) this.confirmQuitTest();
+                });
+            }
+
+            tryStartApp() {
+                // Resume Audio Context on User Gesture
+                this.synth.resume();
+
+                if (!this.midiConnected) {
+                    this.showModal('modal-no-midi');
+                } else {
+                    this.startApp(true); // Allow manual input anyway if connected? Or maybe true is fine.
+                }
+            }
+
+            forceStartWithoutMidi() {
+                this.closeModal('modal-no-midi');
+                this.startApp(false); // Disable manual input
+            }
+
+            startAutoPlay() {
+                this.closeModal('modal-no-midi');
+                this.isAutoPlay = true;
+                this.startApp(false); // Allow manual? No, false.
+
+                // 봇 시작
+                this.autoPlayTimer = setInterval(() => {
+                    if (this.isAutoPlay && (this.state === 'learning' || this.state === 'test_playing')) {
+                        const target = this.notes[this.noteIndex];
+                        if (target) {
+                            this.handleInput(target, true);
+                        }
+                    }
+                }, 1500); // 1.5초 간격으로 타격
+            }
+
+            startApp(allowManual) {
+                if (typeof ABCJS === 'undefined') { alert('라이브러리 로드 실패'); return; }
+
+                this.manualInputAllowed = allowManual;
+
+                document.getElementById('page-intro').classList.add('hidden');
+                document.getElementById('page-app').classList.remove('hidden');
+                document.getElementById('page-app').classList.add('flex');
+
+                // Show home button in app mode
+                document.getElementById('btn-home').classList.remove('hidden');
+
+                this.state = 'learning';
+                this.isTest = false;
+                this.setNotationMode('color');
+                this.startLearningSession();
+
+                lucide.createIcons();
+            }
+
+            // 처음으로 돌아가기
+            goHome() {
+                this.stopTTS();
+                this.state = 'intro';
+                this.isTest = false;
+                this.isAutoPlay = false; // 오토플레이 초기화
+                if (this.autoPlayTimer) {
+                    clearInterval(this.autoPlayTimer);
+                    this.autoPlayTimer = null;
+                }
+                document.getElementById('page-app').classList.add('hidden');
+                document.getElementById('page-app').classList.remove('flex');
+                document.getElementById('page-intro').classList.remove('hidden');
+
+                // Hide home button in intro
+                document.getElementById('btn-home').classList.add('hidden');
+
+                lucide.createIcons();
+            }
+
+            // 학습방법 모달 열기
+            showHowToModal() {
+                const modal = document.getElementById('modal-how-to');
+                modal.classList.remove('hidden');
+
+                // TTS로 학습방법 읽기 (3단계로 수정)
+                const howToText = `학습방법을 안내해드릴게요. 
+                첫번째, 악보 보고 연주하기. 화면 중앙의 악보를 보세요. 빛나는 음표가 현재 쳐야 할 드럼입니다. 
+                두번째, 음성 안내 듣기. 각 드럼 이름을 음성으로 알려드려요. 하이햇은 발 동작도 안내합니다. 
+                세번째, 테스트 모드 도전. 연습이 끝났다면 테스트 시작 버튼을 눌러 실력을 확인해보세요.`;
+
+                setTimeout(() => {
+                    this.speakText(howToText);
+                    // 아이콘 재초기화
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                }, 500);
+            }
+
+            // 학습방법 모달 닫기
+            closeHowToModal() {
+                this.stopTTS();
+                const modal = document.getElementById('modal-how-to');
+                modal.classList.add('hidden');
+            }
+
+            // 앱 종료 요청 (모달 표시)
+            exitApp() {
+                // 나가기 확인 모달 표시
+                document.getElementById('modal-exit').classList.remove('hidden');
+            }
+
+            // 나가기 취소
+            cancelExit() {
+                document.getElementById('modal-exit').classList.add('hidden');
+            }
+
+            // 나가기 확정
+            confirmExit() {
+                this.stopTTS();
+                document.getElementById('modal-exit').classList.add('hidden');
+
+                // 브라우저 히스토리가 있는지 확인
+                if (window.history.length > 1 && document.referrer) {
+                    // 이전 페이지로 이동
+                    window.history.back();
+                } else {
+                    // 히스토리가 없으면 창 닫기 시도
+                    window.close();
+
+                    // 창 닫기가 실패하면 (새 탭으로 직접 열린 경우)
+                    setTimeout(() => {
+                        if (!window.closed) {
+                            // 창 닫기 재시도 (대부분의 브라우저에서 동작하지 않을 수 있음)
+                            alert('브라우저 탭을 직접 닫아주세요.');
+                        }
+                    }, 100);
+                }
+            }
+
+            // TTS 중지 함수
+            stopTTS() {
+                if (this.currentTTS) {
+                    window.speechSynthesis.cancel();
+                    this.currentTTS = null;
+                }
+            }
+
+            // 텍스트를 TTS로 읽기 (숫자 변환 포함)
+            speakText(text) {
+                this.stopTTS(); // 이전 TTS 중지
+
+                // 텍스트 정제: 버튼 텍스트와 괄호 안 텍스트 제거
+                let cleanText = text
+                    .replace(/\([^)]*\)/g, '') // 괄호와 괄호 안 내용 제거
+                    .replace(/<[^>]*>/g, '') // HTML 태그 제거
+                    .replace(/→/g, '') // 화살표 제거
+                    .replace(/다음/g, '') // 버튼 텍스트 제거
+                    .replace(/이전/g, '')
+                    .replace(/테스트/g, '')
+                    .trim();
+
+                // 숫자 변환 (개수는 "한개", "두개", 음악 관련은 "일", "이")
+                cleanText = cleanText
+                    .replace(/1개/g, '한개')
+                    .replace(/2개/g, '두개')
+                    .replace(/3개/g, '세개')
+                    .replace(/4개/g, '네개')
+                    .replace(/5개/g, '다섯개')
+                    .replace(/(\d+)개/g, (match, num) => {
+                        const nums = ['', '한', '두', '세', '네', '다섯', '여섯', '일곱', '여덟', '아홉', '열'];
+                        return (parseInt(num) < 11 ? nums[parseInt(num)] : num) + '개';
+                    })
+                    .replace(/\b(\d)\b/g, (match, num) => {
+                        const nums = ['', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
+                        return nums[parseInt(num)] || num;
+                    });
+
+                if (!cleanText) return;
+
+                // 브라우저 TTS 사용
+                const utterance = new SpeechSynthesisUtterance(cleanText);
+                utterance.lang = 'ko-KR';
+                utterance.rate = 0.9;
+                utterance.pitch = 1.0;
+
+                this.currentTTS = utterance;
+                window.speechSynthesis.speak(utterance);
+            }
+
+            setNotationMode(mode) {
+                this.notationMode = mode;
+                const btnColor = document.getElementById('btn-color-staff');
+                const btnNormal = document.getElementById('btn-normal-staff');
+                if (mode === 'color') {
+                    btnColor.className = "px-3 py-1.5 rounded-lg font-bold text-xs transition-all btn-mode-active";
+                    btnNormal.className = "px-3 py-1.5 rounded-lg font-bold text-xs transition-all btn-mode-inactive";
+                } else {
+                    btnNormal.className = "px-3 py-1.5 rounded-lg font-bold text-xs transition-all btn-mode-active";
+                    btnColor.className = "px-3 py-1.5 rounded-lg font-bold text-xs transition-all btn-mode-inactive";
+                }
+
+                if (this.notes.length > 0) {
+                    this.noteIndex = 0;
+                    if (this.isTest) {
+                        this.score.correct = 0;
+                        this.updateScoreBoard();
+                    }
+                    this.updateView();
+                    this.applyStyles();
+                    this.highlightCurrentNote();
+                }
+            }
+
+            generateNotes(count = 8) {
+                const newNotes = [];
+                for (let i = 0; i < count; i++) {
+                    let drumId;
+                    if (this.isDemoSequence && this.sequence.length > 0) {
+                        drumId = this.sequence.shift();
+                        if (this.sequence.length === 0) this.isDemoSequence = false;
+                    } else {
+                        drumId = GAME_DRUMS[Math.floor(Math.random() * GAME_DRUMS.length)].id;
+                    }
+                    newNotes.push(drumId);
+                }
+                return newNotes;
+            }
+
+            renderSheetMusic(notes) {
+                let abcString = `X:1\nM:4/4\nL:1/4\nK:C clef=perc\n%%staves (1 2)\nV:1 stem=up\nV:2 stem=down\n`;
+                let v1 = "[V:1] ";
+                let v2 = "[V:2] ";
+
+                notes.forEach((n, i) => {
+                    const d = GAME_DRUMS.find(drum => drum.id === n);
+                    if (d.id === 'kick') {
+                        v1 += "x ";
+                        v2 += `${d.note} `;
+                    } else {
+                        let noteStr = d.note;
+                        if (d.id === 'hh') noteStr = `!+!${d.note}`;
+                        if (d.id === 'hh_open') noteStr = `!open!${d.note}`;
+                        if (d.id === 'crash') noteStr = `!style=x!^a`;
+                        if (d.id === 'ride') noteStr = `!style=x!b`;
+                        v1 += `${noteStr} `;
+                        v2 += "x ";
+                    }
+                    if ((i + 1) % 4 === 0) { v1 += "| "; v2 += "| "; }
+                });
+
+                abcString += `${v1}\n${v2}`;
+
+                const isMobile = window.innerWidth < 768;
+                this.renderScale = isMobile ? 1.5 : 2.5;
+                const canvasWidth = notes.length * 200 + 1000;
+
+                ABCJS.renderAbc("sheet-music", abcString, {
+                    add_classes: true,
+                    responsive: "none",
+                    staffwidth: canvasWidth,
+                    scale: this.renderScale,
+                    paddingbottom: 50, paddingtop: 50,
+                });
+
+                setTimeout(() => this.applyStyles(), 0);
+            }
+
+            applyStyles() {
+                const allNoteGroups = Array.from(document.querySelectorAll('.abcjs-note'));
+                allNoteGroups.sort((a, b) => a.getBBox().x - b.getBBox().x);
+
+                allNoteGroups.forEach((noteGroup, index) => {
+                    const logicalNoteId = this.notes[index];
+                    if (!logicalNoteId) return;
+
+                    const drum = GAME_DRUMS.find(d => d.id === logicalNoteId);
+                    if (!drum) return;
+
+                    noteGroup.classList.add(`abcjs-n${index}`);
+                    const paths = noteGroup.querySelectorAll('path');
+                    paths.forEach(p => {
+                        const bbox = p.getBBox();
+                        const isStem = bbox.height > 20 && bbox.width < 10;
+                        if (isStem) {
+                            p.setAttribute('fill', '#000000');
+                        } else {
+                            if (this.notationMode === 'color') {
+                                p.setAttribute('fill', drum.color);
+                                p.setAttribute('stroke', drum.color);
+                                p.style.setProperty('fill', drum.color, 'important');
+                                p.style.setProperty('stroke', drum.color, 'important');
+                            } else {
+                                p.setAttribute('fill', '#000000');
+                                p.setAttribute('stroke', '#000000');
+                                // Force black by overwriting potential previous important styles
+                                p.style.setProperty('fill', '#000000', 'important');
+                                p.style.setProperty('stroke', '#000000', 'important');
+                            }
+                        }
+                    });
+                });
+            }
+
+            startLearningSession() {
+                this.noteIndex = 0;
+                this.notes = this.generateNotes(100);
+                this.renderSheetMusic(this.notes);
+                setTimeout(() => {
+                    this.applyStyles();
+                    this.updateView();
+                    this.highlightCurrentNote();
+                }, 100);
+            }
+
+            updateView() {
+                const sheet = document.getElementById('sheet-music');
+                const currentNoteGroup = document.querySelector(`.abcjs-n${this.noteIndex}`);
+                if (currentNoteGroup) {
+                    const bbox = currentNoteGroup.getBBox();
+                    const x = bbox.x + (bbox.width / 2);
+                    const translateX = -(x * this.renderScale);
+                    sheet.style.transform = `translateX(${translateX}px)`;
+                }
+            }
+
+            highlightCurrentNote() {
+                const drumId = this.notes[this.noteIndex];
+                if (!drumId) return;
+
+                if (!this.isTest) {
+                    this.updateInfoDisplay(drumId);
+                } else {
+                    document.getElementById('note-name-kr').innerText = '?';
+                    document.getElementById('note-name-en').innerText = '';
+                    document.getElementById('note-instruction').style.opacity = '0';
+                }
+
+                const allNotes = document.querySelectorAll('.abcjs-note');
+                allNotes.forEach(n => {
+                    n.style.opacity = '1.0';
+                    n.classList.remove('current-target-note');
+                });
+
+                const currentGroup = document.querySelector(`.abcjs-n${this.noteIndex}`);
+                if (currentGroup) {
+                    currentGroup.style.opacity = '1.0';
+                    currentGroup.classList.add('current-target-note');
+                }
+            }
+
+            updateInfoDisplay(drumId) {
+                if (!drumId) return;
+                const drum = GAME_DRUMS.find(d => d.id === drumId);
+                const krEl = document.getElementById('note-name-kr');
+                const enEl = document.getElementById('note-name-en');
+                const instEl = document.getElementById('note-instruction');
+
+                krEl.innerText = drum.label;
+                enEl.innerText = drum.id.toUpperCase();
+
+                let instructionText = '';
+                if (drumId === 'hh_open') {
+                    instructionText = "(발을 떼세요)";
+                    instEl.innerText = instructionText;
+                    instEl.style.opacity = '1';
+                } else if (drumId === 'hh') {
+                    instructionText = "(발을 밟으세요)";
+                    instEl.innerText = instructionText;
+                    instEl.style.opacity = '1';
+                } else {
+                    instEl.style.opacity = '0';
+                }
+
+                // TTS로 드럼 이름과 지시사항 읽기
+                const ttsText = drum.label + (instructionText ? ' ' + instructionText : '');
+                setTimeout(() => this.speakText(ttsText), 300);
+
+                if (this.notationMode === 'color') {
+                    krEl.style.color = drum.color;
+                    krEl.style.textShadow = `0 2px 4px ${drum.color}40`;
+                } else {
+                    krEl.style.color = '#1f2937';
+                    krEl.style.textShadow = 'none';
+                }
+            }
+
+            handleInput(drumId, isMidi) {
+                // Input Guard
+                if (this.state !== 'learning' && this.state !== 'test_playing') return;
+                if (!this.notes || this.notes.length === 0) return;
+
+                // Block manual input if only MIDI allowed
+                if (!isMidi && !this.manualInputAllowed && !this.isAutoPlay) return;
+
+                // Debounce
+                if (this.inputLock) return;
+                this.inputLock = true;
+                setTimeout(() => this.inputLock = false, 150);
+
+                this.stopTTS(); // 입력 시 현재 TTS 중지
+                this.synth.play(drumId);
+                const currentTarget = this.notes[this.noteIndex];
+
+                if (currentTarget === 'hh' && drumId === 'hh_open') return;
+
+                if (this.state === 'learning') {
+                    if (drumId === currentTarget) {
+                        this.showGameEffect('hit');
+                        this.advanceNote();
+                    } else {
+                        this.showGameEffect('miss');
+                    }
+                } else if (this.state === 'test_playing') {
+                    if (drumId === currentTarget) {
+                        this.score.correct++;
+                        this.showGameEffect('hit');
+                    } else {
+                        this.showGameEffect('miss');
+                    }
+                    this.updateScoreBoard();
+                    this.advanceNote();
+                }
+            }
+
+            showGameEffect(type) {
+                const container = document.getElementById('effects-layer');
+                const el = document.createElement('div');
+                if (type === 'hit') {
+                    el.innerHTML = `<div class="text-6xl font-black text-indigo-500 hit-anim" style="text-shadow: 2px 2px 0px white;">HIT!</div>`;
+                } else {
+                    el.innerHTML = `<div class="text-6xl font-black text-rose-500 hit-anim" style="text-shadow: 2px 2px 0px white;">MISS</div>`;
+                    document.getElementById('page-app').classList.add('shake-screen');
+                    setTimeout(() => document.getElementById('page-app').classList.remove('shake-screen'), 300);
+                }
+                container.appendChild(el);
+                setTimeout(() => el.remove(), 500);
+            }
+
+            advanceNote() {
+                this.noteIndex++;
+                if (this.noteIndex >= this.notes.length) {
+                    if (this.isTest) { this.endTest(); } else { this.startLearningSession(); }
+                    return;
+                }
+                this.updateView();
+                this.highlightCurrentNote();
+            }
+
+            startTestConfig() { this.showModal('modal-test-config'); }
+
+            startTest(mode) {
+                this.closeModal('modal-test-config');
+                this.state = 'test_playing';
+                this.isTest = true;
+                this.noteIndex = 0;
+                this.setNotationMode(mode);
+                this.score = { correct: 0, total: 32 };
+
+                document.getElementById('controls-default').classList.add('hidden');
+                document.getElementById('controls-test').classList.remove('hidden');
+                document.getElementById('staff-mode-controls').classList.add('hidden');
+                document.getElementById('score-board').classList.remove('hidden');
+
+                this.notes = this.generateNotes(32);
+                this.score.total = this.notes.length;
+                this.renderSheetMusic(this.notes);
+
+                setTimeout(() => {
+                    this.updateScoreBoard();
+                    this.updateView();
+                    this.highlightCurrentNote();
+                }, 50);
+            }
+
+            updateScoreBoard() {
+                document.getElementById('score-current').innerText = this.score.correct;
+                document.getElementById('score-total').innerText = this.notes.length;
+            }
+
+            confirmQuitTest() { this.showModal('modal-quit'); }
+            quitTest() { this.closeModal('modal-quit'); this.goHome(); }
+
+            endTest() {
+                this.state = 'result';
+                const totalQuestions = this.notes.length;
+                const scorePercent = Math.round((this.score.correct / totalQuestions) * 100);
+                document.getElementById('result-score').innerText = scorePercent;
+
+                setTimeout(() => {
+                    const circle = document.getElementById('score-circle');
+                    const offset = 377 - (377 * scorePercent) / 100;
+                    circle.style.strokeDashoffset = offset;
+                }, 100);
+
+                let msg = "연습이 조금 더 필요해요 🥁";
+                if (scorePercent >= 90) msg = "완벽한 리듬감! 대단해요! 🏆";
+                else if (scorePercent >= 70) msg = "아주 훌륭해요! 조금만 더! 🔥";
+                else if (scorePercent >= 50) msg = "좋아요! 감을 잡고 계시네요 👍";
+
+                document.getElementById('result-message').innerText = msg;
+                document.getElementById('result-title').innerText = this.notationMode === 'color' ? '컬러오선 테스트' : '오선악보 테스트';
+
+                this.showModal('modal-result');
+                document.getElementById('score-board').classList.add('hidden');
+                document.getElementById('controls-test').classList.add('hidden');
+            }
+
+            retryTest() {
+                this.closeModal('modal-result');
+                document.getElementById('score-circle').style.strokeDashoffset = 377;
+                this.startTest(this.notationMode);
+            }
+
+            goHome() {
+                this.closeModal('modal-result');
+                this.closeModal('modal-quit');
+                document.getElementById('score-circle').style.strokeDashoffset = 377;
+
+                this.state = 'learning';
+                this.isTest = false;
+
+                document.getElementById('score-board').classList.add('hidden');
+                document.getElementById('controls-test').classList.add('hidden');
+                document.getElementById('staff-mode-controls').classList.remove('hidden');
+                document.getElementById('controls-default').classList.remove('hidden');
+
+                this.isDemoSequence = true;
+                this.sequence = ['crash', 'tom1', 'tom2', 'ride', 'snare', 'hh', 'hh_open', 'floor', 'kick'];
+                this.startLearningSession();
+            }
+
+            confirmHome() { if (this.state === 'test_playing') { this.confirmQuitTest(); } else { location.reload(); } }
+            showModal(id) { document.getElementById(id).classList.remove('hidden'); }
+            closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        }
+
+        const app = new App();
+        // Start initialization immediately
+        app.init();
+
+        // 페이지 로드 시 아이콘 초기화
+        window.addEventListener('DOMContentLoaded', () => {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        });
+
+    </script>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-07" defer></script>
+    <script src="../../js/web-learning-midi-status.js?v=20260618-04" data-instrument="drum" defer></script>
+</body>
+
+</html>

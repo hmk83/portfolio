@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>손으로 연주하는 스마트 에어드럼</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { corePlugins: { preflight: false } }</script>
+    <script src="https://unpkg.com/lucide@latest" onerror="console.warn('Lucide icons failed to load');"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --header-height: 60px;
+            --pad-black: #050505;
+            --dot-yellow: #ffe500;
+            --panel: rgba(15, 23, 42, 0.68);
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            position: fixed;
+            inset: 0;
+            font-family: 'Jua', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            color: #fff;
+            background: radial-gradient(circle at 20% 20%, #183052 0, #07111f 38%, #030508 100%);
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        .kakao-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 50;
+            width: 100%;
+            height: var(--header-height);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 0 18px;
+            color: #3b1e1e;
+            background: linear-gradient(135deg, #FEE500 0%, #FBC02D 100%);
+            border-bottom: 2px solid rgba(123, 87, 0, 0.22);
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            font-size: clamp(15px, 3.4vw, 22px);
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 36px;
+            padding: 7px 14px;
+            font-family: inherit;
+            font-size: clamp(12px, 2.5vw, 14px);
+            font-weight: 900;
+            color: #3b1e1e;
+            background: rgba(255, 255, 255, 0.48);
+            border: 2px solid rgba(255, 255, 255, 0.72);
+            border-radius: 999px;
+            cursor: pointer;
+            transition: transform 0.18s ease, background 0.18s ease;
+        }
+
+        .header-btn:hover {
+            background: rgba(255, 255, 255, 0.78);
+            transform: translateY(-1px);
+        }
+
+        #app {
+            position: fixed;
+            inset: var(--header-height) 0 0 0;
+            overflow: hidden;
+        }
+
+        #camera-layer {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 80% 16%, rgba(254, 229, 0, 0.22), transparent 32%),
+                linear-gradient(135deg, #07111f, #111827 48%, #07070c);
+        }
+
+        #input-video,
+        #hand-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #input-video {
+            transform: scaleX(-1);
+            opacity: 0.36;
+            filter: saturate(1.1) contrast(1.08);
+        }
+
+        #hand-canvas {
+            z-index: 32;
+            pointer-events: none;
+        }
+
+        .camera-vignette {
+            position: absolute;
+            inset: 0;
+            z-index: 4;
+            pointer-events: none;
+            background:
+                linear-gradient(180deg, rgba(3, 5, 8, 0.2), rgba(3, 5, 8, 0.78)),
+                radial-gradient(circle at center, transparent 0, rgba(0, 0, 0, 0.18) 52%, rgba(0, 0, 0, 0.58) 100%);
+        }
+
+        .stage-copy {
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            z-index: 15;
+            width: min(92vw, 860px);
+            transform: translateX(-50%);
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .stage-copy h1 {
+            display: inline-block;
+            padding: 9px 20px;
+            font-size: clamp(20px, 4.6vw, 42px);
+            line-height: 1.08;
+            color: #fff;
+            text-shadow: 0 4px 0 rgba(0, 0, 0, 0.42), 0 0 24px rgba(254, 229, 0, 0.35);
+            background: rgba(0, 0, 0, 0.24);
+            border: 2px solid rgba(255, 255, 255, 0.16);
+            border-radius: 24px;
+            backdrop-filter: blur(8px);
+        }
+
+        .stage-copy p {
+            margin-top: 8px;
+            font-size: clamp(13px, 2.4vw, 18px);
+            color: rgba(255, 255, 255, 0.84);
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+        }
+
+        #music-selector {
+            position: absolute;
+            top: 76px;
+            right: clamp(14px, 2vw, 28px);
+            z-index: 18;
+            display: flex;
+            gap: 10px;
+        }
+
+        .music-track-btn {
+            --track-color: #fee500;
+            --hold-progress: 0deg;
+            position: relative;
+            width: clamp(46px, 5.8vw, 64px);
+            height: clamp(46px, 5.8vw, 64px);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: 3px solid rgba(255, 255, 255, 0.72);
+            border-radius: 50%;
+            color: #fff;
+            font-family: inherit;
+            background:
+                linear-gradient(rgba(15, 23, 42, 0.72), rgba(15, 23, 42, 0.72)) padding-box,
+                conic-gradient(var(--track-color) var(--hold-progress), rgba(255, 255, 255, 0.24) 0deg) border-box;
+            box-shadow: 0 8px 0 rgba(0, 0, 0, 0.42), 0 14px 22px rgba(0, 0, 0, 0.28);
+            cursor: pointer;
+            transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+        }
+
+        .music-track-btn i {
+            width: 56%;
+            height: 56%;
+            color: var(--track-color);
+            filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.35));
+        }
+
+        .music-track-btn.active {
+            background:
+                linear-gradient(rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.88)) padding-box,
+                conic-gradient(var(--track-color) var(--hold-progress), rgba(255, 255, 255, 0.32) 0deg) border-box;
+            border-color: var(--track-color);
+            box-shadow: 0 8px 0 rgba(0, 0, 0, 0.38), 0 0 26px rgba(254, 229, 0, 0.45);
+        }
+
+        .music-track-btn.detecting {
+            transform: translateY(-4px) scale(1.06);
+            box-shadow: 0 10px 0 rgba(0, 0, 0, 0.38), 0 0 30px rgba(49, 130, 246, 0.58);
+        }
+
+        #drum-zone {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            gap: clamp(16px, 3vh, 36px);
+            padding: clamp(72px, 12vh, 132px) 2vw clamp(22px, 4vh, 44px);
+        }
+
+        .drum-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: clamp(14px, 2.6vw, 38px);
+            width: 100%;
+        }
+
+        .drum-pad {
+            --pad-color: #ef4444;
+            position: relative;
+            width: clamp(128px, 19vw, 280px);
+            aspect-ratio: 1 / 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            padding: 0;
+            color: #fff;
+            background:
+                radial-gradient(circle at 50% 50%, #1f2937 0 43%, transparent 44%),
+                var(--pad-black);
+            border: clamp(12px, 2vw, 26px) solid var(--pad-color);
+            border-radius: 50%;
+            box-shadow:
+                0 16px 0 rgba(0, 0, 0, 0.76),
+                0 28px 36px rgba(0, 0, 0, 0.48),
+                inset 0 0 0 clamp(20px, 3.3vw, 48px) rgba(17, 24, 39, 0.98),
+                inset 0 0 18px rgba(255, 255, 255, 0.08),
+                0 0 24px var(--pad-color);
+            cursor: pointer;
+            transition: transform 0.08s ease, filter 0.12s ease, box-shadow 0.12s ease;
+            isolation: isolate;
+        }
+
+        .drum-pad::before {
+            content: "";
+            position: absolute;
+            inset: clamp(22px, 3.7vw, 54px);
+            z-index: -1;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.08), rgba(30, 41, 59, 0.98) 50%, rgba(7, 12, 22, 0.98) 100%);
+            box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.82);
+        }
+
+        .drum-pad::after {
+            content: "";
+            width: clamp(22px, 3vw, 44px);
+            height: clamp(22px, 3vw, 44px);
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            background: #3182f6;
+            border: clamp(3px, 0.45vw, 6px) solid rgba(255, 255, 255, 0.56);
+            box-shadow:
+                0 0 0 clamp(5px, 0.8vw, 10px) rgba(49, 130, 246, 0.16),
+                0 0 22px rgba(49, 130, 246, 0.68);
+        }
+
+        .drum-pad .pad-name {
+            position: absolute;
+            top: clamp(12px, 2vw, 30px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: 78%;
+            font-size: clamp(18px, 2.4vw, 34px);
+            line-height: 1.05;
+            font-weight: 900;
+            text-align: center;
+            text-shadow: 0 3px 8px rgba(0, 0, 0, 0.9);
+            word-break: keep-all;
+            white-space: nowrap;
+        }
+
+        .drum-pad .pad-name.compact {
+            font-size: clamp(14px, 1.8vw, 25px);
+        }
+
+        .drum-pad .pad-color {
+            position: absolute;
+            left: 50%;
+            bottom: clamp(12px, 2vw, 30px);
+            transform: translateX(-50%);
+            padding: 0;
+            font-size: clamp(12px, 1.5vw, 18px);
+            color: rgba(255, 255, 255, 0.86);
+            background: transparent;
+            border-radius: 0;
+            box-shadow: none;
+            letter-spacing: 0.06em;
+        }
+
+        .drum-pad.hit {
+            transform: translateY(12px) scale(0.965);
+            filter: brightness(1.22) saturate(1.26);
+            box-shadow:
+                0 6px 0 rgba(0, 0, 0, 0.72),
+                0 12px 32px rgba(0, 0, 0, 0.55),
+                inset 0 0 0 clamp(20px, 3.3vw, 48px) rgba(17, 24, 39, 0.95),
+                0 0 42px var(--pad-color);
+        }
+
+        .drum-pad.detecting {
+            outline: 4px dashed rgba(255, 255, 255, 0.45);
+            outline-offset: 5px;
+        }
+
+        .hit-burst {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 18px;
+            height: 18px;
+            border: 4px solid var(--dot-yellow);
+            border-radius: 999px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            animation: burst 0.48s ease-out forwards;
+        }
+
+        @keyframes burst {
+            to {
+                width: 170%;
+                height: 170%;
+                opacity: 0;
+            }
+        }
+
+        #start-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 40;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background:
+                radial-gradient(circle at 50% 30%, rgba(254, 229, 0, 0.2), transparent 36%),
+                rgba(2, 6, 23, 0.78);
+            backdrop-filter: blur(10px);
+        }
+
+        #start-overlay.hidden {
+            display: none;
+        }
+
+        .start-card {
+            width: min(620px, 94vw);
+            padding: clamp(22px, 5vw, 40px);
+            text-align: center;
+            color: #111827;
+            background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+            border: 6px solid #FEE500;
+            border-radius: 34px;
+            box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45), 0 0 0 10px rgba(254, 229, 0, 0.18);
+        }
+
+        .start-card h2 {
+            margin-bottom: 12px;
+            font-size: clamp(28px, 7vw, 54px);
+            line-height: 1.06;
+            color: #0f172a;
+        }
+
+        .start-card p {
+            margin: 0 auto 18px;
+            max-width: 520px;
+            font-size: clamp(15px, 3vw, 20px);
+            line-height: 1.45;
+            color: #475569;
+            word-break: keep-all;
+        }
+
+        .start-button {
+            --hold-progress: 0deg;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-width: clamp(220px, 38vw, 330px);
+            min-height: 72px;
+            padding: 14px 34px;
+            font-family: inherit;
+            font-size: clamp(26px, 6vw, 46px);
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            color: #fff;
+            background:
+                linear-gradient(135deg, #111827, #ef4444 48%, #f97316) padding-box,
+                conic-gradient(#FEE500 var(--hold-progress), rgba(255, 255, 255, 0.32) 0deg) border-box;
+            border: 6px solid transparent;
+            border-radius: 999px;
+            box-shadow: 0 10px 0 #7f1d1d, 0 20px 34px rgba(239, 68, 68, 0.34);
+            cursor: pointer;
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+
+        .start-button:active {
+            transform: translateY(8px);
+            box-shadow: 0 2px 0 #7f1d1d, 0 9px 20px rgba(239, 68, 68, 0.34);
+        }
+
+        .start-button.detecting {
+            transform: translateY(-4px) scale(1.03);
+            box-shadow: 0 14px 0 #7f1d1d, 0 0 38px rgba(254, 229, 0, 0.58);
+        }
+
+        .manual-note {
+            margin-top: 18px;
+            padding: 10px 14px;
+            color: #334155;
+            background: #e2e8f0;
+            border-radius: 16px;
+            font-size: clamp(12px, 2.5vw, 15px);
+        }
+
+        .finger-dot {
+            position: absolute;
+            z-index: 42;
+            width: 28px;
+            height: 28px;
+            margin: -14px 0 0 -14px;
+            pointer-events: none;
+            border: 4px solid rgba(255, 255, 255, 0.86);
+            border-radius: 50%;
+            background: rgba(254, 229, 0, 0.9);
+            box-shadow: 0 0 22px rgba(254, 229, 0, 0.85), 0 0 0 8px rgba(254, 229, 0, 0.18);
+            transform: scale(0);
+            transition: transform 0.08s ease, opacity 0.08s ease;
+        }
+
+        .finger-dot.visible {
+            transform: scale(1);
+        }
+
+        .toast {
+            position: absolute;
+            z-index: 24;
+            left: 50%;
+            bottom: 22px;
+            padding: 10px 18px;
+            font-size: clamp(15px, 3vw, 20px);
+            color: #111827;
+            background: #FEE500;
+            border: 3px solid #fff;
+            border-radius: 999px;
+            box-shadow: 0 14px 24px rgba(0, 0, 0, 0.34);
+            transform: translate(-50%, 80px);
+            opacity: 0;
+            transition: transform 0.24s ease, opacity 0.24s ease;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .toast.show {
+            transform: translate(-50%, 0);
+            opacity: 1;
+        }
+
+        @media (max-width: 720px) {
+            .kakao-header {
+                padding: 0 10px;
+            }
+
+            .header-title span {
+                max-width: 46vw;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .header-btn {
+                padding: 7px 10px;
+            }
+
+            .header-btn .label {
+                display: none;
+            }
+
+            #drum-zone {
+                padding-top: clamp(74px, 14vh, 112px);
+                padding-bottom: 24px;
+                gap: clamp(14px, 2.4vh, 26px);
+            }
+
+            #music-selector {
+                top: 70px;
+                right: 10px;
+                gap: 7px;
+            }
+
+            .drum-pad {
+                width: clamp(78px, 22vw, 160px);
+                height: auto;
+                border-width: clamp(8px, 1.8vw, 18px);
+                border-radius: 50%;
+                box-shadow:
+                    0 12px 0 rgba(0, 0, 0, 0.72),
+                    0 18px 24px rgba(0, 0, 0, 0.44),
+                    inset 0 0 0 3px rgba(255, 255, 255, 0.08),
+                    0 0 18px var(--pad-color);
+            }
+
+            .drum-pad .pad-color {
+                display: none;
+            }
+
+        }
+
+        @media (max-height: 620px) {
+
+            .stage-copy p {
+                display: none;
+            }
+
+            #drum-zone {
+                padding-top: 76px;
+                padding-bottom: 14px;
+                gap: 14px;
+            }
+
+            .drum-pad {
+                width: clamp(82px, 18vw, 156px);
+                height: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="kakao-header">
+        <div class="header-title">
+            <i data-lucide="hand" class="w-6 h-6"></i>
+            <span>손으로 연주하는 스마트 에어드럼</span>
+        </div>
+        <div class="header-actions">
+            <button class="header-btn" id="btn-mute" type="button">
+                <i data-lucide="volume-2" class="w-4 h-4"></i>
+                <span class="label">소리 켜짐</span>
+            </button>
+            <button class="header-btn" id="btn-exit" type="button">
+                <i data-lucide="log-out" class="w-4 h-4"></i>
+                <span class="label">나가기</span>
+            </button>
+        </div>
+    </header>
+
+    <main id="app">
+        <section id="camera-layer" aria-label="카메라 연주 영역">
+            <video id="input-video" playsinline muted></video>
+            <canvas id="hand-canvas"></canvas>
+            <div class="camera-vignette"></div>
+        </section>
+
+        <div class="stage-copy">
+            <h1>손끝으로 톡! 에어드럼 연주</h1>
+            <p>검지나 중지를 드럼 중앙에 가져가면 소리가 납니다.</p>
+        </div>
+
+        <div id="music-selector" aria-label="음원 선택">
+            <button class="music-track-btn active" type="button" data-track="0" aria-label="음원 1 선택" style="--track-color:#FEE500">
+                <i data-lucide="music-2" aria-hidden="true"></i>
+            </button>
+            <button class="music-track-btn" type="button" data-track="1" aria-label="음원 2 선택" style="--track-color:#3182f6">
+                <i data-lucide="music-2" aria-hidden="true"></i>
+            </button>
+            <button class="music-track-btn" type="button" data-track="2" aria-label="음원 3 선택" style="--track-color:#ff4d9d">
+                <i data-lucide="music-2" aria-hidden="true"></i>
+            </button>
+        </div>
+
+        <section id="drum-zone">
+            <div class="drum-row" aria-label="상단 드럼 4개">
+                <button class="drum-pad" type="button" data-drum="crash" style="--pad-color:#ef233c">
+                    <span class="pad-name compact">크래쉬 심벌</span>
+                </button>
+                <button class="drum-pad" type="button" data-drum="tom1" style="--pad-color:#fb8500">
+                    <span class="pad-name compact">탐1</span>
+                </button>
+                <button class="drum-pad" type="button" data-drum="tom2" style="--pad-color:#ffca3a">
+                    <span class="pad-name compact">탐2</span>
+                </button>
+                <button class="drum-pad" type="button" data-drum="ride" style="--pad-color:#38b000">
+                    <span class="pad-name">라이드<br>심벌</span>
+                </button>
+            </div>
+            <div class="drum-row" aria-label="하단 드럼 3개">
+                <button class="drum-pad" type="button" data-drum="snare" style="--pad-color:#3182f6">
+                    <span class="pad-name">스네어</span>
+                </button>
+                <button class="drum-pad" type="button" data-drum="hihat" style="--pad-color:#ff4d9d">
+                    <span class="pad-name">하이햇</span>
+                </button>
+                <button class="drum-pad" type="button" data-drum="floor" style="--pad-color:#8f00ff">
+                    <span class="pad-name">플로탐</span>
+                </button>
+            </div>
+        </section>
+
+        <div class="finger-dot" id="finger-0"></div>
+        <div class="finger-dot" id="finger-1"></div>
+        <div class="finger-dot" id="finger-2"></div>
+        <div class="finger-dot" id="finger-3"></div>
+
+        <div class="toast" id="toast">드럼을 터치해도 연주할 수 있어요.</div>
+
+        <section id="start-overlay">
+            <div class="start-card">
+                <h2>카메라 에어드럼</h2>
+                <p>
+                    카메라를 켜고 양손을 화면 안에 보여주세요.<br>
+                    위에는 4개, 아래에는 3개의 컬러 드럼이 배치되어 있어요.
+                </p>
+                <button class="start-button" id="btn-start" type="button">
+                    PLAY
+                </button>
+                <div class="manual-note">
+                    버튼 위에 3초 이상 머무르면 연주와 음원이 시작됩니다.
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const DRUMS = {
+            crash: { label: '크래쉬심벌', type: 'crash' },
+            tom1: { label: '탐1', type: 'tom', freq: 178 },
+            tom2: { label: '탐2', type: 'tom', freq: 138 },
+            ride: { label: '라이드심벌', type: 'ride' },
+            snare: { label: '스네어', type: 'snare' },
+            hihat: { label: '하이햇', type: 'hihat' },
+            floor: { label: '플로탐', type: 'tom', freq: 94 }
+        };
+
+        const HIT_COOLDOWN = 160;
+        const REPEAT_COOLDOWN = 420;
+        const HOLD_DURATION = 3000;
+        const TIP_POINTS = [8, 12];
+        const MUSIC_TRACKS = [
+            { label: '음원 1', src: 'https://cdn.pixabay.com/audio/2025/04/29/audio_dc286d5336.mp3' },
+            { label: '음원 2', src: 'https://cdn.pixabay.com/audio/2025/06/04/audio_7f6443fbf8.mp3' },
+            { label: '음원 3', src: 'https://cdn.pixabay.com/audio/2026/04/10/audio_02a364dca5.mp3' }
+        ];
+        const DRUM_SAMPLE_BASE = 'https://raw.githubusercontent.com/wesbos/JavaScript30/master/01%20-%20JavaScript%20Drum%20Kit/sounds';
+        const DRUM_SAMPLE_URLS = {
+            crash: `${DRUM_SAMPLE_BASE}/boom.wav`,
+            tom1: `${DRUM_SAMPLE_BASE}/tom.wav`,
+            tom2: `${DRUM_SAMPLE_BASE}/tink.wav`,
+            ride: `${DRUM_SAMPLE_BASE}/ride.wav`,
+            snare: `${DRUM_SAMPLE_BASE}/snare.wav`,
+            hihat: `${DRUM_SAMPLE_BASE}/hihat.wav`,
+            floor: `${DRUM_SAMPLE_BASE}/kick.wav`
+        };
+
+        let audioCtx = null;
+        let masterGain = null;
+        let muted = false;
+        let hands = null;
+        let camera = null;
+        let started = false;
+        let playStarted = false;
+        let lastPadHit = {};
+        let activeZones = new Map();
+        let activeMusicZones = new Map();
+        let previousTips = new Map();
+        let hideToastTimer = null;
+        let lastNoHandToastAt = 0;
+        let currentMusicIndex = 0;
+        let lastMusicChangeAt = 0;
+        let musicAudio = null;
+        let drumSamplePool = {};
+        let holdTargetId = null;
+        let holdStartedAt = 0;
+        let holdFrame = null;
+
+        const video = document.getElementById('input-video');
+        const canvas = document.getElementById('hand-canvas');
+        const ctx = canvas.getContext('2d');
+        const cameraStatus = document.getElementById('camera-status');
+        const handCount = document.getElementById('hand-count');
+        const lastHit = document.getElementById('last-hit');
+        const toast = document.getElementById('toast');
+        const musicButtons = Array.from(document.querySelectorAll('.music-track-btn'));
+        const fingerDots = [
+            document.getElementById('finger-0'),
+            document.getElementById('finger-1'),
+            document.getElementById('finger-2'),
+            document.getElementById('finger-3')
+        ];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight - 60;
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+        }
+
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add('show');
+            clearTimeout(hideToastTimer);
+            hideToastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
+        }
+
+        function setHoldProgress(target, progress) {
+            if (!target) return;
+            const degrees = Math.max(0, Math.min(1, progress)) * 360;
+            target.style.setProperty('--hold-progress', `${degrees}deg`);
+        }
+
+        function resetHold(target = null) {
+            if (holdFrame) cancelAnimationFrame(holdFrame);
+            holdFrame = null;
+            holdTargetId = null;
+            holdStartedAt = 0;
+            const targets = target ? [target] : [...musicButtons, document.getElementById('btn-start')];
+            targets.forEach((item) => {
+                if (!item) return;
+                item.classList.remove('detecting');
+                setHoldProgress(item, 0);
+            });
+        }
+
+        function updateHoldTarget(target, targetId, now, onComplete) {
+            if (!target) return false;
+            if (holdTargetId !== targetId) {
+                resetHold();
+                holdTargetId = targetId;
+                holdStartedAt = now;
+            }
+
+            const progress = (now - holdStartedAt) / HOLD_DURATION;
+            target.classList.add('detecting');
+            setHoldProgress(target, progress);
+
+            if (progress >= 1) {
+                resetHold(target);
+                onComplete();
+                return true;
+            }
+            return false;
+        }
+
+        function startPointerHold(target, targetId, onComplete) {
+            resetHold();
+            const tick = () => {
+                if (!holdTargetId) {
+                    holdTargetId = targetId;
+                    holdStartedAt = performance.now();
+                }
+                if (holdTargetId !== targetId) return;
+                const completed = updateHoldTarget(target, targetId, performance.now(), onComplete);
+                if (!completed) holdFrame = requestAnimationFrame(tick);
+            };
+            tick();
+        }
+
+        function setCameraStatus(text, mode = '') {
+            if (!cameraStatus) return;
+            cameraStatus.textContent = text;
+            cameraStatus.className = `status-pill ${mode}`;
+        }
+
+        function updateMusicButtons() {
+            musicButtons.forEach((button, index) => {
+                button.classList.toggle('active', index === currentMusicIndex);
+            });
+        }
+
+        function ensureMusicAudio() {
+            if (musicAudio) return musicAudio;
+            musicAudio = new Audio(MUSIC_TRACKS[currentMusicIndex].src);
+            musicAudio.loop = true;
+            musicAudio.preload = 'auto';
+            musicAudio.volume = 0.48;
+            musicAudio.muted = muted;
+            return musicAudio;
+        }
+
+        function playMusicTrack(index, announce = true) {
+            if (!MUSIC_TRACKS[index]) return;
+            const audio = ensureMusicAudio();
+            const track = MUSIC_TRACKS[index];
+            const changed = currentMusicIndex !== index || !audio.src.includes(track.src.split('/').pop());
+
+            currentMusicIndex = index;
+            if (changed) {
+                audio.pause();
+                audio.src = track.src;
+                audio.load();
+            }
+            audio.loop = true;
+            audio.volume = 0.48;
+            audio.muted = muted;
+            updateMusicButtons();
+            audio.play().catch(() => {
+                if (announce) showToast('음원 재생을 시작하려면 화면을 한 번 눌러주세요.');
+            });
+            if (announce) showToast(`${track.label} 재생 중`);
+        }
+
+        function initAudio() {
+            preloadDrumSamples();
+        }
+
+        function preloadDrumSamples() {
+            Object.entries(DRUM_SAMPLE_URLS).forEach(([drumId, src]) => {
+                if (drumSamplePool[drumId]) return;
+                drumSamplePool[drumId] = Array.from({ length: 4 }, () => {
+                    const audio = new Audio(src);
+                    audio.preload = 'auto';
+                    audio.volume = 0.88;
+                    audio.muted = muted;
+                    return audio;
+                });
+            });
+        }
+
+        function playDrumSound(drumId) {
+            preloadDrumSamples();
+            const pool = drumSamplePool[drumId];
+            if (!pool) return;
+            const sample = pool.find((audio) => audio.paused || audio.ended) || pool[0];
+            sample.pause();
+            sample.currentTime = 0;
+            sample.muted = muted;
+            sample.volume = drumId === 'hihat' ? 0.72 : 0.9;
+            sample.play().catch(() => showToast('드럼 소리를 시작하려면 화면을 한 번 눌러주세요.'));
+        }
+
+        function animatePad(pad, drumId) {
+            pad.classList.remove('hit');
+            void pad.offsetWidth;
+            pad.classList.add('hit');
+            setTimeout(() => pad.classList.remove('hit'), 150);
+
+            const burst = document.createElement('span');
+            burst.className = 'hit-burst';
+            pad.appendChild(burst);
+            setTimeout(() => burst.remove(), 520);
+
+            if (lastHit) lastHit.textContent = DRUMS[drumId]?.label || '연주';
+        }
+
+        function hitDrum(drumId, force = false) {
+            const now = performance.now();
+            const pad = document.querySelector(`[data-drum="${drumId}"]`);
+            if (!pad) return;
+            if (!force && now - (lastPadHit[drumId] || 0) < HIT_COOLDOWN) return;
+
+            lastPadHit[drumId] = now;
+            playDrumSound(drumId);
+            animatePad(pad, drumId);
+        }
+
+        function findPadAtPoint(x, y) {
+            const pads = document.querySelectorAll('.drum-pad');
+            let result = null;
+            pads.forEach((pad) => {
+                const rect = pad.getBoundingClientRect();
+                if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                    result = pad;
+                }
+            });
+            return result;
+        }
+
+        function findMusicButtonAtPoint(x, y) {
+            let result = null;
+            musicButtons.forEach((button) => {
+                const rect = button.getBoundingClientRect();
+                if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                    result = button;
+                }
+            });
+            return result;
+        }
+
+        function findStartButtonAtPoint(x, y) {
+            const button = document.getElementById('btn-start');
+            if (!button || playStarted) return null;
+            const rect = button.getBoundingClientRect();
+            if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                return button;
+            }
+            return null;
+        }
+
+        function updateFingerDots(points) {
+            fingerDots.forEach((dot, index) => {
+                const point = points[index];
+                if (!point) {
+                    dot.classList.remove('visible');
+                    return;
+                }
+                dot.style.left = `${point.x}px`;
+                dot.style.top = `${point.y}px`;
+                dot.classList.add('visible');
+            });
+        }
+
+        function clearPadDetecting() {
+            document.querySelectorAll('.drum-pad.detecting').forEach((pad) => pad.classList.remove('detecting'));
+        }
+
+        function clearMusicDetecting() {
+            musicButtons.forEach((button) => button.classList.remove('detecting'));
+        }
+
+        function processTips(points) {
+            const now = performance.now();
+            const seenKeys = new Set();
+            let musicPointKey = null;
+
+            clearPadDetecting();
+            clearMusicDetecting();
+
+            if (!playStarted) {
+                const startHover = points
+                    .map((point) => ({ point, button: findStartButtonAtPoint(point.x, point.viewportY) }))
+                    .find((entry) => entry.button);
+
+                if (startHover) {
+                    startHover.button.classList.add('detecting');
+                    updateHoldTarget(startHover.button, 'start-play', now, beginPerformance);
+                } else if (holdTargetId === 'start-play') {
+                    resetHold();
+                }
+                return;
+            }
+
+            const musicHover = points
+                .map((point) => ({ point, button: findMusicButtonAtPoint(point.x, point.viewportY) }))
+                .find((entry) => entry.button);
+
+            if (musicHover) {
+                const trackIndex = Number(musicHover.button.dataset.track);
+                musicPointKey = musicHover.point.key;
+                musicHover.button.classList.add('detecting');
+                activeZones.delete(musicPointKey);
+                updateHoldTarget(musicHover.button, `music-${trackIndex}`, now, () => {
+                    playMusicTrack(trackIndex);
+                    lastMusicChangeAt = performance.now();
+                });
+            } else if (holdTargetId && holdTargetId.startsWith('music-')) {
+                resetHold();
+            }
+
+            points.forEach((point) => {
+                seenKeys.add(point.key);
+                if (point.key === musicPointKey) return;
+                activeMusicZones.delete(point.key);
+
+                const pad = findPadAtPoint(point.x, point.viewportY);
+                const prevZone = activeZones.get(point.key);
+                const prev = previousTips.get(point.key);
+                const velocityY = prev ? point.y - prev.y : 0;
+                previousTips.set(point.key, { x: point.x, y: point.y, t: now });
+
+                if (!pad) {
+                    activeZones.delete(point.key);
+                    return;
+                }
+
+                pad.classList.add('detecting');
+                const drumId = pad.dataset.drum;
+                const lastKeyHit = previousTips.get(`${point.key}:hit`)?.t || 0;
+                const isNewZone = prevZone !== drumId;
+                const isIntentionalTap = velocityY > 9 && now - lastKeyHit > REPEAT_COOLDOWN;
+
+                if (isNewZone || isIntentionalTap) {
+                    hitDrum(drumId);
+                    previousTips.set(`${point.key}:hit`, { t: now });
+                    activeZones.set(point.key, drumId);
+                }
+            });
+
+            Array.from(activeZones.keys()).forEach((key) => {
+                if (!seenKeys.has(key)) activeZones.delete(key);
+            });
+            Array.from(activeMusicZones.keys()).forEach((key) => {
+                if (!seenKeys.has(key)) activeMusicZones.delete(key);
+            });
+        }
+
+        function drawHands(results) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const width = window.innerWidth;
+            const height = window.innerHeight - 60;
+            const points = [];
+
+            if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+                if (handCount) handCount.textContent = '0개';
+                updateFingerDots([]);
+                clearPadDetecting();
+                clearMusicDetecting();
+                activeMusicZones.clear();
+                if (holdTargetId && (holdTargetId.startsWith('music-') || holdTargetId === 'start-play')) resetHold();
+                const now = performance.now();
+                if (started && now - lastNoHandToastAt > 3200) {
+                    showToast('손이 인식되지 않아요. 카메라 앞에서 손을 보여주세요.');
+                    lastNoHandToastAt = now;
+                }
+                return;
+            }
+
+            if (handCount) handCount.textContent = `${results.multiHandLandmarks.length}개`;
+
+            results.multiHandLandmarks.forEach((landmarks, handIndex) => {
+                if (typeof drawConnectors === 'function' && typeof HAND_CONNECTIONS !== 'undefined') {
+                    const mirrored = landmarks.map((point) => ({ ...point, x: 1 - point.x }));
+                    drawConnectors(ctx, mirrored, HAND_CONNECTIONS, { color: 'rgba(254, 229, 0, 0.72)', lineWidth: 4 });
+                    drawLandmarks(ctx, mirrored, { color: '#ffffff', lineWidth: 1, radius: 3 });
+                }
+
+                TIP_POINTS.forEach((tipIndex) => {
+                    const tip = landmarks[tipIndex];
+                    if (!tip) return;
+                    points.push({
+                        key: `${handIndex}-${tipIndex}`,
+                        x: (1 - tip.x) * width,
+                        y: tip.y * height,
+                        viewportY: tip.y * height + 60
+                    });
+                });
+            });
+
+            updateFingerDots(points.slice(0, fingerDots.length));
+            processTips(points);
+        }
+
+        function beginPerformance() {
+            if (playStarted) return;
+            playStarted = true;
+            initAudio();
+            playMusicTrack(currentMusicIndex, false);
+            document.getElementById('start-overlay').classList.add('hidden');
+            showToast('연주를 시작합니다!');
+        }
+
+        async function prepareCamera() {
+            if (started) return;
+            started = true;
+            setCameraStatus('준비 중', 'warn');
+            showToast('카메라를 준비하고 있어요.');
+
+            if (typeof Hands === 'undefined' || typeof Camera === 'undefined') {
+                setCameraStatus('터치 모드', 'warn');
+                showToast('손 인식 스크립트를 불러오지 못했어요. 패드를 직접 눌러 연주하세요.');
+                return;
+            }
+
+            try {
+                hands = new Hands({
+                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+                });
+                hands.setOptions({
+                    maxNumHands: 2,
+                    modelComplexity: 1,
+                    minDetectionConfidence: 0.62,
+                    minTrackingConfidence: 0.58
+                });
+                hands.onResults(drawHands);
+
+                camera = new Camera(video, {
+                    onFrame: async () => {
+                        await hands.send({ image: video });
+                    },
+                    width: 1280,
+                    height: 720
+                });
+
+                await camera.start();
+                setCameraStatus('인식 중', 'ready');
+                showToast('PLAY 버튼 위에 손을 3초 올려주세요.');
+            } catch (error) {
+                console.error(error);
+                started = false;
+                setCameraStatus('터치 모드', 'warn');
+                showToast('카메라를 사용할 수 없어 터치 연주 모드로 전환했어요.');
+            }
+        }
+
+        function toggleMute() {
+            muted = !muted;
+            if (masterGain) masterGain.gain.value = muted ? 0 : 0.82;
+            if (musicAudio) musicAudio.muted = muted;
+            Object.values(drumSamplePool).flat().forEach((audio) => {
+                audio.muted = muted;
+            });
+            const btn = document.getElementById('btn-mute');
+            btn.innerHTML = muted
+                ? '<i data-lucide="volume-x" class="w-4 h-4"></i><span class="label">소리 꺼짐</span>'
+                : '<i data-lucide="volume-2" class="w-4 h-4"></i><span class="label">소리 켜짐</span>';
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function exitPage() {
+            if (camera && typeof camera.stop === 'function') {
+                try { camera.stop(); } catch (e) { }
+            }
+            if (window.history.length > 1) window.history.back();
+            else window.location.href = 'https://jueunssam.com/web-study/';
+        }
+
+        const startButton = document.getElementById('btn-start');
+        startButton.addEventListener('pointerdown', (event) => {
+            event.preventDefault();
+            prepareCamera();
+            startPointerHold(startButton, 'start-play', beginPerformance);
+        });
+        ['pointerup', 'pointerleave', 'pointercancel'].forEach((eventName) => {
+            startButton.addEventListener(eventName, () => {
+                if (holdTargetId === 'start-play') resetHold(startButton);
+            });
+        });
+        document.getElementById('btn-mute').addEventListener('click', toggleMute);
+        document.getElementById('btn-exit').addEventListener('click', exitPage);
+        musicButtons.forEach((button) => {
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                const trackIndex = Number(button.dataset.track);
+                resetHold(button);
+                playMusicTrack(trackIndex);
+            });
+            ['pointerup', 'pointerleave', 'pointercancel'].forEach((eventName) => {
+                button.addEventListener(eventName, () => {
+                    if (holdTargetId === `music-${button.dataset.track}`) resetHold(button);
+                });
+            });
+        });
+
+        document.querySelectorAll('.drum-pad').forEach((pad) => {
+            pad.addEventListener('pointerdown', (event) => {
+                event.preventDefault();
+                hitDrum(pad.dataset.drum, true);
+            });
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        if (window.lucide) lucide.createIcons();
+        prepareCamera();
+    </script>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-07" defer></script>
+</body>
+
+</html>

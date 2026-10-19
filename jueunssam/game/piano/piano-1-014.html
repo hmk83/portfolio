@@ -1,0 +1,2472 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>피아노 드래곤플라이</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Jua', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a2e;
+            color: white;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .glow-bg {
+            position: absolute;
+            width: 60vw;
+            height: 60vw;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.15;
+            z-index: 0;
+            animation: pulse-bg 10s infinite alternate;
+        }
+
+        .glow-1 {
+            top: -20%;
+            left: -10%;
+            background: #ff0055;
+        }
+
+        .glow-2 {
+            bottom: -20%;
+            right: -10%;
+            background: #00ddff;
+        }
+
+        @keyframes pulse-bg {
+            0% {
+                transform: scale(1);
+                opacity: 0.1;
+            }
+
+            100% {
+                transform: scale(1.1);
+                opacity: 0.2;
+            }
+        }
+
+        .kakao-header {
+            background-color: #FEE500;
+            color: #3b1e1e;
+            width: 100%;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            z-index: 500;
+            flex-shrink: 0;
+            border-bottom: 2px solid #FBC02D;
+        }
+
+        .kakao-header button {
+            transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease, opacity 0.16s ease;
+        }
+
+        .kakao-header button:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.06);
+            box-shadow: 0 6px 14px rgba(59, 30, 30, 0.25);
+        }
+
+        #game-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 60px);
+            min-height: 0;
+            background: #7dd3fc;
+        }
+
+        #warp-bg {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            overflow: hidden;
+            display: none;
+            transform-style: preserve-3d;
+            perspective: 100px;
+            background: radial-gradient(circle at 50% 50%, rgba(12, 33, 72, 0.5), rgba(0, 0, 0, 0.95) 55%, #000 100%);
+            pointer-events: none;
+        }
+
+        #game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+        #front-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 30;
+            pointer-events: none;
+        }
+
+        #dragon-sprite {
+            position: absolute;
+            z-index: 20;
+            pointer-events: none;
+            display: none;
+            left: 0;
+            top: 0;
+            width: 86px;
+            height: auto;
+            transform: translate3d(50vw, 82vh, 0) translate(-50%, -50%);
+            transform-origin: center center;
+            will-change: transform;
+        }
+
+        #boss-sprite {
+            position: absolute;
+            z-index: 24;
+            pointer-events: none;
+            display: none;
+            left: 0;
+            top: 0;
+            width: 320px;
+            height: auto;
+            transform: translate3d(50vw, 25vh, 0) translate(-50%, -50%);
+            transform-origin: center center;
+            will-change: transform, width;
+        }
+
+        /* Top HUD */
+        #hud-top {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        .hud-box {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .hud-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .score-hud {
+            min-width: 188px;
+            border-color: rgba(254, 229, 0, 0.75);
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(51, 65, 85, 0.72));
+            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.38), 0 0 18px rgba(254, 229, 0, 0.2);
+        }
+
+        .score-label {
+            display: block;
+            color: rgba(255, 255, 255, 0.74);
+            font-size: 0.78rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        #score-text {
+            display: block;
+            color: #FEE500;
+            font-size: 2.25rem;
+            font-weight: 900;
+            line-height: 1.04;
+            font-variant-numeric: tabular-nums;
+            text-shadow: 0 2px 0 rgba(59, 30, 30, 0.45), 0 0 18px rgba(254, 229, 0, 0.34);
+        }
+
+        #timer-text {
+            font-size: 2rem;
+            color: #FEE500;
+            font-weight: bold;
+        }
+
+        #boss-progress {
+            position: absolute;
+            top: 22px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(48vw, 560px);
+            background: rgba(0, 0, 0, 0.52);
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            border-radius: 999px;
+            padding: 8px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 20;
+            pointer-events: none;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+        }
+
+        .boss-progress-track {
+            flex: 1;
+            height: 12px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.18);
+            overflow: hidden;
+            position: relative;
+        }
+
+        #boss-progress-fill {
+            width: 0%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #22d3ee, #facc15, #ef4444);
+            transition: width 0.2s linear;
+        }
+
+        @media (max-width: 760px) {
+            #hud-top {
+                top: 10px;
+                left: 12px;
+                right: 12px;
+                align-items: flex-start;
+            }
+
+            .hud-box {
+                padding: 8px 14px;
+                border-radius: 16px;
+            }
+
+            .score-hud {
+                min-width: 160px;
+            }
+
+            #timer-text,
+            #score-text {
+                font-size: 1.65rem;
+            }
+
+            #boss-progress {
+                top: 8px;
+                right: 0;
+                left: auto;
+                transform: none;
+                width: min(42vw, 280px);
+                min-width: 170px;
+                padding: 7px 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #boss-progress {
+                top: 124px;
+                left: 0;
+                right: 0;
+                width: auto;
+            }
+        }
+
+        .progress-icon {
+            font-size: 1.35rem;
+            line-height: 1;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+        }
+
+        #boss-status {
+            min-width: 104px;
+            color: #FEE500;
+            font-size: 1rem;
+            font-weight: 900;
+            text-align: right;
+        }
+
+        /* Bottom Controls */
+        #controls-bottom {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            gap: 0;
+            z-index: 20;
+            width: 100%;
+            max-width: none;
+            justify-content: space-between;
+        }
+
+        .control-btn {
+            flex: 1;
+            min-width: 0;
+            background: var(--key-color, rgba(255, 255, 255, 0.82));
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            border-bottom: 0;
+            color: white;
+            padding: 14px 0 12px;
+            border-radius: 9px 9px 0 0;
+            font-size: clamp(0.82rem, 1.45vw, 1.08rem);
+            font-weight: bold;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: all 0.1s;
+            text-shadow: 0 1px 3px rgba(15, 23, 42, 0.55);
+            box-shadow: inset 0 10px 0 rgba(255, 255, 255, 0.2), inset 0 -10px 0 rgba(15, 23, 42, 0.12);
+        }
+
+        .control-btn:hover {
+            transform: translateY(-4px);
+            filter: brightness(1.12) saturate(1.08);
+            box-shadow: inset 0 12px 0 rgba(255, 255, 255, 0.25), inset 0 -10px 0 rgba(15, 23, 42, 0.12), 0 0 16px rgba(255, 255, 255, 0.28);
+        }
+
+        .control-btn:active,
+        .control-btn.active {
+            transform: translateY(3px);
+            background: var(--key-color, #fef3c7);
+            color: white;
+            text-shadow: 0 1px 3px rgba(15, 23, 42, 0.6);
+            border-color: white;
+        }
+
+        .control-btn .key-octave {
+            display: block;
+            font-size: 0.68em;
+            line-height: 1;
+            opacity: 0.85;
+            margin-top: 3px;
+        }
+
+        /* Overlays */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #screen-intro {
+            background: linear-gradient(180deg, rgba(4, 10, 30, 0.54), rgba(4, 10, 30, 0.16) 48%, rgba(4, 10, 30, 0.62));
+            backdrop-filter: none;
+            justify-content: flex-start;
+            padding-top: clamp(42px, 9vh, 74px);
+        }
+
+        .intro-title {
+            color: #ffffff;
+            font-size: clamp(3rem, 8vw, 5.8rem);
+            font-weight: 900;
+            letter-spacing: 0;
+            line-height: 0.95;
+            text-align: center;
+            text-shadow: 0 5px 0 rgba(28, 34, 70, 0.9), 0 0 28px rgba(254, 229, 0, 0.35);
+        }
+
+        .intro-title-image {
+            width: min(620px, 84vw);
+            max-height: 170px;
+            object-fit: contain;
+            filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 24px rgba(254, 229, 0, 0.35));
+        }
+
+        .intro-subtitle {
+            margin-top: 12px;
+            color: #fde68a;
+            font-size: clamp(1rem, 2.2vw, 1.45rem);
+            font-weight: 700;
+            text-align: center;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+        }
+
+        .guide-container {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(120px, 1fr));
+            gap: 12px;
+            width: min(620px, 92vw);
+            margin: 24px auto 0;
+        }
+
+        .guide-card {
+            background: rgba(255, 255, 255, 0.9);
+            color: #111827;
+            border-radius: 18px;
+            padding: 14px 12px;
+            text-align: center;
+            box-shadow: 0 12px 26px rgba(0, 0, 0, 0.22);
+        }
+
+        .intro-actions {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            margin-top: 22px;
+            flex-wrap: wrap;
+        }
+
+        .btn-secondary {
+            background: rgba(15, 23, 42, 0.82);
+            color: #ffffff;
+            padding: 1rem 2.5rem;
+            border-radius: 50px;
+            font-size: 1.35rem;
+            font-weight: bold;
+            border: 2px solid rgba(255, 255, 255, 0.28);
+            box-shadow: 0 5px 15px rgba(15, 23, 42, 0.35);
+            transition: all 0.2s;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .btn-primary:hover,
+        .btn-secondary:hover {
+            transform: translateY(-3px) scale(1.03);
+            filter: brightness(1.08);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 10px 24px rgba(254, 229, 0, 0.5);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(30, 41, 59, 0.92);
+            border-color: rgba(255, 255, 255, 0.55);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.48);
+        }
+
+        .settings-panel {
+            background: rgba(15, 23, 42, 0.94);
+            width: min(440px, 92vw);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 22px;
+            padding: 24px;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.38);
+        }
+
+        .volume-row {
+            display: grid;
+            grid-template-columns: 92px 1fr 52px;
+            align-items: center;
+            gap: 12px;
+            color: #f8fafc;
+            font-size: 1.05rem;
+            font-weight: 800;
+            margin: 18px 0;
+        }
+
+        .volume-row input[type="range"] {
+            width: 100%;
+            accent-color: #FEE500;
+            cursor: pointer;
+        }
+
+        .volume-value {
+            color: #FEE500;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #FEE500, #FBC02D);
+            color: #3b1e1e;
+            padding: 1rem 3rem;
+            border-radius: 50px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border: none;
+            box-shadow: 0 5px 15px rgba(254, 229, 0, 0.4);
+            transition: all 0.2s;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .intro-actions .btn-secondary,
+        .intro-actions .btn-primary {
+            min-width: 220px;
+            min-height: 68px;
+            padding: 1rem 2rem;
+            font-size: 1.45rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #midi-status {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 16px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+        }
+
+        #screen-countdown {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+        }
+
+        .countdown-text {
+            font-size: 12rem;
+            font-weight: black;
+            color: #FEE500;
+            text-shadow: 0 0 40px rgba(254, 229, 0, 0.8);
+            animation: countAnim 1s ease-in-out;
+        }
+
+        @keyframes countAnim {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+
+            50% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 0;
+            }
+        }
+
+        #damage-flash.flash {
+            animation: damageBlink 0.55s steps(2, end);
+        }
+
+        @keyframes damageBlink {
+
+            0%,
+            100% {
+                opacity: 0;
+            }
+
+            18%,
+            48%,
+            78% {
+                opacity: 1;
+            }
+
+            33%,
+            63% {
+                opacity: 0.15;
+            }
+        }
+
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 150;
+        }
+
+        #screen-gameover {
+            background: radial-gradient(circle at 50% 20%, rgba(251, 191, 36, 0.22), rgba(88, 28, 135, 0.72) 42%, rgba(2, 6, 23, 0.94) 100%);
+        }
+
+        #screen-gameover>div {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.84), rgba(76, 29, 149, 0.72), rgba(127, 29, 29, 0.64)) !important;
+            border-color: rgba(253, 224, 71, 0.52) !important;
+            box-shadow: 0 0 36px rgba(250, 204, 21, 0.32), inset 0 0 26px rgba(255, 255, 255, 0.08);
+        }
+
+        .final-score-panel {
+            margin: 0 auto 18px;
+            padding: 14px 18px 16px;
+            border-radius: 24px;
+            background: rgba(15, 23, 42, 0.72);
+            border: 2px solid rgba(254, 229, 0, 0.62);
+            box-shadow: 0 0 26px rgba(254, 229, 0, 0.22);
+        }
+
+        .final-score-label {
+            display: block;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.05rem;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        #final-score {
+            display: block;
+            color: #FEE500;
+            font-size: clamp(4.4rem, 12vw, 7.5rem);
+            font-weight: 900;
+            line-height: 0.98;
+            font-variant-numeric: tabular-nums;
+            text-shadow: 0 5px 0 rgba(59, 30, 30, 0.55), 0 0 30px rgba(254, 229, 0, 0.48);
+        }
+
+        #boss-warning-effect {
+            position: absolute;
+            top: 72px;
+            left: 50%;
+            transform: translateX(-50%) scale(0.72);
+            width: min(780px, 86vw);
+            z-index: 260;
+            pointer-events: none;
+            opacity: 0;
+            filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 30px rgba(239, 68, 68, 0.85));
+        }
+
+        #boss-warning-effect.show {
+            animation: bossWarningPop 1.8s ease-out forwards;
+        }
+
+        #mode-effect {
+            position: absolute;
+            top: 86px;
+            left: 50%;
+            transform: translateX(-50%) scale(0.68);
+            width: min(620px, 78vw);
+            z-index: 265;
+            pointer-events: none;
+            opacity: 0;
+            filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 22px rgba(14, 165, 233, 0.72));
+        }
+
+        #mode-effect.show {
+            animation: modeEffectPop 1.75s ease-out forwards;
+        }
+
+        @keyframes modeEffectPop {
+            0% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(10px) scale(0.58);
+            }
+
+            18% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0) scale(1.04);
+            }
+
+            52% {
+                opacity: 1;
+                transform: translateX(-50%) scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-18px) scale(1.22);
+            }
+        }
+
+        @keyframes bossWarningPop {
+            0% {
+                opacity: 0;
+                transform: translateX(-50%) scale(0.55);
+            }
+
+            16% {
+                opacity: 1;
+                transform: translateX(-50%) scale(1.08);
+            }
+
+            42% {
+                opacity: 1;
+                transform: translateX(-50%) scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateX(-50%) scale(1.45);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="confetti-canvas"></canvas>
+
+    <header class="kakao-header">
+        <div class="flex items-center gap-2">
+            <i data-lucide="gamepad-2" class="text-[#3b1e1e] w-6 h-6"></i>
+            <h1 class="text-xl font-bold tracking-tight text-[#3b1e1e]">피아노 드래곤플라이</h1>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="home-btn" onclick="goHome()"
+                class="bg-white text-[#3b1e1e] px-3 py-1.5 rounded-xl text-sm font-bold shadow-sm border border-gray-200 hover:bg-gray-50 transition">
+                처음으로
+            </button>
+            <button id="btn-settings" onclick="showSettings()"
+                class="bg-white text-[#3b1e1e] px-3 py-1.5 rounded-xl text-sm font-bold shadow-sm border border-gray-200 hover:bg-gray-50 transition">
+                사운드 설정
+            </button>
+            <button onclick="showExitConfirm()"
+                class="bg-[#3b1e1e] text-[#FEE500] px-3 py-1.5 rounded-xl text-sm font-bold shadow-sm hover:opacity-90 transition">
+                종료하기
+            </button>
+        </div>
+    </header>
+
+    <div id="game-container">
+        <div id="warp-bg" aria-hidden="true"></div>
+        <div class="glow-bg glow-1 pointer-events-none"></div>
+        <div class="glow-bg glow-2 pointer-events-none"></div>
+        <canvas id="game-canvas"></canvas>
+        <img id="dragon-sprite" src="/wp-content/uploads/ssam/game/piano/Images/output-onlinegiftools.gif">
+        <img id="boss-sprite" src="/wp-content/uploads/ssam/game/piano/Images/dragon-king.webp" alt="">
+        <canvas id="front-canvas"></canvas>
+        <img id="boss-warning-effect" src="/wp-content/uploads/ssam/game/piano/Images/text-2.webp" alt="">
+        <img id="mode-effect" src="/wp-content/uploads/ssam/game/piano/Images/dragon-text-1.webp" alt="">
+        <div id="damage-flash"
+            class="absolute inset-0 bg-red-600/60 pointer-events-none opacity-0 transition-opacity duration-100"
+            style="z-index: 100;"></div>
+
+        <div id="hud-top">
+            <div class="hud-stack">
+                <div class="hud-box">
+                    <i data-lucide="heart-pulse" class="text-[#FEE500] w-6 h-6"></i>
+                    <span id="timer-text">HP 100</span>
+                </div>
+                <div class="hud-box score-hud">
+                    <i data-lucide="sparkles" class="text-[#FEE500] w-6 h-6"></i>
+                    <div>
+                        <span class="score-label">SCORE</span>
+                        <span id="score-text">0</span>
+                    </div>
+                </div>
+            </div>
+            <div id="boss-progress">
+                <span class="progress-icon">🐉</span>
+                <div class="boss-progress-track">
+                    <div id="boss-progress-fill"></div>
+                </div>
+                <span class="progress-icon">👑</span>
+                <span id="boss-status">KING 1:20</span>
+            </div>
+        </div>
+
+        <div id="controls-bottom">
+            <button class="control-btn" id="key-0" onmousedown="handlePianoInput(0)" ontouchstart="handlePianoInput(0); event.preventDefault();">도<span class="key-octave">C3</span></button>
+            <button class="control-btn" id="key-1" onmousedown="handlePianoInput(1)" ontouchstart="handlePianoInput(1); event.preventDefault();">레<span class="key-octave">D3</span></button>
+            <button class="control-btn" id="key-2" onmousedown="handlePianoInput(2)" ontouchstart="handlePianoInput(2); event.preventDefault();">미<span class="key-octave">E3</span></button>
+            <button class="control-btn" id="key-3" onmousedown="handlePianoInput(3)" ontouchstart="handlePianoInput(3); event.preventDefault();">파<span class="key-octave">F3</span></button>
+            <button class="control-btn" id="key-4" onmousedown="handlePianoInput(4)" ontouchstart="handlePianoInput(4); event.preventDefault();">솔<span class="key-octave">G3</span></button>
+            <button class="control-btn" id="key-5" onmousedown="handlePianoInput(5)" ontouchstart="handlePianoInput(5); event.preventDefault();">라<span class="key-octave">A3</span></button>
+            <button class="control-btn" id="key-6" onmousedown="handlePianoInput(6)" ontouchstart="handlePianoInput(6); event.preventDefault();">시<span class="key-octave">B3</span></button>
+            <button class="control-btn" id="key-7" onmousedown="handlePianoInput(7)" ontouchstart="handlePianoInput(7); event.preventDefault();">도<span class="key-octave">C4</span></button>
+            <button class="control-btn" id="key-8" onmousedown="handlePianoInput(8)" ontouchstart="handlePianoInput(8); event.preventDefault();">레<span class="key-octave">D4</span></button>
+            <button class="control-btn" id="key-9" onmousedown="handlePianoInput(9)" ontouchstart="handlePianoInput(9); event.preventDefault();">미<span class="key-octave">E4</span></button>
+            <button class="control-btn" id="key-10" onmousedown="handlePianoInput(10)" ontouchstart="handlePianoInput(10); event.preventDefault();">파<span class="key-octave">F4</span></button>
+            <button class="control-btn" id="key-11" onmousedown="handlePianoInput(11)" ontouchstart="handlePianoInput(11); event.preventDefault();">솔<span class="key-octave">G4</span></button>
+            <button class="control-btn" id="key-12" onmousedown="handlePianoInput(12)" ontouchstart="handlePianoInput(12); event.preventDefault();">라<span class="key-octave">A4</span></button>
+            <button class="control-btn" id="key-13" onmousedown="handlePianoInput(13)" ontouchstart="handlePianoInput(13); event.preventDefault();">시<span class="key-octave">B4</span></button>
+            <button class="control-btn" id="key-14" onmousedown="handlePianoInput(14)" ontouchstart="handlePianoInput(14); event.preventDefault();">도<span class="key-octave">C5</span></button>
+        </div>
+
+        <!-- Start Screen -->
+        <div id="screen-intro" class="overlay">
+            <img class="intro-title-image" src="/wp-content/uploads/ssam/game/piano/Images/text-1.webp" alt="피아노 드래곤플라이">
+            <p class="intro-subtitle">디지털 피아노 건반으로 15개 구역을 빠르게 이동해요!</p>
+
+            <div id="midi-status">
+                <i data-lucide="cable"></i> <span id="midi-status-text">MIDI 피아노 연결 대기중...</span>
+            </div>
+            <div class="intro-actions">
+                <button onclick="showHowToPlay()" class="btn-secondary">게임방법</button>
+                <button onclick="startGameCheck()" class="btn-primary">게임 시작!</button>
+            </div>
+        </div>
+
+        <!-- How To Play Modal -->
+        <div id="how-to-play-modal" class="overlay hidden" style="z-index: 280;">
+            <div
+                class="bg-slate-950/90 p-8 rounded-3xl border border-white/20 backdrop-blur-md text-left max-w-xl w-[90%]">
+                <div class="flex items-center justify-between gap-4 mb-5">
+                    <h3 class="text-3xl font-black text-yellow-300">게임 방법</h3>
+                    <button onclick="closeHowToPlay()"
+                        class="text-white/70 hover:text-white text-3xl leading-none px-3">×</button>
+                </div>
+                <div class="space-y-4 text-lg leading-relaxed text-gray-200">
+                    <p>디지털 피아노의 <strong style="color:#60a5fa;">15개 건반</strong>이 각각 하나의 이동 구역입니다.</p>
+                    <p>피아노 건반을 누르면 드래곤이 해당 구역 중앙으로 <strong style="color:#facc15;">빠르게 이동</strong>합니다.</p>
+                    <p>연한 좌우선 사이가 한 구역이며, 하단 컬러 키와 같은 위치로 적이 내려옵니다.</p>
+                    <p>부하 드래곤과 보스 탄막에 닿으면 HP가 <strong style="color:#f87171;">10</strong> 줄어듭니다.</p>
+                    <p>1분 30초 동안 버티면 드래곤 킹이 나타나고, 플레이어의 빠른 탄막으로 <strong style="color:#67e8f9;">5000히트</strong>를 달성하면
+                        성공입니다.</p>
+                </div>
+                <div class="text-center mt-7">
+                    <button onclick="closeHowToPlay()" class="btn-primary">알겠어요!</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="settings-modal" class="overlay hidden" style="z-index: 320;">
+            <div class="settings-panel">
+                <div class="flex items-center justify-between gap-4 mb-4">
+                    <h3 class="text-3xl font-black text-yellow-300">사운드 설정</h3>
+                    <button onclick="closeSettings()"
+                        class="text-white/70 hover:text-white text-3xl leading-none px-3">×</button>
+                </div>
+                <label class="volume-row" for="volume-bgm">
+                    <span>BGM</span>
+                    <input id="volume-bgm" type="range" min="0" max="100" value="30"
+                        oninput="updateVolumeSetting('bgm', this.value)">
+                    <span id="volume-bgm-value" class="volume-value">30%</span>
+                </label>
+                <label class="volume-row" for="volume-effects">
+                    <span>효과음</span>
+                    <input id="volume-effects" type="range" min="0" max="100" value="30"
+                        oninput="updateVolumeSetting('effects', this.value)">
+                    <span id="volume-effects-value" class="volume-value">30%</span>
+                </label>
+                <label class="volume-row" for="volume-piano">
+                    <span>피아노</span>
+                    <input id="volume-piano" type="range" min="0" max="100" value="60"
+                        oninput="updateVolumeSetting('piano', this.value)">
+                    <span id="volume-piano-value" class="volume-value">60%</span>
+                </label>
+                <div class="text-center mt-6">
+                    <button onclick="closeSettings()" class="btn-primary">닫기</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="exit-confirm-modal" class="overlay hidden" style="z-index: 340;">
+            <div class="settings-panel text-center">
+                <h3 class="text-3xl font-black text-yellow-300 mb-4">게임을 종료할까요?</h3>
+                <p class="text-gray-200 text-lg leading-relaxed">확인하면 이전 페이지로 이동합니다.</p>
+                <div class="intro-actions mt-6">
+                    <button onclick="closeExitConfirm()" class="btn-secondary">취소</button>
+                    <button onclick="confirmExit()" class="btn-primary">확인</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Mode Modal -->
+        <div id="modal-no-midi" class="overlay hidden" style="z-index: 300;">
+            <div class="bg-white/10 p-8 rounded-3xl border border-white/20 backdrop-blur-md text-center max-w-md">
+                <div style="font-size: 48px; margin-bottom: 20px;">🤖</div>
+                <h3 style="font-size: 24px; margin-bottom: 15px; color: #00ffff;">MIDI 피아노 미연결</h3>
+                <p style="font-size: 16px; color: #ccc; margin-bottom: 30px; line-height: 1.5;">
+                    현재 MIDI 피아노가 연결되지 않았습니다.<br>
+                    이 학습은 피아노 연결이 없으면<br>
+                    <strong>AI 자동 플레이</strong> 모드만 지원합니다.
+                </p>
+                <div style="display: flex; gap: 15px; justify-content: center;">
+                    <button onclick="document.getElementById('modal-no-midi').classList.add('hidden')"
+                        style="padding: 12px 24px; border-radius: 30px; font-size: 18px; background: transparent; color: #fff; border: 2px solid #aaa; cursor: pointer; transition: 0.2s;">돌아가기</button>
+                    <button onclick="startAutoPlay()"
+                        style="padding: 12px 24px; border-radius: 30px; font-size: 18px; background: transparent; color: #00ffff; border: 2px solid #00ffff; cursor: pointer; box-shadow: 0 0 10px rgba(0,255,255,0.5); transition: 0.2s;">AI
+                        플레이 시작</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Countdown Screen -->
+        <div id="screen-countdown" class="hidden">
+            <div id="countdown-text" class="countdown-text">3</div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="screen-gameover" class="overlay hidden">
+            <h1 class="text-6xl font-black text-white mb-6 text-yellow-400 drop-shadow-[0_0_15px_rgba(255,215,0,0.8)]">
+                MISSION CLEAR!</h1>
+            <div
+                class="bg-white/10 p-8 rounded-3xl border border-white/20 backdrop-blur-md text-center mb-10 w-full max-w-md">
+                <div class="final-score-panel">
+                    <span class="final-score-label">최종 점수</span>
+                    <span id="final-score">0</span>
+                </div>
+                <p class="text-gray-300 text-xl mb-2 font-bold" id="final-label">보스 명중</p>
+                <div class="text-2xl font-medium text-gray-100 mt-4 flex justify-center items-end gap-2">
+                    <span id="final-time" class="text-yellow-400 text-6xl font-black drop-shadow-md">0</span>
+                    <span class="text-yellow-400 text-xl font-bold pb-2" id="final-unit">hit</span>
+                </div>
+                <p class="text-gray-400 mt-4 font-bold" id="final-rings">남은 HP: 100</p>
+            </div>
+            <button onclick="startCountdown()" class="btn-primary">다시 도전하기</button>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        const DEFAULT_VOLUMES = { bgm: 0.3, effects: 0.3, piano: 0.6 };
+        const volumeSettings = { ...DEFAULT_VOLUMES };
+
+        // Audio Objects
+        const bgmAudio = new Audio('https://cdn.pixabay.com/audio/2021/11/16/audio_5561459786.mp3');
+        bgmAudio.loop = true;
+        bgmAudio.volume = DEFAULT_VOLUMES.bgm;
+
+        const startSound = new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_672c06c971.mp3');
+        startSound.volume = DEFAULT_VOLUMES.effects;
+
+        const crashSound = new Audio('https://cdn.pixabay.com/audio/2026/02/19/audio_48fc4ad65a.mp3');
+        crashSound.volume = DEFAULT_VOLUMES.effects;
+
+        const bossAppearSound = new Audio('https://cdn.pixabay.com/audio/2026/03/17/audio_cd04ae549b.mp3');
+        bossAppearSound.volume = DEFAULT_VOLUMES.effects;
+
+        const bossDeathSound = new Audio('https://cdn.pixabay.com/audio/2025/06/23/audio_73f6da8653.mp3');
+        bossDeathSound.volume = DEFAULT_VOLUMES.effects;
+
+        const drumConnectedSound = new Audio('https://cdn.pixabay.com/audio/2023/01/06/audio_b7590da9fe.mp3');
+        drumConnectedSound.volume = DEFAULT_VOLUMES.effects;
+        const effectSounds = [startSound, crashSound, bossAppearSound, bossDeathSound, drumConnectedSound];
+
+        function tryPlayBGM() {
+            if (bgmAudio.paused) {
+                bgmAudio.play().catch(e => console.log('Autoplay prevented'));
+            }
+        }
+        document.addEventListener('click', tryPlayBGM);
+        document.addEventListener('touchstart', tryPlayBGM);
+
+        const piano = new Tone.Sampler({
+            urls: {
+                A0: "A0.mp3",
+                C1: "C1.mp3",
+                "D#1": "Ds1.mp3",
+                "F#1": "Fs1.mp3",
+                A1: "A1.mp3",
+                C2: "C2.mp3",
+                "D#2": "Ds2.mp3",
+                "F#2": "Fs2.mp3",
+                A2: "A2.mp3",
+                C3: "C3.mp3",
+                "D#3": "Ds3.mp3",
+                "F#3": "Fs3.mp3",
+                A3: "A3.mp3",
+                C4: "C4.mp3",
+                "D#4": "Ds4.mp3",
+                "F#4": "Fs4.mp3",
+                A4: "A4.mp3",
+                C5: "C5.mp3",
+                "D#5": "Ds5.mp3",
+                "F#5": "Fs5.mp3",
+                A5: "A5.mp3",
+                C6: "C6.mp3",
+                "D#6": "Ds6.mp3",
+                "F#6": "Fs6.mp3",
+                A6: "A6.mp3",
+                C7: "C7.mp3",
+                "D#7": "Ds7.mp3",
+                "F#7": "Fs7.mp3",
+                A7: "A7.mp3",
+                C8: "C8.mp3"
+            },
+            release: 1,
+            baseUrl: "https://tonejs.github.io/audio/salamander/"
+        }).toDestination();
+        piano.volume.value = volumeToDb(volumeSettings.piano);
+
+        function volumeToDb(volume) {
+            return volume <= 0 ? -60 : Math.round((volume * 24 - 12) * 10) / 10;
+        }
+
+        function setEffectVolume(value) {
+            effectSounds.forEach(sound => {
+                sound.volume = value;
+            });
+        }
+
+        function applyVolumeSettings() {
+            bgmAudio.volume = volumeSettings.bgm;
+            setEffectVolume(volumeSettings.effects);
+            piano.volume.value = volumeToDb(volumeSettings.piano);
+            updateVolumeLabels();
+        }
+
+        function updateVolumeLabels() {
+            const entries = [
+                ['bgm', 'volume-bgm', 'volume-bgm-value'],
+                ['effects', 'volume-effects', 'volume-effects-value'],
+                ['piano', 'volume-piano', 'volume-piano-value']
+            ];
+            entries.forEach(([key, inputId, labelId]) => {
+                const percent = Math.round(volumeSettings[key] * 100);
+                const input = document.getElementById(inputId);
+                const label = document.getElementById(labelId);
+                if (input) input.value = String(percent);
+                if (label) label.innerText = `${percent}%`;
+            });
+        }
+
+        function updateVolumeSetting(type, rawValue) {
+            if (!Object.prototype.hasOwnProperty.call(volumeSettings, type)) return;
+            const value = Math.max(0, Math.min(100, Number(rawValue))) / 100;
+            volumeSettings[type] = Number.isFinite(value) ? value : DEFAULT_VOLUMES[type];
+            applyVolumeSettings();
+        }
+
+        function showSettings() {
+            updateVolumeLabels();
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+
+        function closeSettings() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+
+        async function initAudio() {
+            if (window.Tone) await Tone.start();
+        }
+
+        async function playPianoSound(key) {
+            if (!window.Tone || !piano) return;
+            await Tone.start();
+            piano.triggerAttackRelease(key.toneNote, "8n");
+        }
+
+        // MIDI Logic
+        const PIANO_KEYS = [
+            { midi: 48, toneNote: 'C3', name: '도', octave: 'C3', color: '#ef4444' },
+            { midi: 50, toneNote: 'D3', name: '레', octave: 'D3', color: '#f97316' },
+            { midi: 52, toneNote: 'E3', name: '미', octave: 'E3', color: '#eab308' },
+            { midi: 53, toneNote: 'F3', name: '파', octave: 'F3', color: '#84cc16' },
+            { midi: 55, toneNote: 'G3', name: '솔', octave: 'G3', color: '#22c55e' },
+            { midi: 57, toneNote: 'A3', name: '라', octave: 'A3', color: '#14b8a6' },
+            { midi: 59, toneNote: 'B3', name: '시', octave: 'B3', color: '#06b6d4' },
+            { midi: 60, toneNote: 'C4', name: '도', octave: 'C4', color: '#3b82f6' },
+            { midi: 62, toneNote: 'D4', name: '레', octave: 'D4', color: '#6366f1' },
+            { midi: 64, toneNote: 'E4', name: '미', octave: 'E4', color: '#8b5cf6' },
+            { midi: 65, toneNote: 'F4', name: '파', octave: 'F4', color: '#a855f7' },
+            { midi: 67, toneNote: 'G4', name: '솔', octave: 'G4', color: '#d946ef' },
+            { midi: 69, toneNote: 'A4', name: '라', octave: 'A4', color: '#ec4899' },
+            { midi: 71, toneNote: 'B4', name: '시', octave: 'B4', color: '#f43f5e' },
+            { midi: 72, toneNote: 'C5', name: '도', octave: 'C5', color: '#fb7185' }
+        ];
+        const MIDI_TO_LANE = new Map(PIANO_KEYS.map((key, index) => [key.midi, index]));
+
+        async function initMIDI() {
+            if (!navigator.requestMIDIAccess) return;
+            try {
+                const midiAccess = await navigator.requestMIDIAccess();
+                bindMidi(midiAccess);
+                midiAccess.onstatechange = (e) => bindMidi(e.target);
+            } catch (e) {
+                console.warn("MIDI Fail", e);
+            }
+        }
+
+        let midiConnected = false;
+        let hasShownDrumConnectedEffect = false;
+
+        function bindMidi(midiAccess) {
+            const wasConnected = midiConnected;
+            midiConnected = midiAccess.inputs.size > 0;
+            for (let input of midiAccess.inputs.values()) {
+                input.onmidimessage = onMidiMessage;
+                if (input.state === 'connected') midiConnected = true;
+            }
+            const statusEl = document.getElementById('midi-status');
+            const textEl = document.getElementById('midi-status-text');
+            if (midiConnected) {
+                statusEl.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
+                statusEl.style.color = '#34d399';
+                textEl.innerText = 'MIDI 피아노 연결됨!';
+            } else {
+                statusEl.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                statusEl.style.color = 'white';
+                textEl.innerText = 'MIDI 피아노 연결 대기중...';
+            }
+            if (midiConnected && !wasConnected && !hasShownDrumConnectedEffect) {
+                hasShownDrumConnectedEffect = true;
+                playOneShotEffect(drumConnectedSound, '/wp-content/uploads/ssam/game/piano/Images/dragon-text-1.webp');
+            }
+        }
+
+        function onMidiMessage(e) {
+            const [status, note, velocity] = e.data;
+            const command = status & 0xf0;
+            if (command === 0x90 && velocity > 0) {
+                const keyIndex = MIDI_TO_LANE.get(note);
+                if (keyIndex !== undefined) {
+                    showMidiHitFeedback(keyIndex);
+                    handlePianoInput(keyIndex);
+                }
+            }
+        }
+
+        function showMidiHitFeedback(keyIndex) {
+            const textEl = document.getElementById('midi-status-text');
+            if (!textEl) return;
+            const key = PIANO_KEYS[keyIndex];
+            textEl.innerText = `${key.name} ${key.octave} 입력 감지`;
+            clearTimeout(showMidiHitFeedback.timer);
+            showMidiHitFeedback.timer = setTimeout(() => {
+                textEl.innerText = midiConnected ? 'MIDI 피아노 연결됨!' : 'MIDI 피아노 연결 대기중...';
+            }, 450);
+        }
+
+        function playOneShotEffect(audio, imageSrc) {
+            tryPlayBGM();
+            audio.currentTime = 0;
+            audio.play().catch(e => { });
+
+            const effect = document.getElementById('mode-effect');
+            if (!effect) return;
+            effect.src = imageSrc;
+            effect.classList.remove('show');
+            void effect.offsetWidth;
+            effect.classList.add('show');
+            clearTimeout(playOneShotEffect.timer);
+            playOneShotEffect.timer = setTimeout(() => effect.classList.remove('show'), 1800);
+        }
+
+        // Game State
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const frontCanvas = document.getElementById('front-canvas');
+        const fCtx = frontCanvas.getContext('2d');
+        const dragonSprite = document.getElementById('dragon-sprite');
+        const bossSprite = document.getElementById('boss-sprite');
+        const warpBg = document.getElementById('warp-bg');
+        const gameContainer = document.getElementById('game-container');
+
+        let width = canvas.width;
+        let height = canvas.height;
+
+        const STARTING_HP = 100;
+        const DAMAGE_AMOUNT = 10;
+        const BOSS_APPEAR_TIME = 80;
+        const BOSS_HITS_TO_WIN = 5000;
+        const ENEMY_GROW_START = 32;
+        const ENEMY_SURGE_TIME = 62;
+        const MAX_PARTICLES = 90;
+        const MAX_ACTIVE_ENEMIES = 24;
+        const BASE_FALL_SPEED = 0.68;
+        const BASE_ENEMY_SPEED = 0.78;
+        const ENEMY_SIZE = 92;
+        const PLAYER_BULLET_SPEED = 1.9;
+        const BOSS_BULLET_SPEED = 0.31;
+        const PLAYER_FIRE_INTERVAL = 0.025;
+        const BOSS_AIMED_SHOT_INTERVAL = 0.72;
+        const BOSS_SPREAD_SHOT_INTERVAL = 0.42;
+        const MAX_BOSS_BULLETS = 56;
+        const PASSIVE_SCORE_RATE = 0.5;
+        const MOVEMENT_SCORE_BONUS = 45;
+        const MOVEMENT_DISTANCE_BONUS = 6;
+        const MOVEMENT_STREAK_WINDOW = 1.2;
+        const MOVEMENT_STREAK_BONUS = 8;
+        const MAX_MOVEMENT_STREAK_BONUS = 80;
+        const STATIONARY_MONSTER_DELAY = 3;
+        const BOSS_ATTACK_MIN_LANE = 4;
+        const BOSS_ATTACK_MAX_LANE = 10;
+
+        let gameState = 'INTRO'; // INTRO, PLAYING, GAMEOVER
+        let hp = STARTING_HP;
+        let totalTimePlayed = 0;
+        let score = 0;
+        let movementStreak = 0;
+        let lastMoveTime = -Infinity;
+        let lastTime = 0;
+        let bossHits = 0;
+        let bossActive = false;
+        let bossDefeated = false;
+        let playerFireTimer = 0;
+        let bossFireTimer = 0;
+        let bossBattleTime = 0;
+        let bossPattern = 'pause';
+        let bossPatternTimer = 0;
+        let bossPatternIndex = -1;
+        let bossLaserZones = [];
+        let bossLaserDamageApplied = false;
+
+        let isAIEnabled = false;
+
+        const NUM_LANES = PIANO_KEYS.length;
+        let dragon = {
+            lane: Math.floor(NUM_LANES / 2),
+            x: (Math.floor(NUM_LANES / 2) + 0.5) / NUM_LANES,
+            targetX: (Math.floor(NUM_LANES / 2) + 0.5) / NUM_LANES,
+            y: 0.65,
+            size: 40
+        };
+        let stationaryLane = dragon.lane;
+        let stationaryLaneTime = 0;
+
+        const enemyImages = [];
+        for (let i = 6; i <= 9; i++) {
+            const img = new Image();
+            img.src = `/wp-content/uploads/ssam/game/piano/Images/dragon-${i}.webp`;
+            enemyImages.push(img);
+        }
+
+        const bossImg = new Image();
+        bossImg.src = '/wp-content/uploads/ssam/game/piano/Images/dragon-king.webp';
+
+        let enemies = [];
+        let playerBullets = [];
+        let bossBullets = [];
+        let damageTexts = [];
+        let particles = [];
+        let gameSpeed = 1.0;
+        let bgScrollY = 0;
+        let enemySpawnTimer = 0;
+        let safeLane = 0;
+        let lastCanvasWidth = 0;
+        let lastCanvasHeight = 0;
+        let clouds = [];
+
+        function initCloudBackground() {
+            const totalClouds = 18;
+            clouds = Array.from({ length: totalClouds }, (_, index) => ({
+                x: Math.random(),
+                y: (index / totalClouds) * 1.35 - 0.2,
+                scale: 0.55 + Math.random() * 1.2,
+                speed: 0.18 + Math.random() * 0.32,
+                alpha: 0.28 + Math.random() * 0.36,
+                drift: Math.random() * Math.PI * 2
+            }));
+            if (warpBg) {
+                warpBg.replaceChildren();
+            }
+        }
+
+        // Resize handler
+        function resize() {
+            const rect = gameContainer.getBoundingClientRect();
+            width = Math.max(1, Math.round(rect.width || canvas.clientWidth || window.innerWidth));
+            height = Math.max(1, Math.round(rect.height || canvas.clientHeight || (window.innerHeight - 60)));
+            canvas.width = width;
+            canvas.height = height;
+            if (frontCanvas) {
+                frontCanvas.width = width;
+                frontCanvas.height = height;
+            }
+            lastCanvasWidth = width;
+            lastCanvasHeight = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+        requestAnimationFrame(resize);
+        setTimeout(resize, 120);
+
+        function goHome() {
+            bgmAudio.pause();
+            showIntro();
+        }
+
+        function goBack() {
+            showExitConfirm();
+        }
+
+        function showExitConfirm() {
+            document.getElementById('exit-confirm-modal').classList.remove('hidden');
+        }
+
+        function closeExitConfirm() {
+            document.getElementById('exit-confirm-modal').classList.add('hidden');
+        }
+
+        function confirmExit() {
+            bgmAudio.pause();
+            closeExitConfirm();
+            window.history.back();
+        }
+
+        function setHomeButtonVisible(isVisible) {
+            const homeBtn = document.getElementById('home-btn');
+            if (homeBtn) homeBtn.style.display = isVisible ? 'inline-flex' : 'none';
+        }
+
+        function showIntro() {
+            gameState = 'INTRO';
+            bgmAudio.pause();
+            hp = STARTING_HP;
+            totalTimePlayed = 0;
+            score = 0;
+            movementStreak = 0;
+            lastMoveTime = -Infinity;
+            bossHits = 0;
+            bossActive = false;
+            bossDefeated = false;
+            bossBattleTime = 0;
+            bossPattern = 'pause';
+            bossPatternTimer = 0;
+            bossPatternIndex = -1;
+            bossLaserZones = [];
+            bossLaserDamageApplied = false;
+            enemies = [];
+            playerBullets = [];
+            bossBullets = [];
+            damageTexts = [];
+            particles = [];
+            bgScrollY = 0;
+            isAIEnabled = false;
+            dragon.lane = Math.floor(NUM_LANES / 2);
+            dragon.x = (dragon.lane + 0.5) / NUM_LANES;
+            dragon.targetX = dragon.x;
+            dragon.y = 0.82;
+            stationaryLane = dragon.lane;
+            stationaryLaneTime = 0;
+            setHomeButtonVisible(false);
+            updateHud();
+            document.getElementById('screen-intro').classList.remove('hidden');
+            document.getElementById('screen-countdown').classList.add('hidden');
+            document.getElementById('screen-gameover').classList.add('hidden');
+            document.getElementById('modal-no-midi').classList.add('hidden');
+            document.getElementById('how-to-play-modal').classList.add('hidden');
+            document.getElementById('settings-modal').classList.add('hidden');
+            document.getElementById('exit-confirm-modal').classList.add('hidden');
+            bossSprite.style.display = 'none';
+        }
+
+        function showHowToPlay() {
+            document.getElementById('how-to-play-modal').classList.remove('hidden');
+        }
+
+        function closeHowToPlay() {
+            document.getElementById('how-to-play-modal').classList.add('hidden');
+        }
+
+        function handlePianoInput(keyIndex) {
+            const lane = Math.max(0, Math.min(NUM_LANES - 1, keyIndex));
+            const key = PIANO_KEYS[lane];
+            triggerControlButtonFeedback(lane);
+            if (gameState !== 'PLAYING') {
+                playPianoSound(key);
+                return;
+            }
+
+            if (!isAIEnabled) {
+                if (lane !== dragon.lane) {
+                    awardMovementScore(lane);
+                }
+                dragon.lane = lane;
+            }
+
+            dragon.targetX = (dragon.lane + 0.5) / NUM_LANES;
+            playPianoSound(key);
+        }
+
+        function awardMovementScore(nextLane) {
+            const now = totalTimePlayed;
+            const distance = Math.max(1, Math.abs(nextLane - dragon.lane));
+            movementStreak = now - lastMoveTime <= MOVEMENT_STREAK_WINDOW ? movementStreak + 1 : 1;
+            lastMoveTime = now;
+            score += MOVEMENT_SCORE_BONUS
+                + distance * MOVEMENT_DISTANCE_BONUS
+                + Math.min(MAX_MOVEMENT_STREAK_BONUS, movementStreak * MOVEMENT_STREAK_BONUS);
+        }
+
+        function triggerControlButtonFeedback(keyIndex) {
+            const btn = document.getElementById(`key-${keyIndex}`);
+            if (!btn) return;
+            btn.classList.add('active');
+            setTimeout(() => btn.classList.remove('active'), 120);
+        }
+
+        function spawnRing() {
+            // Rings were removed for the boss-battle version.
+        }
+
+        function getEnemyImageIndex() {
+            if (totalTimePlayed < 45) return 0;
+            if (totalTimePlayed < 90) return Math.random() < 0.75 ? 1 : 0;
+            if (totalTimePlayed < 135) return Math.random() < 0.65 ? 2 : Math.floor(Math.random() * 2);
+            return Math.floor(Math.random() * enemyImages.length);
+        }
+
+        function spawnEnemy(preferredX = Math.random(), allowDuringBoss = false) {
+            if (enemies.length >= MAX_ACTIVE_ENEMIES || (bossActive && !allowDuringBoss)) return;
+            const imageIndex = getEnemyImageIndex();
+            const lane = Math.max(0, Math.min(NUM_LANES - 1, Math.floor(preferredX * NUM_LANES)));
+            const x = (lane + 0.5) / NUM_LANES;
+            const difficulty = getDifficultyLevel();
+            const canShoot = totalTimePlayed > 16 && Math.random() < Math.min(0.46, 0.18 + difficulty * 0.055);
+            enemies.push({
+                lane,
+                x,
+                baseX: x,
+                y: -0.16 - Math.random() * 0.18,
+                size: Math.min(ENEMY_SIZE * (0.82 + Math.random() * 0.28), Math.max(34, (width / NUM_LANES) * 1.18)),
+                imageIndex,
+                hit: false,
+                drift: 0,
+                wobble: 0,
+                canShoot,
+                shotTimer: canShoot ? 0.08 + Math.random() * 0.42 : Infinity,
+                hasShot: false
+            });
+        }
+
+        function spawnStationaryMonster(lane) {
+            const clampedLane = Math.max(0, Math.min(NUM_LANES - 1, lane));
+            spawnEnemy((clampedLane + 0.5) / NUM_LANES);
+        }
+
+        function updateStationaryPressure(safeDt) {
+            if (bossActive) {
+                stationaryLane = dragon.lane;
+                stationaryLaneTime = 0;
+                return;
+            }
+
+            if (dragon.lane !== stationaryLane) {
+                stationaryLane = dragon.lane;
+                stationaryLaneTime = 0;
+                return;
+            }
+
+            stationaryLaneTime += safeDt;
+            if (stationaryLaneTime >= STATIONARY_MONSTER_DELAY) {
+                spawnStationaryMonster(stationaryLane);
+                stationaryLaneTime = 0;
+            }
+        }
+
+        function getDifficultyLevel() {
+            const earlyRamp = Math.max(0, (totalTimePlayed - 18) / 34);
+            const surgeRamp = Math.max(0, (totalTimePlayed - 48) / 28);
+            return Math.min(4.2, earlyRamp + surgeRamp * 1.05);
+        }
+
+        function spawnEnemyWave() {
+            const difficulty = getDifficultyLevel();
+            const pressureLane = dragon.lane;
+            const escapeDirection = Math.random() < 0.5 ? -1 : 1;
+            safeLane = Math.max(0, Math.min(NUM_LANES - 1, pressureLane + escapeDirection));
+
+            const nearDangerLanes = new Set();
+            for (let enemy of enemies) {
+                if (!enemy.hit && enemy.y > -0.1 && enemy.y < dragon.y + 0.15) {
+                    nearDangerLanes.add(enemy.lane);
+                }
+            }
+
+            if (nearDangerLanes.has(safeLane)) {
+                const saferLanes = [];
+                for (let lane = 0; lane < NUM_LANES; lane++) {
+                    if (!nearDangerLanes.has(lane)) saferLanes.push(lane);
+                }
+                if (saferLanes.length) {
+                    saferLanes.sort((a, b) => Math.abs(a - dragon.lane) - Math.abs(b - dragon.lane));
+                    safeLane = saferLanes[0];
+                }
+            }
+
+            let enemyCount = 2 + Math.floor(difficulty * 0.78);
+            if (totalTimePlayed >= ENEMY_SURGE_TIME && difficulty > 1.2) enemyCount += 1;
+            enemyCount = Math.min(NUM_LANES - 2, Math.max(2, enemyCount));
+
+            const safeMin = safeLane / NUM_LANES;
+            const safeMax = (safeLane + 1) / NUM_LANES;
+            for (let i = 0; i < enemyCount; i++) {
+                let x = i === 0
+                    ? (pressureLane + 0.5 + (Math.random() - 0.5) * 0.5) / NUM_LANES
+                    : Math.random();
+                let guard = 0;
+                while (x > safeMin - 0.04 && x < safeMax + 0.04 && guard < 10) {
+                    x = Math.random();
+                    guard++;
+                }
+                spawnEnemy(x);
+            }
+        }
+
+        function fireEnemyBullet(enemy) {
+            if (bossActive && (bossPattern === 'laserWarn' || bossPattern === 'laserFire')) return;
+            if (bossBullets.length >= MAX_BOSS_BULLETS || enemy.hasShot) return;
+            const targetX = dragon.x;
+            const startX = enemy.x;
+            bossBullets.push({
+                x: startX,
+                y: enemy.y + 0.06,
+                vx: (targetX - startX) * 0.22,
+                vy: 0.34,
+                size: 8,
+                color: '#fb923c',
+                coreColor: '#fff7ad',
+                trailColor: 'rgba(251, 146, 60, 0.48)',
+                source: 'enemy'
+            });
+            enemy.hasShot = true;
+        }
+
+        function flashDamage() {
+            const flash = document.getElementById('damage-flash');
+            flash.classList.remove('flash');
+            void flash.offsetWidth;
+            flash.classList.add('flash');
+            setTimeout(() => flash.classList.remove('flash'), 580);
+        }
+
+        function createParticles(x, y, color) {
+            const count = Math.min(12, Math.max(0, MAX_PARTICLES - particles.length));
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 200,
+                    vy: (Math.random() - 0.5) * 200,
+                    life: 1.0,
+                    color: color
+                });
+            }
+        }
+
+        function spawnDamageText(x, y, text = '-10') {
+            for (let i = 0; i < 4; i++) {
+                damageTexts.push({
+                    x: x + (Math.random() - 0.5) * 42,
+                    y: y + (Math.random() - 0.5) * 28,
+                    vy: -34 - Math.random() * 24,
+                    life: 1,
+                    text,
+                    color: '#ffef5f',
+                    stroke: '#7f1d1d'
+                });
+            }
+        }
+
+        function spawnBossHitText(x, y, damage = 1) {
+            damageTexts.push({
+                x: x + (Math.random() - 0.5) * 80,
+                y: y + (Math.random() - 0.5) * 54,
+                vy: -52 - Math.random() * 20,
+                life: 0.75,
+                text: `-${damage}`,
+                color: '#67e8f9',
+                stroke: '#082f49'
+            });
+        }
+
+        function isBossAttackLane(lane) {
+            return lane >= BOSS_ATTACK_MIN_LANE && lane <= BOSS_ATTACK_MAX_LANE;
+        }
+
+        function takeDamage(x, y) {
+            hp = Math.max(0, hp - DAMAGE_AMOUNT);
+            crashSound.currentTime = 0;
+            crashSound.play().catch(e => { });
+            flashDamage();
+            spawnDamageText(x, y);
+            createParticles(x, y, '#ff0000');
+            if (hp <= 0) {
+                gameOver(false);
+            }
+        }
+
+        function startBossBattle() {
+            bossActive = true;
+            enemies = [];
+            bossBullets = [];
+            playerBullets = [];
+            particles = [];
+            bossBattleTime = 0;
+            bossPattern = 'pause';
+            bossPatternTimer = 1.15;
+            bossPatternIndex = -1;
+            bossLaserZones = [];
+            bossLaserDamageApplied = false;
+            bossFireTimer = 0.45;
+            playerFireTimer = 0.05;
+            bossAppearSound.currentTime = 0;
+            bossAppearSound.play().catch(e => { });
+            showBossWarning();
+        }
+
+        function showBossWarning() {
+            const warning = document.getElementById('boss-warning-effect');
+            if (!warning) return;
+            warning.classList.remove('show');
+            void warning.offsetWidth;
+            warning.classList.add('show');
+            setTimeout(() => warning.classList.remove('show'), 1900);
+        }
+
+        function firePlayerBullet() {
+            if (bossActive && !isBossAttackLane(dragon.lane)) return;
+            playerBullets.push({
+                x: dragon.x,
+                y: dragon.y - 0.05,
+                speed: PLAYER_BULLET_SPEED,
+                size: 4,
+                color: '#67e8f9'
+            });
+        }
+
+        function setNextBossPattern() {
+            const sequence = ['aimed', 'pause', 'spread', 'pause', 'sweep', 'pause', 'rain', 'pause', 'laserWarn', 'laserFire', 'pause', 'minions', 'pause'];
+            bossPatternIndex = (bossPatternIndex + 1) % sequence.length;
+            bossPattern = sequence[bossPatternIndex];
+            if (bossPattern === 'aimed') {
+                bossPatternTimer = 2.7;
+                bossFireTimer = 0.12;
+            } else if (bossPattern === 'spread') {
+                bossPatternTimer = 2.0;
+                bossFireTimer = 0.2;
+            } else if (bossPattern === 'sweep') {
+                bossPatternTimer = 2.2;
+                bossFireTimer = 0.1;
+            } else if (bossPattern === 'rain') {
+                bossPatternTimer = 2.3;
+                bossFireTimer = 0.14;
+            } else if (bossPattern === 'laserWarn') {
+                bossPatternTimer = 1.15;
+                bossLaserZones = pickLaserZones();
+                bossLaserDamageApplied = false;
+                bossBullets = [];
+            } else if (bossPattern === 'laserFire') {
+                bossPatternTimer = 0.62;
+                bossBullets = [];
+            } else if (bossPattern === 'minions') {
+                bossPatternTimer = 1.6;
+                spawnBossMinions();
+            } else {
+                bossPatternTimer = 1.65;
+                bossFireTimer = 0.7;
+            }
+        }
+
+        function pickLaserZones() {
+            const zones = [];
+            const candidates = Array.from({ length: NUM_LANES }, (_, i) => i);
+            candidates.sort(() => Math.random() - 0.5);
+            for (const lane of candidates) {
+                if (zones.length >= 3) break;
+                zones.push(lane);
+            }
+            return zones;
+        }
+
+        function spawnBossMinions() {
+            const count = 2 + Math.floor(Math.random() * 2);
+            for (let i = 0; i < count; i++) {
+                const offset = (i - (count - 1) / 2) * 0.16;
+                spawnEnemy(Math.max(0.08, Math.min(0.92, dragon.x + offset + (Math.random() - 0.5) * 0.08)), true);
+            }
+        }
+
+        function getBossMouthPosition() {
+            const boss = getBossPosition();
+            return {
+                x: boss.x,
+                y: boss.y + 0.24
+            };
+        }
+
+        function getBossFaceHitPosition() {
+            const boss = getBossPosition();
+            const attackRangeRadius = width * (((BOSS_ATTACK_MAX_LANE + 0.5) / NUM_LANES) - 0.5) + 18;
+            return {
+                x: boss.x,
+                y: boss.y + 0.18,
+                radius: Math.max(boss.size * 0.12, attackRangeRadius)
+            };
+        }
+
+        function fireBossBullet(targetX = dragon.x, spreadOffset = 0) {
+            if (bossBullets.length >= MAX_BOSS_BULLETS) return;
+            const mouth = getBossMouthPosition();
+            const startX = mouth.x + spreadOffset * 0.025;
+            const clampedTargetX = Math.max(0.06, Math.min(0.94, targetX));
+            bossBullets.push({
+                x: startX,
+                y: mouth.y,
+                vx: (clampedTargetX - startX) * 0.3 + spreadOffset * 0.035,
+                vy: BOSS_BULLET_SPEED + Math.min(0.06, bossBattleTime * 0.0006),
+                size: 11,
+                color: '#ffef5f',
+                coreColor: '#fff7ad',
+                trailColor: 'rgba(239, 68, 68, 0.62)'
+            });
+        }
+
+        function updateBossPattern(safeDt) {
+            bossPatternTimer -= safeDt;
+            if (bossPatternTimer <= 0) {
+                setNextBossPattern();
+            }
+            if (bossPattern === 'pause') return;
+            if (bossPattern === 'laserWarn' || bossPattern === 'laserFire' || bossPattern === 'minions') {
+                if (bossPattern === 'laserWarn' || bossPattern === 'laserFire') bossBullets = [];
+                if (bossPattern === 'laserFire') applyBossLaserDamage();
+                return;
+            }
+
+            bossFireTimer -= safeDt;
+            while (bossFireTimer <= 0) {
+                if (bossPattern === 'aimed') {
+                    fireBossBullet(dragon.x + (Math.random() - 0.5) * 0.08, 0);
+                    bossFireTimer += BOSS_AIMED_SHOT_INTERVAL;
+                } else if (bossPattern === 'spread') {
+                    const spreadTargets = [dragon.x - 0.18, dragon.x, dragon.x + 0.18];
+                    spreadTargets.forEach((target, index) => fireBossBullet(target, index - 1));
+                    bossFireTimer += BOSS_SPREAD_SHOT_INTERVAL;
+                } else if (bossPattern === 'sweep') {
+                    const sweep = (Math.sin(bossBattleTime * 4.2) + 1) / 2;
+                    fireBossBullet(0.08 + sweep * 0.84, Math.sin(bossBattleTime * 4.2) * 0.8);
+                    bossFireTimer += 0.32;
+                } else if (bossPattern === 'rain') {
+                    const target = 0.1 + Math.random() * 0.8;
+                    fireBossBullet(target, (Math.random() - 0.5) * 2);
+                    bossFireTimer += 0.24;
+                }
+            }
+        }
+
+        function getBossPosition() {
+            return { x: 0.5, y: 0.24, size: Math.max(900, Math.min(1900, width * 1.62, height * 1.72)) };
+        }
+
+        function applyBossLaserDamage() {
+            if (bossLaserDamageApplied) return;
+            const playerLane = Math.max(0, Math.min(NUM_LANES - 1, Math.floor(dragon.x * NUM_LANES)));
+            if (bossLaserZones.includes(playerLane)) {
+                takeDamage(dragon.x * width, dragon.y * height);
+            }
+            bossLaserDamageApplied = true;
+        }
+
+        function updateHud() {
+            const hudTop = document.getElementById('hud-top');
+            if (hudTop) hudTop.style.display = gameState === 'PLAYING' ? 'flex' : 'none';
+            document.getElementById('timer-text').innerText = `HP ${hp}`;
+            const scoreText = document.getElementById('score-text');
+            if (scoreText) scoreText.innerText = Math.floor(score).toLocaleString();
+            document.getElementById('boss-progress').style.display = 'flex';
+            const progress = bossActive
+                ? Math.max(0, 100 - (bossHits / BOSS_HITS_TO_WIN) * 100)
+                : Math.min(100, (totalTimePlayed / BOSS_APPEAR_TIME) * 100);
+            document.getElementById('boss-progress-fill').style.width = `${progress}%`;
+            document.getElementById('boss-status').innerText = bossActive
+                ? `BOSS ${Math.max(0, BOSS_HITS_TO_WIN - bossHits)}`
+                : `KING ${Math.max(0, Math.ceil(BOSS_APPEAR_TIME - totalTimePlayed))}s`;
+        }
+
+        function startGameCheck() {
+            tryPlayBGM();
+            startSound.currentTime = 0;
+            startSound.play().catch(e => { });
+
+            if (!midiConnected) {
+                document.getElementById('modal-no-midi').classList.remove('hidden');
+            } else {
+                isAIEnabled = false;
+                startCountdown();
+            }
+        }
+
+        function startAutoPlay() {
+            document.getElementById('modal-no-midi').classList.add('hidden');
+            isAIEnabled = true;
+            startCountdown();
+        }
+
+        function startCountdown() {
+            initAudio();
+            document.getElementById('screen-intro').classList.add('hidden');
+            document.getElementById('screen-gameover').classList.add('hidden');
+            document.getElementById('how-to-play-modal').classList.add('hidden');
+            document.getElementById('settings-modal').classList.add('hidden');
+            document.getElementById('exit-confirm-modal').classList.add('hidden');
+            document.getElementById('screen-countdown').classList.remove('hidden');
+
+            let count = 3;
+            const countEl = document.getElementById('countdown-text');
+            countEl.innerText = count;
+
+            const beginPlay = () => {
+                document.getElementById('screen-countdown').classList.add('hidden');
+                startGame();
+            };
+
+            const tickCountdown = () => {
+                count--;
+                if (count > 0) {
+                    countEl.innerText = count;
+                    // Reset animation
+                    countEl.style.animation = 'none';
+                    countEl.offsetHeight; /* trigger reflow */
+                    countEl.style.animation = null;
+                    setTimeout(tickCountdown, 1000);
+                } else if (count === 0) {
+                    countEl.innerText = 'GO!';
+                    setTimeout(tickCountdown, 650);
+                } else {
+                    beginPlay();
+                }
+            };
+
+            setTimeout(tickCountdown, 1000);
+        }
+
+        function startGame() {
+            gameState = 'PLAYING';
+            setHomeButtonVisible(true);
+            hp = STARTING_HP;
+            totalTimePlayed = 0;
+            score = 0;
+            movementStreak = 0;
+            lastMoveTime = -Infinity;
+            bossHits = 0;
+            bossActive = false;
+            bossDefeated = false;
+            playerFireTimer = 0;
+            bossFireTimer = 0;
+            bossBattleTime = 0;
+
+            dragon.lane = Math.floor(NUM_LANES / 2);
+            dragon.x = (dragon.lane + 0.5) / NUM_LANES;
+            dragon.targetX = dragon.x;
+            dragon.y = 0.76;
+            stationaryLane = dragon.lane;
+            stationaryLaneTime = 0;
+            enemies = [];
+            playerBullets = [];
+            bossBullets = [];
+            damageTexts = [];
+            particles = [];
+            bgScrollY = 0;
+            enemySpawnTimer = 0.7;
+            safeLane = dragon.lane;
+            dragonSprite.style.display = 'block';
+            dragonSprite.style.zIndex = '20';
+            bossSprite.style.display = 'none';
+            updateHud();
+        }
+
+        function resetGame() {
+            startCountdown();
+        }
+
+        function gameLoop(now) {
+            const dt = (now - lastTime) / 1000;
+            lastTime = now;
+            const safeDt = Math.min(Math.max(dt, 0), 0.033);
+
+            const rect = gameContainer.getBoundingClientRect();
+            const nextWidth = Math.max(1, Math.round(rect.width || canvas.clientWidth));
+            const nextHeight = Math.max(1, Math.round(rect.height || canvas.clientHeight));
+            if (nextWidth !== lastCanvasWidth || nextHeight !== lastCanvasHeight) {
+                resize();
+            }
+
+            if (gameState === 'PLAYING') {
+                update(safeDt);
+            } else if (gameState === 'INTRO' || gameState === 'GAMEOVER') {
+                updateIntro(safeDt);
+            }
+
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateIntro(safeDt) {
+            // Keep the intro alive with the same moving sky as the game.
+            bgScrollY += 1.5 * safeDt;
+
+            // Dragon stays small at bottom center.
+            dragonSprite.style.display = 'block';
+            dragon.lane = Math.floor(NUM_LANES / 2);
+            dragon.x = (dragon.lane + 0.5) / NUM_LANES;
+            dragon.targetX = dragon.x;
+            dragon.y = 0.82;
+
+            // Dragon Movement (smooth follow targetX)
+            dragon.x += (dragon.targetX - dragon.x) * (1 - Math.exp(-12 * safeDt));
+        }
+
+        function update(safeDt) {
+            totalTimePlayed += safeDt;
+            score += PASSIVE_SCORE_RATE * safeDt;
+
+            if (!bossActive && totalTimePlayed >= BOSS_APPEAR_TIME) {
+                startBossBattle();
+            }
+
+            gameSpeed = 1.0;
+
+            if (isAIEnabled) {
+                let targetLane = dragon.lane;
+                const dangerLanes = new Set();
+                for (const enemy of enemies) {
+                    if (!enemy.hit && enemy.y > dragon.y - 0.5 && enemy.y < dragon.y + 0.12) {
+                        dangerLanes.add(Math.max(0, Math.min(NUM_LANES - 1, Math.floor(enemy.x * NUM_LANES))));
+                    }
+                }
+                for (const bullet of bossBullets) {
+                    if (bullet.y > dragon.y - 0.28 && bullet.y < dragon.y + 0.12) {
+                        dangerLanes.add(Math.max(0, Math.min(NUM_LANES - 1, Math.floor(bullet.x * NUM_LANES))));
+                    }
+                }
+                if (dangerLanes.has(targetLane)) {
+                    const safeLanes = [];
+                    for (let lane = 0; lane < NUM_LANES; lane++) {
+                        if (!dangerLanes.has(lane)) safeLanes.push(lane);
+                    }
+                    if (safeLanes.length) {
+                        safeLanes.sort((a, b) => Math.abs(a - dragon.lane) - Math.abs(b - dragon.lane));
+                        targetLane = safeLanes[0];
+                    }
+                }
+                dragon.lane = targetLane;
+                dragon.targetX = (dragon.lane + 0.5) / NUM_LANES;
+            }
+
+            dragon.x += (dragon.targetX - dragon.x) * (1 - Math.exp(-28 * safeDt));
+            updateStationaryPressure(safeDt);
+
+            const fallSpeed = BASE_FALL_SPEED * gameSpeed;
+            if (!bossActive) {
+                bgScrollY += fallSpeed * safeDt;
+                enemySpawnTimer -= safeDt * gameSpeed;
+                if (enemySpawnTimer <= 0) {
+                    spawnEnemyWave();
+                    const difficulty = getDifficultyLevel();
+                    const surgeBonus = totalTimePlayed >= ENEMY_SURGE_TIME ? 0.24 : 0;
+                    enemySpawnTimer = Math.max(0.58, 1.65 - difficulty * 0.2 - surgeBonus);
+                }
+            }
+
+            const enemyFallSpeed = (BASE_ENEMY_SPEED + getDifficultyLevel() * 0.035) * gameSpeed;
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                enemy.y += enemyFallSpeed * safeDt;
+                enemy.x = (enemy.lane + 0.5) / NUM_LANES;
+                enemy.lane = Math.max(0, Math.min(NUM_LANES - 1, Math.floor(enemy.x * NUM_LANES)));
+                if (enemy.canShoot && !enemy.hasShot) {
+                    enemy.shotTimer -= safeDt;
+                    if (enemy.shotTimer <= 0 && enemy.y > 0.08 && enemy.y < dragon.y - 0.24) {
+                        fireEnemyBullet(enemy);
+                    }
+                }
+                if (!enemy.hit && Math.abs(enemy.y - dragon.y) < 0.06) {
+                    const dx = Math.abs(enemy.x - dragon.x) * width;
+                    if (dx < enemy.size * 0.7) {
+                        enemy.hit = true;
+                        takeDamage(dragon.x * width, dragon.y * height);
+                    }
+                }
+                if (enemy.y > 1.2 || enemy.hit) {
+                    enemies.splice(i, 1);
+                }
+            }
+
+            if (bossActive) {
+                bossBattleTime += safeDt;
+                updateBossPattern(safeDt);
+
+                playerFireTimer -= safeDt;
+                while (playerFireTimer <= 0) {
+                    firePlayerBullet();
+                    playerFireTimer += PLAYER_FIRE_INTERVAL;
+                }
+            }
+
+            const boss = getBossPosition();
+            const bossFace = getBossFaceHitPosition();
+            for (let i = playerBullets.length - 1; i >= 0; i--) {
+                const bullet = playerBullets[i];
+                bullet.y -= bullet.speed * safeDt;
+                const bx = bullet.x * width;
+                const by = bullet.y * height;
+                const faceX = bossFace.x * width;
+                const faceY = bossFace.y * height;
+                if (bossActive && Math.hypot(bx - faceX, by - faceY) < bossFace.radius) {
+                    const damage = 1;
+                    bossHits = Math.min(BOSS_HITS_TO_WIN, bossHits + damage);
+                    spawnBossHitText(bx, by, damage);
+                    if (bossHits % 25 < damage) {
+                        createParticles(bx, by, '#67e8f9');
+                    }
+                    playerBullets.splice(i, 1);
+                    if (bossHits >= BOSS_HITS_TO_WIN) {
+                        bossDefeated = true;
+                        bossDeathSound.currentTime = 0;
+                        bossDeathSound.play().catch(e => { });
+                        gameOver(true);
+                        return;
+                    }
+                    continue;
+                }
+                if (bossActive && bullet.y <= bossFace.y - 0.03) {
+                    playerBullets.splice(i, 1);
+                    continue;
+                }
+                if (bullet.y < -0.08) playerBullets.splice(i, 1);
+            }
+
+            for (let i = bossBullets.length - 1; i >= 0; i--) {
+                const bullet = bossBullets[i];
+                bullet.x += bullet.vx * safeDt;
+                bullet.y += bullet.vy * safeDt;
+                const dx = Math.abs(bullet.x - dragon.x) * width;
+                const dy = Math.abs(bullet.y - dragon.y) * height;
+                if (dx < 34 && dy < 34) {
+                    takeDamage(dragon.x * width, dragon.y * height);
+                    bossBullets.splice(i, 1);
+                    if (gameState === 'GAMEOVER') return;
+                    continue;
+                }
+                if (bullet.y > 1.12 || bullet.x < -0.1 || bullet.x > 1.1) {
+                    bossBullets.splice(i, 1);
+                }
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx * safeDt;
+                p.y += p.vy * safeDt;
+                p.life -= safeDt * 2;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            for (let i = damageTexts.length - 1; i >= 0; i--) {
+                const t = damageTexts[i];
+                t.y += t.vy * safeDt;
+                t.life -= safeDt * 1.2;
+                if (t.life <= 0) damageTexts.splice(i, 1);
+            }
+
+            updateHud();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+            fCtx.clearRect(0, 0, width, height);
+
+            drawSkyBackground();
+            drawPianoLaneGuide();
+
+            if (gameState === 'PLAYING' && !bossActive) {
+                drawSpeedLines();
+            }
+
+            // Draw enemy dragons
+            for (let enemy of enemies) {
+                const px = enemy.x * width;
+                const py = enemy.y * height;
+                const size = enemy.size;
+                const img = enemyImages[enemy.imageIndex] || enemyImages[0];
+                if (img && img.complete && img.naturalHeight !== 0) {
+                    fCtx.drawImage(img, px - size / 2, py - size / 2, size, size);
+                } else {
+                    fCtx.fillStyle = '#b91c1c';
+                    fCtx.beginPath();
+                    fCtx.arc(px, py, size / 2, 0, Math.PI * 2);
+                    fCtx.fill();
+                }
+            }
+
+            if (bossActive) {
+                drawBoss();
+                drawBossLasers();
+            } else {
+                bossSprite.style.display = 'none';
+            }
+
+            for (const bullet of playerBullets) {
+                fCtx.fillStyle = bullet.color;
+                fCtx.shadowColor = bullet.color;
+                fCtx.shadowBlur = 12;
+                fCtx.beginPath();
+                fCtx.arc(bullet.x * width, bullet.y * height, bullet.size, 0, Math.PI * 2);
+                fCtx.fill();
+            }
+            fCtx.shadowBlur = 0;
+
+            for (const bullet of bossBullets) {
+                const bx = bullet.x * width;
+                const by = bullet.y * height;
+                const tailX = bx - bullet.vx * width * 0.16;
+                const tailY = by - bullet.vy * height * 0.16;
+
+                fCtx.strokeStyle = bullet.trailColor || 'rgba(239, 68, 68, 0.62)';
+                fCtx.lineWidth = Math.max(5, bullet.size * 0.8);
+                fCtx.lineCap = 'round';
+                fCtx.beginPath();
+                fCtx.moveTo(tailX, tailY);
+                fCtx.lineTo(bx, by);
+                fCtx.stroke();
+
+                fCtx.fillStyle = bullet.color;
+                fCtx.shadowColor = '#facc15';
+                fCtx.shadowBlur = 18;
+                fCtx.beginPath();
+                fCtx.arc(bx, by, bullet.size, 0, Math.PI * 2);
+                fCtx.fill();
+
+                fCtx.fillStyle = bullet.coreColor || '#fff7ad';
+                fCtx.shadowBlur = 6;
+                fCtx.beginPath();
+                fCtx.arc(bx, by, bullet.size * 0.42, 0, Math.PI * 2);
+                fCtx.fill();
+            }
+            fCtx.shadowBlur = 0;
+
+            // Draw Particles (on front canvas)
+            for (let p of particles) {
+                fCtx.fillStyle = p.color;
+                fCtx.globalAlpha = p.life;
+                fCtx.beginPath();
+                fCtx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+                fCtx.fill();
+            }
+            fCtx.globalAlpha = 1.0;
+
+            for (const t of damageTexts) {
+                fCtx.globalAlpha = Math.max(0, t.life);
+                fCtx.font = '900 28px Jua, sans-serif';
+                fCtx.fillStyle = t.color || '#ffef5f';
+                fCtx.strokeStyle = t.stroke || '#7f1d1d';
+                fCtx.lineWidth = 5;
+                fCtx.strokeText(t.text, t.x, t.y);
+                fCtx.fillText(t.text, t.x, t.y);
+            }
+            fCtx.globalAlpha = 1.0;
+
+            // Draw Dragon
+            let dx = dragon.x * width;
+            let dy = dragon.y * height;
+
+            // Slight tilt based on velocity
+            const tilt = (dragon.targetX - dragon.x) * 45; // max tilt
+
+            const drawSize = gameState === 'INTRO'
+                ? Math.min(64, Math.max(30, (width / NUM_LANES) * 0.88))
+                : Math.min(82, Math.max(34, (width / NUM_LANES) * 0.96));
+            dragonSprite.style.width = drawSize + 'px';
+            dragonSprite.style.height = 'auto'; // keep aspect ratio
+            dragonSprite.style.zIndex = gameState === 'INTRO' ? '120' : '20';
+
+            dragonSprite.style.transform = `translate3d(${dx}px, ${dy}px, 0) translate(-50%, -50%) rotate(${tilt}deg)`;
+        }
+
+        function drawPianoLaneGuide() {
+            const laneWidth = width / NUM_LANES;
+            ctx.save();
+
+            for (let lane = 0; lane < NUM_LANES; lane++) {
+                const key = PIANO_KEYS[lane];
+                const left = lane * laneWidth;
+
+                ctx.fillStyle = hexToRgba(key.color, bossActive ? 0.11 : 0.16);
+                ctx.fillRect(left, 0, laneWidth, height);
+            }
+
+            ctx.strokeStyle = bossActive ? 'rgba(255, 255, 255, 0.34)' : 'rgba(15, 23, 42, 0.22)';
+            ctx.lineWidth = Math.max(1, Math.min(2, width * 0.0018));
+            for (let lane = 0; lane < NUM_LANES; lane++) {
+                const left = lane * laneWidth;
+                const right = (lane + 1) * laneWidth;
+                ctx.beginPath();
+                ctx.moveTo(left, 0);
+                ctx.lineTo(left, height);
+                ctx.moveTo(right, 0);
+                ctx.lineTo(right, height);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        function hexToRgba(hex, alpha) {
+            const normalized = hex.replace('#', '');
+            const value = parseInt(normalized.length === 3
+                ? normalized.split('').map(ch => ch + ch).join('')
+                : normalized, 16);
+            const r = (value >> 16) & 255;
+            const g = (value >> 8) & 255;
+            const b = value & 255;
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        function drawSkyBackground() {
+            const sky = ctx.createLinearGradient(0, 0, 0, height);
+            if (bossActive) {
+                sky.addColorStop(0, '#21020a');
+                sky.addColorStop(0.45, '#4a0614');
+                sky.addColorStop(1, '#06010a');
+            } else {
+                sky.addColorStop(0, '#7dd3fc');
+                sky.addColorStop(0.55, '#bae6fd');
+                sky.addColorStop(1, '#e0f2fe');
+            }
+            ctx.fillStyle = sky;
+            ctx.fillRect(0, 0, width, height);
+
+            if (bossActive) {
+                drawBossSpaceBackground();
+            } else {
+                for (const cloud of clouds) {
+                    const cloudWidth = Math.max(90, width * 0.12 * cloud.scale);
+                    const cloudHeight = cloudWidth * 0.38;
+                    const x = ((cloud.x + Math.sin(bgScrollY * 0.7 + cloud.drift) * 0.018) * (width + cloudWidth * 2)) - cloudWidth;
+                    let y = ((cloud.y + bgScrollY * 0.12 * cloud.speed) % 1.45) * (height + cloudHeight) - cloudHeight * 1.8;
+                    drawCloud(x, y, cloudWidth, cloudHeight, cloud.alpha);
+                }
+            }
+
+            const approach = bossActive
+                ? 1
+                : gameState === 'PLAYING'
+                    ? Math.min(1, totalTimePlayed / BOSS_APPEAR_TIME)
+                    : 0;
+            const darkAlpha = approach * 0.54;
+            if (darkAlpha > 0) {
+                const darkness = ctx.createLinearGradient(0, 0, 0, height);
+                darkness.addColorStop(0, `rgba(8, 13, 35, ${darkAlpha * 0.96})`);
+                darkness.addColorStop(0.55, `rgba(12, 20, 46, ${darkAlpha * 0.72})`);
+                darkness.addColorStop(1, `rgba(2, 6, 23, ${darkAlpha})`);
+                ctx.fillStyle = darkness;
+                ctx.fillRect(0, 0, width, height);
+            }
+        }
+
+        function drawBossSpaceBackground() {
+            const nebula = ctx.createRadialGradient(width * 0.5, height * 0.18, 0, width * 0.5, height * 0.18, Math.max(width, height) * 0.72);
+            nebula.addColorStop(0, 'rgba(239, 68, 68, 0.34)');
+            nebula.addColorStop(0.42, 'rgba(127, 29, 29, 0.28)');
+            nebula.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = nebula;
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 210, 210, 0.75)';
+            for (let i = 0; i < 52; i++) {
+                const x = ((i * 97 + Math.floor(bossBattleTime * 10) * 3) % Math.max(1, width));
+                const y = ((i * 53 + Math.floor(bossBattleTime * 7) * 2) % Math.max(1, height));
+                const r = 0.8 + (i % 3) * 0.45;
+                ctx.globalAlpha = 0.18 + (i % 5) * 0.08;
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function drawCloud(x, y, cloudWidth, cloudHeight, alpha) {
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
+            ctx.shadowBlur = 18;
+            ctx.beginPath();
+            ctx.ellipse(x, y + cloudHeight * 0.52, cloudWidth * 0.34, cloudHeight * 0.38, 0, 0, Math.PI * 2);
+            ctx.ellipse(x + cloudWidth * 0.24, y + cloudHeight * 0.38, cloudWidth * 0.3, cloudHeight * 0.48, 0, 0, Math.PI * 2);
+            ctx.ellipse(x + cloudWidth * 0.52, y + cloudHeight * 0.5, cloudWidth * 0.38, cloudHeight * 0.36, 0, 0, Math.PI * 2);
+            ctx.ellipse(x + cloudWidth * 0.08, y + cloudHeight * 0.72, cloudWidth * 0.5, cloudHeight * 0.28, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawBoss() {
+            const boss = getBossPosition();
+            const bx = boss.x * width;
+            const by = boss.y * height;
+            const pulse = 1 + Math.sin(performance.now() / 180) * 0.04;
+            const size = boss.size * pulse;
+
+            for (let i = 0; i < 42; i++) {
+                const angle = (i / 42) * Math.PI * 2 + performance.now() / 900;
+                const radius = size * (0.48 + (i % 4) * 0.045);
+                fCtx.fillStyle = i % 2 ? 'rgba(239, 68, 68, 0.78)' : 'rgba(251, 113, 133, 0.7)';
+                fCtx.beginPath();
+                fCtx.arc(bx + Math.cos(angle) * radius, by + Math.sin(angle) * radius, 4 + (i % 3), 0, Math.PI * 2);
+                fCtx.fill();
+            }
+
+            bossSprite.style.display = 'block';
+            bossSprite.style.width = `${size}px`;
+            bossSprite.style.transform = `translate3d(${bx}px, ${by}px, 0) translate(-50%, -50%)`;
+
+            if (!bossImg.complete || bossImg.naturalHeight === 0) {
+                fCtx.fillStyle = '#3b0764';
+                fCtx.strokeStyle = '#ef4444';
+                fCtx.lineWidth = 8;
+                fCtx.beginPath();
+                fCtx.arc(bx, by, size / 2, 0, Math.PI * 2);
+                fCtx.fill();
+                fCtx.stroke();
+                fCtx.fillStyle = '#fee2e2';
+                fCtx.font = '900 26px Jua, sans-serif';
+                fCtx.textAlign = 'center';
+                fCtx.fillText('DRAGON KING', bx, by + 8);
+                fCtx.textAlign = 'left';
+            }
+        }
+
+        function drawBossLasers() {
+            if (!bossLaserZones.length || (bossPattern !== 'laserWarn' && bossPattern !== 'laserFire')) return;
+            const laneWidth = width / NUM_LANES;
+            const blink = Math.sin(performance.now() / 95) > 0;
+            fCtx.save();
+            for (const lane of bossLaserZones) {
+                const x = lane * laneWidth;
+                if (bossPattern === 'laserWarn') {
+                    if (!blink) continue;
+                    fCtx.fillStyle = 'rgba(239, 68, 68, 0.22)';
+                    fCtx.strokeStyle = 'rgba(254, 202, 202, 0.78)';
+                    fCtx.lineWidth = 4;
+                    fCtx.fillRect(x + laneWidth * 0.08, 0, laneWidth * 0.84, height);
+                    fCtx.strokeRect(x + laneWidth * 0.08, 0, laneWidth * 0.84, height);
+                } else {
+                    const grad = fCtx.createLinearGradient(x, 0, x + laneWidth, 0);
+                    grad.addColorStop(0, 'rgba(127, 29, 29, 0.05)');
+                    grad.addColorStop(0.5, 'rgba(239, 68, 68, 0.82)');
+                    grad.addColorStop(1, 'rgba(127, 29, 29, 0.05)');
+                    fCtx.fillStyle = grad;
+                    fCtx.shadowColor = '#ef4444';
+                    fCtx.shadowBlur = 24;
+                    fCtx.fillRect(x + laneWidth * 0.12, 0, laneWidth * 0.76, height);
+                    fCtx.fillStyle = 'rgba(255, 255, 255, 0.36)';
+                    fCtx.fillRect(x + laneWidth * 0.45, 0, laneWidth * 0.1, height);
+                }
+            }
+            fCtx.restore();
+        }
+
+        function drawSpeedLines() {
+            const lineCount = 16;
+            const laneWidth = width / NUM_LANES;
+            ctx.save();
+            ctx.globalAlpha = 0.2;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+            ctx.lineWidth = Math.max(2, width * 0.002);
+            for (let i = 0; i < lineCount; i++) {
+                const lane = i % NUM_LANES;
+                const x = lane * laneWidth + laneWidth * (0.18 + ((i * 37) % 64) / 100);
+                const y = ((bgScrollY * height * 1.9) + i * height / lineCount) % height;
+                const len = 58;
+                ctx.beginPath();
+                ctx.moveTo(x, y - len);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function gameOver(isClear = false) {
+            if (gameState === 'GAMEOVER') return;
+            gameState = 'GAMEOVER';
+            updateHud();
+            setHomeButtonVisible(true);
+            bossSprite.style.display = 'none';
+            document.getElementById('screen-gameover').classList.remove('hidden');
+            const clearSeconds = Math.max(0, Math.floor(totalTimePlayed));
+            document.querySelector('#screen-gameover h1').innerText = isClear ? 'DRAGON KING CLEAR!' : 'DRAGON FALL';
+            document.getElementById('final-label').innerText = isClear ? '토벌 완료 시간' : '최종 생존 시간';
+            document.getElementById('final-time').innerText = clearSeconds;
+            document.getElementById('final-unit').innerText = '초';
+            const finalScore = Math.floor(score).toLocaleString();
+            document.getElementById('final-score').innerText = finalScore;
+            document.getElementById('final-rings').innerText = isClear
+                ? `최종 점수 ${finalScore}점 · 드래곤 킹을 ${clearSeconds}초 만에 클리어했어요! 남은 HP: ${hp}`
+                : `최종 점수 ${finalScore}점 · 보스 피해량: ${bossHits}/${BOSS_HITS_TO_WIN}`;
+            if (isClear) fireConfetti();
+        }
+
+        // Confetti Logic
+        const cCanvas = document.getElementById('confetti-canvas');
+        const cCtx = cCanvas.getContext('2d');
+        let cParticles = [];
+
+        function resizeConfetti() {
+            cCanvas.width = window.innerWidth;
+            cCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeConfetti);
+        resizeConfetti();
+
+        function fireConfetti() {
+            cParticles = [];
+            const colors = ['#ff2e63', '#ff9f1c', '#ffd700', '#00e676', '#2979ff', '#f50057', '#d500f9'];
+            for (let i = 0; i < 60; i++) {
+                cParticles.push({
+                    x: window.innerWidth / 2, y: window.innerHeight,
+                    w: Math.random() * 10 + 5, h: Math.random() * 10 + 5,
+                    dx: (Math.random() - 0.5) * 30,
+                    dy: (Math.random() - 1) * 30,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    life: 150
+                });
+            }
+        }
+
+        function animateConfetti() {
+            cCtx.clearRect(0, 0, cCanvas.width, cCanvas.height);
+            for (let i = cParticles.length - 1; i >= 0; i--) {
+                let p = cParticles[i];
+                p.x += p.dx; p.y += p.dy; p.dy += 0.8;
+                p.life--;
+                cCtx.fillStyle = p.color;
+                cCtx.fillRect(p.x, p.y, p.w, p.h);
+                if (p.life <= 0) cParticles.splice(i, 1);
+            }
+            requestAnimationFrame(animateConfetti);
+        }
+        animateConfetti();
+
+        function setupPianoControls() {
+            PIANO_KEYS.forEach((key, index) => {
+                const btn = document.getElementById(`key-${index}`);
+                if (!btn) return;
+                btn.style.setProperty('--key-color', key.color);
+                btn.style.borderBottomColor = key.color;
+            });
+        }
+
+        // Init
+        applyVolumeSettings();
+        setupPianoControls();
+        initCloudBackground();
+        initMIDI();
+        setHomeButtonVisible(false);
+        lastTime = performance.now();
+        requestAnimationFrame(gameLoop);
+
+    </script>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-07" defer></script>
+    <script src="../../js/web-learning-midi-status.js?v=20260618-04" data-instrument="piano" defer></script>
+</body>
+
+</html>

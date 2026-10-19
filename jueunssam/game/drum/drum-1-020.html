@@ -1,0 +1,2262 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>드래곤플라이</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Jua', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a2e;
+            color: white;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .glow-bg {
+            position: absolute;
+            width: 60vw;
+            height: 60vw;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.15;
+            z-index: 0;
+            animation: pulse-bg 10s infinite alternate;
+        }
+
+        .glow-1 {
+            top: -20%;
+            left: -10%;
+            background: #ff0055;
+        }
+
+        .glow-2 {
+            bottom: -20%;
+            right: -10%;
+            background: #00ddff;
+        }
+
+        @keyframes pulse-bg {
+            0% {
+                transform: scale(1);
+                opacity: 0.1;
+            }
+
+            100% {
+                transform: scale(1.1);
+                opacity: 0.2;
+            }
+        }
+
+        .kakao-header {
+            background-color: #FEE500;
+            color: #3b1e1e;
+            width: 100%;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            z-index: 500;
+            flex-shrink: 0;
+            border-bottom: 2px solid #FBC02D;
+        }
+
+        #game-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 60px);
+            min-height: 0;
+            background: #7dd3fc;
+        }
+
+        #warp-bg {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            overflow: hidden;
+            display: none;
+            transform-style: preserve-3d;
+            perspective: 100px;
+            background: radial-gradient(circle at 50% 50%, rgba(12, 33, 72, 0.5), rgba(0, 0, 0, 0.95) 55%, #000 100%);
+            pointer-events: none;
+        }
+
+        #game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+        #front-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 30;
+            pointer-events: none;
+        }
+
+        #dragon-sprite {
+            position: absolute;
+            z-index: 20;
+            pointer-events: none;
+            display: none;
+            left: 0;
+            top: 0;
+            width: 86px;
+            height: auto;
+            transform: translate3d(50vw, 82vh, 0) translate(-50%, -50%);
+            transform-origin: center center;
+            will-change: transform;
+        }
+
+        #boss-sprite {
+            position: absolute;
+            z-index: 24;
+            pointer-events: none;
+            display: none;
+            left: 0;
+            top: 0;
+            width: 320px;
+            height: auto;
+            transform: translate3d(50vw, 25vh, 0) translate(-50%, -50%);
+            transform-origin: center center;
+            will-change: transform, width;
+        }
+
+        /* Top HUD */
+        #hud-top {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        .hud-box {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #timer-text {
+            font-size: 2rem;
+            color: #FEE500;
+            font-weight: bold;
+        }
+
+        #score-text {
+            font-size: 2rem;
+            color: #FEE500;
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+        }
+
+        #boss-progress {
+            position: absolute;
+            top: 22px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(48vw, 560px);
+            background: rgba(0, 0, 0, 0.52);
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            border-radius: 999px;
+            padding: 8px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 20;
+            pointer-events: none;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+        }
+
+        .boss-progress-track {
+            flex: 1;
+            height: 12px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.18);
+            overflow: hidden;
+            position: relative;
+        }
+
+        #boss-progress-fill {
+            width: 0%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #22d3ee, #facc15, #ef4444);
+            transition: width 0.2s linear;
+        }
+
+        .progress-icon {
+            font-size: 1.35rem;
+            line-height: 1;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+        }
+
+        #boss-status {
+            min-width: 104px;
+            color: #FEE500;
+            font-size: 1rem;
+            font-weight: 900;
+            text-align: right;
+        }
+
+        /* Bottom Controls */
+        #controls-bottom {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 20;
+            width: 90%;
+            max-width: 430px;
+            justify-content: space-between;
+        }
+
+        .control-btn {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 15px 0;
+            border-radius: 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: all 0.1s;
+        }
+
+        .control-btn:active,
+        .control-btn.active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.2);
+            border-color: white;
+        }
+
+        .btn-left {
+            border-bottom: 5px solid #3b82f6;
+        }
+
+        .btn-right {
+            border-bottom: 5px solid #eab308;
+        }
+
+        /* Overlays */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #screen-intro {
+            background: linear-gradient(180deg, rgba(4, 10, 30, 0.54), rgba(4, 10, 30, 0.16) 48%, rgba(4, 10, 30, 0.62));
+            backdrop-filter: none;
+            justify-content: flex-start;
+            padding-top: clamp(42px, 9vh, 74px);
+        }
+
+        .intro-title {
+            color: #ffffff;
+            font-size: clamp(3rem, 8vw, 5.8rem);
+            font-weight: 900;
+            letter-spacing: 0;
+            line-height: 0.95;
+            text-align: center;
+            text-shadow: 0 5px 0 rgba(28, 34, 70, 0.9), 0 0 28px rgba(254, 229, 0, 0.35);
+        }
+
+        .intro-title-image {
+            width: min(620px, 84vw);
+            max-height: 170px;
+            object-fit: contain;
+            filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 24px rgba(254, 229, 0, 0.35));
+        }
+
+        .intro-subtitle {
+            margin-top: 12px;
+            color: #fde68a;
+            font-size: clamp(1rem, 2.2vw, 1.45rem);
+            font-weight: 700;
+            text-align: center;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+        }
+
+        .guide-container {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(120px, 1fr));
+            gap: 12px;
+            width: min(620px, 92vw);
+            margin: 24px auto 0;
+        }
+
+        .guide-card {
+            background: rgba(255, 255, 255, 0.9);
+            color: #111827;
+            border-radius: 18px;
+            padding: 14px 12px;
+            text-align: center;
+            box-shadow: 0 12px 26px rgba(0, 0, 0, 0.22);
+        }
+
+        .intro-actions {
+            --intro-button-width: clamp(150px, 10vw, 176px);
+            --intro-button-gap: 14px;
+            --intro-row-width: calc((var(--intro-button-width) * 2) + var(--intro-button-gap));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        .intro-rank-action {
+            display: flex;
+            justify-content: center;
+            width: var(--intro-row-width);
+        }
+
+        .intro-main-actions {
+            display: flex;
+            justify-content: center;
+            gap: var(--intro-button-gap);
+            flex-wrap: nowrap;
+            width: var(--intro-row-width);
+        }
+
+        .btn-secondary {
+            background: rgba(15, 23, 42, 0.82);
+            color: #ffffff;
+            width: var(--intro-button-width);
+            min-height: 74px;
+            padding: 0.95rem 1rem;
+            border-radius: 50px;
+            font-size: 1.35rem;
+            font-weight: bold;
+            border: 2px solid rgba(255, 255, 255, 0.28);
+            box-shadow: 0 5px 15px rgba(15, 23, 42, 0.35);
+            transition: all 0.2s;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #FEE500, #FBC02D);
+            color: #3b1e1e;
+            width: var(--intro-button-width);
+            min-height: 74px;
+            padding: 0.95rem 1rem;
+            border-radius: 50px;
+            font-size: 1.35rem;
+            font-weight: bold;
+            border: none;
+            box-shadow: 0 5px 15px rgba(254, 229, 0, 0.4);
+            transition: all 0.2s;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .btn-rank {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.88);
+        }
+
+        @media (max-width: 560px) {
+            .intro-actions {
+                --intro-button-width: min(150px, calc((92vw - var(--intro-button-gap)) / 2));
+            }
+
+            .intro-main-actions {
+                flex-wrap: wrap;
+            }
+        }
+
+        #midi-status {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 16px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+        }
+
+        #screen-countdown {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+        }
+
+        .countdown-text {
+            font-size: 12rem;
+            font-weight: black;
+            color: #FEE500;
+            text-shadow: 0 0 40px rgba(254, 229, 0, 0.8);
+            animation: countAnim 1s ease-in-out;
+        }
+
+        @keyframes countAnim {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+
+            50% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 0;
+            }
+        }
+
+        #damage-flash.flash {
+            animation: damageBlink 0.55s steps(2, end);
+        }
+
+        @keyframes damageBlink {
+
+            0%,
+            100% {
+                opacity: 0;
+            }
+
+            18%,
+            48%,
+            78% {
+                opacity: 1;
+            }
+
+            33%,
+            63% {
+                opacity: 0.15;
+            }
+        }
+
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 150;
+        }
+
+        #screen-gameover {
+            background: radial-gradient(circle at 50% 20%, rgba(251, 191, 36, 0.22), rgba(88, 28, 135, 0.72) 42%, rgba(2, 6, 23, 0.94) 100%);
+        }
+
+        #screen-gameover>div {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.84), rgba(76, 29, 149, 0.72), rgba(127, 29, 29, 0.64)) !important;
+            border-color: rgba(253, 224, 71, 0.52) !important;
+            box-shadow: 0 0 36px rgba(250, 204, 21, 0.32), inset 0 0 26px rgba(255, 255, 255, 0.08);
+        }
+
+        .gameover-actions {
+            --intro-button-width: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            width: min(100%, 390px);
+        }
+
+        .gameover-actions .btn-secondary,
+        .gameover-actions .btn-primary {
+            min-height: 68px;
+            font-size: 1.25rem;
+        }
+
+        @media (max-width: 520px) {
+            .gameover-actions {
+                --intro-button-width: min(170px, calc((92vw - 14px) / 2));
+                width: 92vw;
+            }
+        }
+
+        #boss-warning-effect {
+            position: absolute;
+            top: 72px;
+            left: 50%;
+            transform: translateX(-50%) scale(0.72);
+            width: min(780px, 86vw);
+            z-index: 260;
+            pointer-events: none;
+            opacity: 0;
+            filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 30px rgba(239, 68, 68, 0.85));
+        }
+
+        #boss-warning-effect.show {
+            animation: bossWarningPop 1.8s ease-out forwards;
+        }
+
+        #mode-effect {
+            position: absolute;
+            top: 86px;
+            left: 50%;
+            transform: translateX(-50%) scale(0.68);
+            width: min(620px, 78vw);
+            z-index: 265;
+            pointer-events: none;
+            opacity: 0;
+            filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 22px rgba(14, 165, 233, 0.72));
+        }
+
+        #mode-effect.show {
+            animation: modeEffectPop 1.75s ease-out forwards;
+        }
+
+        @keyframes modeEffectPop {
+            0% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(10px) scale(0.58);
+            }
+
+            18% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0) scale(1.04);
+            }
+
+            52% {
+                opacity: 1;
+                transform: translateX(-50%) scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-18px) scale(1.22);
+            }
+        }
+
+        @keyframes bossWarningPop {
+            0% {
+                opacity: 0;
+                transform: translateX(-50%) scale(0.55);
+            }
+
+            16% {
+                opacity: 1;
+                transform: translateX(-50%) scale(1.08);
+            }
+
+            42% {
+                opacity: 1;
+                transform: translateX(-50%) scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateX(-50%) scale(1.45);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="confetti-canvas"></canvas>
+
+    <header class="kakao-header">
+        <div class="flex items-center gap-2">
+            <i data-lucide="gamepad-2" class="text-[#3b1e1e] w-6 h-6"></i>
+            <h1 class="text-xl font-bold tracking-tight text-[#3b1e1e]">드래곤플라이</h1>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="home-btn" onclick="goHome()"
+                class="bg-white text-[#3b1e1e] px-3 py-1.5 rounded-xl text-sm font-bold shadow-sm border border-gray-200 hover:bg-gray-50 transition">
+                처음으로
+            </button>
+            <button onclick="goBack()"
+                class="bg-[#3b1e1e] text-[#FEE500] px-3 py-1.5 rounded-xl text-sm font-bold shadow-sm hover:opacity-90 transition">
+                종료하기
+            </button>
+        </div>
+    </header>
+
+    <div id="game-container">
+        <div id="warp-bg" aria-hidden="true"></div>
+        <div class="glow-bg glow-1 pointer-events-none"></div>
+        <div class="glow-bg glow-2 pointer-events-none"></div>
+        <canvas id="game-canvas"></canvas>
+        <img id="dragon-sprite" src="images/output-onlinegiftools.gif">
+        <img id="boss-sprite" src="images/dragon-king.webp" alt="">
+        <canvas id="front-canvas"></canvas>
+        <img id="boss-warning-effect" src="images/text-2.webp" alt="">
+        <img id="mode-effect" src="images/dragon-text-1.webp" alt="">
+        <div id="damage-flash"
+            class="absolute inset-0 bg-red-600/60 pointer-events-none opacity-0 transition-opacity duration-100"
+            style="z-index: 100;"></div>
+
+        <div id="hud-top">
+            <div class="hud-box">
+                <i data-lucide="heart-pulse" class="text-[#FEE500] w-6 h-6"></i>
+                <span id="timer-text">HP 100</span>
+            </div>
+            <div class="hud-box">
+                <i data-lucide="sparkles" class="text-[#FEE500] w-6 h-6"></i>
+                <span id="score-text">0</span>
+            </div>
+            <div id="boss-progress">
+                <span class="progress-icon">🐉</span>
+                <div class="boss-progress-track">
+                    <div id="boss-progress-fill"></div>
+                </div>
+                <span class="progress-icon">👑</span>
+                <span id="boss-status">KING 1:20</span>
+            </div>
+        </div>
+
+        <div id="controls-bottom">
+            <button class="control-btn btn-left" id="btn-left" onmousedown="handlePadInput('snare')"
+                ontouchstart="handlePadInput('snare'); event.preventDefault();">스네어 (좌)</button>
+            <button class="control-btn btn-right" id="btn-right" onmousedown="handlePadInput('floor')"
+                ontouchstart="handlePadInput('floor'); event.preventDefault();">플로어 (우)</button>
+        </div>
+
+        <!-- Start Screen -->
+        <div id="screen-intro" class="overlay">
+            <img class="intro-title-image" src="images/text-1.webp" alt="드래곤플라이">
+            <p class="intro-subtitle">적 드래곤을 피하고 드래곤 킹을 격파해요!</p>
+
+            <div id="midi-status">
+                <i data-lucide="cable"></i> <span id="midi-status-text">MIDI 드럼 연결 대기중...</span>
+            </div>
+            <div class="intro-actions">
+                <div class="intro-rank-action">
+                    <button onclick="showRanking()" class="btn-secondary btn-rank">드래곤플라이 랭킹</button>
+                </div>
+                <div class="intro-main-actions">
+                    <button onclick="showHowToPlay()" class="btn-secondary">게임방법</button>
+                    <button onclick="startGameCheck()" class="btn-primary">게임 시작!</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- How To Play Modal -->
+        <div id="how-to-play-modal" class="overlay hidden" style="z-index: 280;">
+            <div
+                class="bg-slate-950/90 p-8 rounded-3xl border border-white/20 backdrop-blur-md text-left max-w-xl w-[90%]">
+                <div class="flex items-center justify-between gap-4 mb-5">
+                    <h3 class="text-3xl font-black text-yellow-300">게임 방법</h3>
+                    <button onclick="closeHowToPlay()"
+                        class="text-white/70 hover:text-white text-3xl leading-none px-3">×</button>
+                </div>
+                <div class="space-y-4 text-lg leading-relaxed text-gray-200">
+                    <p>스네어를 두드리면 드래곤이 <strong style="color:#60a5fa;">왼쪽</strong>으로 이동합니다.</p>
+                    <p>플로어탐을 두드리면 드래곤이 <strong style="color:#facc15;">오른쪽</strong>으로 이동합니다.</p>
+                    <p>부하 드래곤과 보스 탄막에 닿으면 HP가 <strong style="color:#f87171;">10</strong> 줄어듭니다.</p>
+                    <p>1분 30초 동안 버티면 드래곤 킹이 나타나고, 플레이어의 빠른 탄막으로 <strong style="color:#67e8f9;">5000히트</strong>를 달성하면
+                        성공입니다.</p>
+                </div>
+                <div class="text-center mt-7">
+                    <button onclick="closeHowToPlay()" class="btn-primary">알겠어요!</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Mode Modal -->
+        <div id="modal-no-midi" class="overlay hidden" style="z-index: 300;">
+            <div class="bg-white/10 p-8 rounded-3xl border border-white/20 backdrop-blur-md text-center max-w-md">
+                <div style="font-size: 48px; margin-bottom: 20px;">🤖</div>
+                <h3 style="font-size: 24px; margin-bottom: 15px; color: #00ffff;">전자 드럼 미연결</h3>
+                <p style="font-size: 16px; color: #ccc; margin-bottom: 30px; line-height: 1.5;">
+                    현재 전자드럼이 연결되지 않았습니다.<br>
+                    이 학습은 드럼 연결이 없으면<br>
+                    <strong>AI 자동 플레이</strong> 모드만 지원합니다.
+                </p>
+                <div style="display: flex; gap: 15px; justify-content: center;">
+                    <button onclick="document.getElementById('modal-no-midi').classList.add('hidden')"
+                        style="padding: 12px 24px; border-radius: 30px; font-size: 18px; background: transparent; color: #fff; border: 2px solid #aaa; cursor: pointer; transition: 0.2s;">돌아가기</button>
+                    <button onclick="startAutoPlay()"
+                        style="padding: 12px 24px; border-radius: 30px; font-size: 18px; background: transparent; color: #00ffff; border: 2px solid #00ffff; cursor: pointer; box-shadow: 0 0 10px rgba(0,255,255,0.5); transition: 0.2s;">AI
+                        플레이 시작</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Countdown Screen -->
+        <div id="screen-countdown" class="hidden">
+            <div id="countdown-text" class="countdown-text">3</div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="screen-gameover" class="overlay hidden">
+            <h1 class="text-6xl font-black text-white mb-6 text-yellow-400 drop-shadow-[0_0_15px_rgba(255,215,0,0.8)]">
+                MISSION CLEAR!</h1>
+            <div
+                class="bg-white/10 p-8 rounded-3xl border border-white/20 backdrop-blur-md text-center mb-10 w-full max-w-md">
+                <p class="text-gray-300 text-xl mb-1 font-bold">최종 점수</p>
+                <p id="final-score" class="text-yellow-400 text-6xl font-black drop-shadow-md mb-5">0</p>
+                <p class="text-gray-300 text-xl mb-2 font-bold" id="final-label">보스 명중</p>
+                <div class="text-2xl font-medium text-gray-100 mt-4 flex justify-center items-end gap-2">
+                    <span id="final-time" class="text-yellow-400 text-6xl font-black drop-shadow-md">0</span>
+                    <span class="text-yellow-400 text-xl font-bold pb-2" id="final-unit">hit</span>
+                </div>
+                <p class="text-gray-400 mt-4 font-bold" id="final-rings">남은 HP: 100</p>
+            </div>
+            <div class="gameover-actions">
+                <button onclick="showResultRanking()" class="btn-secondary">랭킹 확인</button>
+                <button onclick="startCountdown()" class="btn-primary">다시 도전하기</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // Audio Objects
+        const bgmAudio = new Audio('https://cdn.pixabay.com/audio/2021/11/16/audio_5561459786.mp3');
+        bgmAudio.loop = true;
+        bgmAudio.volume = 1.0;
+
+        const startSound = new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_672c06c971.mp3');
+        startSound.volume = 0.6;
+
+        const crashSound = new Audio('https://cdn.pixabay.com/audio/2026/02/19/audio_48fc4ad65a.mp3');
+        crashSound.volume = 0.6;
+
+        const bossAppearSound = new Audio('https://cdn.pixabay.com/audio/2026/03/17/audio_cd04ae549b.mp3');
+        bossAppearSound.volume = 0.6;
+
+        const bossDeathSound = new Audio('https://cdn.pixabay.com/audio/2025/06/23/audio_73f6da8653.mp3');
+        bossDeathSound.volume = 0.6;
+
+        const keyboardUnlockSound = new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_a6ba7335b4.mp3');
+        keyboardUnlockSound.volume = 0.6;
+
+        const drumConnectedSound = new Audio('https://cdn.pixabay.com/audio/2023/01/06/audio_b7590da9fe.mp3');
+        drumConnectedSound.volume = 0.6;
+
+        function tryPlayBGM() {
+            if (bgmAudio.paused) {
+                bgmAudio.play().catch(e => console.log('Autoplay prevented'));
+            }
+        }
+        document.addEventListener('click', tryPlayBGM);
+        document.addEventListener('touchstart', tryPlayBGM);
+        document.addEventListener('keydown', tryPlayBGM);
+
+        // Audio Context Setup
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playDrumSound(type) {
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            if (type === 'snare') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(250, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'floor') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(50, now + 0.2);
+                gain.gain.setValueAtTime(0.36, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            }
+        }
+
+        // MIDI Logic
+        const DRUMS = {
+            'snare': { note: [38, 40, 31, 34, 37] },
+            'floor': { note: [41, 43] },
+            'hihat': { note: [42, 44, 46, 22, 26] }
+        };
+
+        async function initMIDI() {
+            if (!navigator.requestMIDIAccess) return;
+            try {
+                const midiAccess = await navigator.requestMIDIAccess();
+                bindMidi(midiAccess);
+                midiAccess.onstatechange = (e) => bindMidi(e.target);
+            } catch (e) {
+                console.warn("MIDI Fail", e);
+            }
+        }
+
+        let midiConnected = false;
+        let hasShownDrumConnectedEffect = false;
+
+        function bindMidi(midiAccess) {
+            const wasConnected = midiConnected;
+            midiConnected = midiAccess.inputs.size > 0;
+            for (let input of midiAccess.inputs.values()) {
+                input.onmidimessage = onMidiMessage;
+                if (input.state === 'connected') midiConnected = true;
+            }
+            const statusEl = document.getElementById('midi-status');
+            const textEl = document.getElementById('midi-status-text');
+            if (midiConnected) {
+                statusEl.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
+                statusEl.style.color = '#34d399';
+                textEl.innerText = keyboardControlEnabled ? '키보드 모드 활성화' : 'MIDI 드럼 연결됨!';
+            } else {
+                statusEl.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                statusEl.style.color = 'white';
+                textEl.innerText = keyboardControlEnabled ? '키보드 모드 활성화' : 'MIDI 드럼 연결 대기중...';
+            }
+            if (midiConnected && !wasConnected && !hasShownDrumConnectedEffect) {
+                hasShownDrumConnectedEffect = true;
+                playOneShotEffect(drumConnectedSound, 'images/dragon-text-1.webp');
+            }
+        }
+
+        function onMidiMessage(e) {
+            const [status, note, velocity] = e.data;
+            const command = status & 0xf0;
+            if (command === 0x90 && velocity > 0) {
+                let hitDrum = null;
+                for (const [id, drum] of Object.entries(DRUMS)) {
+                    if (drum.note.includes(note)) {
+                        hitDrum = id;
+                        break;
+                    }
+                }
+                if (hitDrum) {
+                    showMidiHitFeedback(hitDrum);
+                    trackKeyboardUnlock(hitDrum);
+                    if (hitDrum !== 'hihat') handlePadInput(hitDrum);
+                }
+            }
+        }
+
+        function showMidiHitFeedback(type) {
+            const textEl = document.getElementById('midi-status-text');
+            if (!textEl) return;
+            const label = type === 'snare' ? '스네어 입력' : type === 'floor' ? '플로어 입력' : '하이햇 입력';
+            textEl.innerText = `${label} 감지`;
+            clearTimeout(showMidiHitFeedback.timer);
+            showMidiHitFeedback.timer = setTimeout(() => {
+                textEl.innerText = keyboardControlEnabled ? '키보드 모드 활성화' : midiConnected ? 'MIDI 드럼 연결됨!' : 'MIDI 드럼 연결 대기중...';
+            }, 450);
+        }
+
+        function playOneShotEffect(audio, imageSrc) {
+            tryPlayBGM();
+            audio.currentTime = 0;
+            audio.play().catch(e => { });
+
+            const effect = document.getElementById('mode-effect');
+            if (!effect) return;
+            effect.src = imageSrc;
+            effect.classList.remove('show');
+            void effect.offsetWidth;
+            effect.classList.add('show');
+            clearTimeout(playOneShotEffect.timer);
+            playOneShotEffect.timer = setTimeout(() => effect.classList.remove('show'), 1800);
+        }
+
+        // Game State
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const frontCanvas = document.getElementById('front-canvas');
+        const fCtx = frontCanvas.getContext('2d');
+        const dragonSprite = document.getElementById('dragon-sprite');
+        const bossSprite = document.getElementById('boss-sprite');
+        const warpBg = document.getElementById('warp-bg');
+        const gameContainer = document.getElementById('game-container');
+
+        let width = canvas.width;
+        let height = canvas.height;
+
+        const STARTING_HP = 100;
+        const DAMAGE_AMOUNT = 10;
+        const BOSS_APPEAR_TIME = 80;
+        const BOSS_HITS_TO_WIN = 5000;
+        const ENEMY_GROW_START = 32;
+        const ENEMY_SURGE_TIME = 62;
+        const MAX_PARTICLES = 90;
+        const MAX_ACTIVE_ENEMIES = 24;
+        const BASE_FALL_SPEED = 0.68;
+        const BASE_ENEMY_SPEED = 0.78;
+        const ENEMY_SIZE = 92;
+        const PLAYER_BULLET_SPEED = 1.9;
+        const BOSS_BULLET_SPEED = 0.31;
+        const PLAYER_FIRE_INTERVAL = 0.025;
+        const BOSS_AIMED_SHOT_INTERVAL = 0.72;
+        const BOSS_SPREAD_SHOT_INTERVAL = 0.42;
+        const MAX_BOSS_BULLETS = 56;
+        const PASSIVE_SCORE_RATE = 0.5;
+        const MOVEMENT_SCORE_BONUS = 45;
+        const MOVEMENT_DISTANCE_BONUS = 6;
+        const MOVEMENT_STREAK_WINDOW = 1.2;
+        const MOVEMENT_STREAK_BONUS = 8;
+        const MAX_MOVEMENT_STREAK_BONUS = 80;
+        const STATIONARY_MONSTER_DELAY = 3;
+
+        let gameState = 'INTRO'; // INTRO, PLAYING, GAMEOVER
+        let hp = STARTING_HP;
+        let totalTimePlayed = 0;
+        let score = 0;
+        let movementStreak = 0;
+        let lastMoveTime = -Infinity;
+        let lastTime = 0;
+        let bossHits = 0;
+        let bossActive = false;
+        let bossDefeated = false;
+        let playerFireTimer = 0;
+        let bossFireTimer = 0;
+        let bossBattleTime = 0;
+        let bossPattern = 'pause';
+        let bossPatternTimer = 0;
+        let bossPatternIndex = -1;
+        let bossLaserZones = [];
+        let bossLaserDamageApplied = false;
+        let rankingAttemptId = '';
+
+        let isAIEnabled = false;
+        let keyboardControlEnabled = false;
+        let keyboardUnlockIndex = 0;
+        const KEYBOARD_UNLOCK_SEQUENCE = ['snare', 'floor', 'snare', 'floor', 'snare', 'floor', 'hihat'];
+
+        const NUM_LANES = 6;
+        let dragon = {
+            lane: 2, // 0 to 5
+            x: 2.5 / 6,
+            targetX: 2.5 / 6,
+            y: 0.65,
+            size: 40
+        };
+        let stationaryLane = dragon.lane;
+        let stationaryLaneTime = 0;
+
+        const enemyImages = [];
+        for (let i = 6; i <= 9; i++) {
+            const img = new Image();
+            img.src = `images/dragon-${i}.webp`;
+            enemyImages.push(img);
+        }
+
+        const bossImg = new Image();
+        bossImg.src = 'images/dragon-king.webp';
+
+        let enemies = [];
+        let playerBullets = [];
+        let bossBullets = [];
+        let damageTexts = [];
+        let particles = [];
+        let gameSpeed = 1.0;
+        let bgScrollY = 0;
+        let enemySpawnTimer = 0;
+        let safeLane = 0;
+        let lastCanvasWidth = 0;
+        let lastCanvasHeight = 0;
+        let clouds = [];
+
+        function initCloudBackground() {
+            const totalClouds = 18;
+            clouds = Array.from({ length: totalClouds }, (_, index) => ({
+                x: Math.random(),
+                y: (index / totalClouds) * 1.35 - 0.2,
+                scale: 0.55 + Math.random() * 1.2,
+                speed: 0.18 + Math.random() * 0.32,
+                alpha: 0.28 + Math.random() * 0.36,
+                drift: Math.random() * Math.PI * 2
+            }));
+            if (warpBg) {
+                warpBg.replaceChildren();
+            }
+        }
+
+        // Resize handler
+        function resize() {
+            const rect = gameContainer.getBoundingClientRect();
+            width = Math.max(1, Math.round(rect.width || canvas.clientWidth || window.innerWidth));
+            height = Math.max(1, Math.round(rect.height || canvas.clientHeight || (window.innerHeight - 60)));
+            canvas.width = width;
+            canvas.height = height;
+            if (frontCanvas) {
+                frontCanvas.width = width;
+                frontCanvas.height = height;
+            }
+            lastCanvasWidth = width;
+            lastCanvasHeight = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+        requestAnimationFrame(resize);
+        setTimeout(resize, 120);
+
+        function goHome() {
+            bgmAudio.pause();
+            showIntro();
+        }
+
+        function goBack() {
+            bgmAudio.pause();
+            window.history.back();
+        }
+
+        function setHomeButtonVisible(isVisible) {
+            const homeBtn = document.getElementById('home-btn');
+            if (homeBtn) homeBtn.style.display = isVisible ? 'inline-flex' : 'none';
+        }
+
+        function showIntro() {
+            gameState = 'INTRO';
+            bgmAudio.pause();
+            hp = STARTING_HP;
+            totalTimePlayed = 0;
+            score = 0;
+            movementStreak = 0;
+            lastMoveTime = -Infinity;
+            bossHits = 0;
+            bossActive = false;
+            bossDefeated = false;
+            bossBattleTime = 0;
+            bossPattern = 'pause';
+            bossPatternTimer = 0;
+            bossPatternIndex = -1;
+            bossLaserZones = [];
+            bossLaserDamageApplied = false;
+            enemies = [];
+            playerBullets = [];
+            bossBullets = [];
+            damageTexts = [];
+            particles = [];
+            bgScrollY = 0;
+            isAIEnabled = false;
+            keyboardUnlockIndex = 0;
+            dragon.lane = Math.floor(NUM_LANES / 2);
+            dragon.x = (dragon.lane + 0.5) / NUM_LANES;
+            dragon.targetX = dragon.x;
+            dragon.y = 0.82;
+            stationaryLane = dragon.lane;
+            stationaryLaneTime = 0;
+            setHomeButtonVisible(false);
+            updateHud();
+            document.getElementById('screen-intro').classList.remove('hidden');
+            document.getElementById('screen-countdown').classList.add('hidden');
+            document.getElementById('screen-gameover').classList.add('hidden');
+            document.getElementById('modal-no-midi').classList.add('hidden');
+            document.getElementById('how-to-play-modal').classList.add('hidden');
+            bossSprite.style.display = 'none';
+        }
+
+        function trackKeyboardUnlock(type) {
+            if (keyboardControlEnabled) return;
+            if (type === KEYBOARD_UNLOCK_SEQUENCE[keyboardUnlockIndex]) {
+                keyboardUnlockIndex++;
+                if (keyboardUnlockIndex >= KEYBOARD_UNLOCK_SEQUENCE.length) {
+                    keyboardControlEnabled = true;
+                    keyboardUnlockIndex = 0;
+                    const textEl = document.getElementById('midi-status-text');
+                    if (textEl) textEl.innerText = '키보드 모드 활성화';
+                    playOneShotEffect(keyboardUnlockSound, 'images/dragon-text-2.webp');
+                }
+                return;
+            }
+            keyboardUnlockIndex = type === KEYBOARD_UNLOCK_SEQUENCE[0] ? 1 : 0;
+        }
+
+        function showHowToPlay() {
+            document.getElementById('how-to-play-modal').classList.remove('hidden');
+        }
+
+        function closeHowToPlay() {
+            document.getElementById('how-to-play-modal').classList.add('hidden');
+        }
+
+        function showRanking() {
+            if (window.JueunRanking) {
+                window.JueunRanking.show({
+                    gameTitle: '드래곤플라이',
+                    contentId: 'drum-1-020.html'
+                });
+            }
+        }
+
+        function showResultRanking() {
+            if (window.JueunRanking?.showResult) {
+                const resultScore = Math.floor(score || 0);
+                window.JueunRanking.showResult({
+                    gameTitle: '드래곤플라이',
+                    contentId: 'drum-1-020.html',
+                    score: resultScore,
+                    scoreLabel: `${resultScore.toLocaleString()}점`,
+                    attemptId: rankingAttemptId,
+                    source: 'result-button',
+                    onRetry: startCountdown
+                });
+                return;
+            }
+            showRanking();
+        }
+
+        function handlePadInput(type) {
+            triggerControlButtonFeedback(type);
+            if (gameState !== 'PLAYING') {
+                playDrumSound(type);
+                return;
+            }
+
+            if (!isAIEnabled) {
+                const previousLane = dragon.lane;
+                if (type === 'snare') dragon.lane = Math.max(0, dragon.lane - 1);
+                if (type === 'floor') dragon.lane = Math.min(NUM_LANES - 1, dragon.lane + 1);
+                if (dragon.lane !== previousLane) {
+                    awardMovementScore(dragon.lane, previousLane);
+                }
+            }
+
+            dragon.targetX = (dragon.lane + 0.5) / NUM_LANES;
+            playDrumSound(type);
+        }
+
+        function awardMovementScore(nextLane, previousLane) {
+            const now = totalTimePlayed;
+            const distance = Math.max(1, Math.abs(nextLane - previousLane));
+            movementStreak = now - lastMoveTime <= MOVEMENT_STREAK_WINDOW ? movementStreak + 1 : 1;
+            lastMoveTime = now;
+            score += MOVEMENT_SCORE_BONUS
+                + distance * MOVEMENT_DISTANCE_BONUS
+                + Math.min(MAX_MOVEMENT_STREAK_BONUS, movementStreak * MOVEMENT_STREAK_BONUS);
+        }
+
+        function triggerControlButtonFeedback(type) {
+            let btnId = '';
+            if (type === 'snare') btnId = 'btn-left';
+            if (type === 'floor') btnId = 'btn-right';
+            if (btnId) {
+                const btn = document.getElementById(btnId);
+                if (!btn) return;
+                btn.classList.add('active');
+                setTimeout(() => btn.classList.remove('active'), 100);
+            }
+        }
+
+        function handleKeyboardControl(e) {
+            if (!keyboardControlEnabled || gameState !== 'PLAYING' || isAIEnabled) return;
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                handlePadInput('snare');
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                handlePadInput('floor');
+            }
+        }
+
+        document.addEventListener('keydown', handleKeyboardControl);
+
+        function spawnRing() {
+            // Rings were removed for the boss-battle version.
+        }
+
+        function getEnemyImageIndex() {
+            if (totalTimePlayed < 45) return 0;
+            if (totalTimePlayed < 90) return Math.random() < 0.75 ? 1 : 0;
+            if (totalTimePlayed < 135) return Math.random() < 0.65 ? 2 : Math.floor(Math.random() * 2);
+            return Math.floor(Math.random() * enemyImages.length);
+        }
+
+        function spawnEnemy(preferredX = Math.random(), allowDuringBoss = false) {
+            if (enemies.length >= MAX_ACTIVE_ENEMIES || (bossActive && !allowDuringBoss)) return;
+            const imageIndex = getEnemyImageIndex();
+            const x = Math.max(0.08, Math.min(0.92, preferredX + (Math.random() - 0.5) * 0.14));
+            const difficulty = getDifficultyLevel();
+            const canShoot = totalTimePlayed > 16 && Math.random() < Math.min(0.46, 0.18 + difficulty * 0.055);
+            enemies.push({
+                lane: Math.max(0, Math.min(NUM_LANES - 1, Math.floor(x * NUM_LANES))),
+                x,
+                baseX: x,
+                y: -0.16 - Math.random() * 0.18,
+                size: ENEMY_SIZE * (0.82 + Math.random() * 0.28),
+                imageIndex,
+                hit: false,
+                drift: (Math.random() - 0.5) * (0.05 + difficulty * 0.012),
+                wobble: Math.random() * Math.PI * 2,
+                canShoot,
+                shotTimer: canShoot ? 0.08 + Math.random() * 0.42 : Infinity,
+                hasShot: false
+            });
+        }
+
+        function spawnStationaryMonster(lane) {
+            if (enemies.length >= MAX_ACTIVE_ENEMIES || bossActive) return;
+            const clampedLane = Math.max(0, Math.min(NUM_LANES - 1, lane));
+            const x = (clampedLane + 0.5) / NUM_LANES;
+            const difficulty = getDifficultyLevel();
+            const canShoot = totalTimePlayed > 16 && Math.random() < Math.min(0.46, 0.18 + difficulty * 0.055);
+            enemies.push({
+                lane: clampedLane,
+                x,
+                baseX: x,
+                y: -0.18,
+                size: ENEMY_SIZE * 1.04,
+                imageIndex: getEnemyImageIndex(),
+                hit: false,
+                drift: 0,
+                wobble: 0,
+                canShoot,
+                shotTimer: canShoot ? 0.08 + Math.random() * 0.28 : Infinity,
+                hasShot: false,
+                stationaryPressure: true
+            });
+        }
+
+        function updateStationaryPressure(safeDt) {
+            if (bossActive) {
+                stationaryLane = dragon.lane;
+                stationaryLaneTime = 0;
+                return;
+            }
+
+            if (dragon.lane !== stationaryLane) {
+                stationaryLane = dragon.lane;
+                stationaryLaneTime = 0;
+                return;
+            }
+
+            stationaryLaneTime += safeDt;
+            if (stationaryLaneTime >= STATIONARY_MONSTER_DELAY) {
+                spawnStationaryMonster(stationaryLane);
+                stationaryLaneTime = 0;
+            }
+        }
+
+        function getDifficultyLevel() {
+            const earlyRamp = Math.max(0, (totalTimePlayed - 18) / 34);
+            const surgeRamp = Math.max(0, (totalTimePlayed - 48) / 28);
+            return Math.min(4.2, earlyRamp + surgeRamp * 1.05);
+        }
+
+        function spawnEnemyWave() {
+            const difficulty = getDifficultyLevel();
+            const pressureLane = dragon.lane;
+            const escapeDirection = Math.random() < 0.5 ? -1 : 1;
+            safeLane = Math.max(0, Math.min(NUM_LANES - 1, pressureLane + escapeDirection));
+
+            const nearDangerLanes = new Set();
+            for (let enemy of enemies) {
+                if (!enemy.hit && enemy.y > -0.1 && enemy.y < dragon.y + 0.15) {
+                    nearDangerLanes.add(enemy.lane);
+                }
+            }
+
+            if (nearDangerLanes.has(safeLane)) {
+                const saferLanes = [];
+                for (let lane = 0; lane < NUM_LANES; lane++) {
+                    if (!nearDangerLanes.has(lane)) saferLanes.push(lane);
+                }
+                if (saferLanes.length) {
+                    saferLanes.sort((a, b) => Math.abs(a - dragon.lane) - Math.abs(b - dragon.lane));
+                    safeLane = saferLanes[0];
+                }
+            }
+
+            let enemyCount = 2 + Math.floor(difficulty * 0.78);
+            if (totalTimePlayed >= ENEMY_SURGE_TIME && difficulty > 1.2) enemyCount += 1;
+            enemyCount = Math.min(NUM_LANES - 2, Math.max(2, enemyCount));
+
+            const safeMin = safeLane / NUM_LANES;
+            const safeMax = (safeLane + 1) / NUM_LANES;
+            for (let i = 0; i < enemyCount; i++) {
+                let x = i === 0
+                    ? (pressureLane + 0.5 + (Math.random() - 0.5) * 0.5) / NUM_LANES
+                    : Math.random();
+                let guard = 0;
+                while (x > safeMin - 0.04 && x < safeMax + 0.04 && guard < 10) {
+                    x = Math.random();
+                    guard++;
+                }
+                spawnEnemy(x);
+            }
+        }
+
+        function fireEnemyBullet(enemy) {
+            if (bossActive && (bossPattern === 'laserWarn' || bossPattern === 'laserFire')) return;
+            if (bossBullets.length >= MAX_BOSS_BULLETS || enemy.hasShot) return;
+            const targetX = dragon.x;
+            const startX = enemy.x;
+            bossBullets.push({
+                x: startX,
+                y: enemy.y + 0.06,
+                vx: (targetX - startX) * 0.22,
+                vy: 0.34,
+                size: 8,
+                color: '#fb923c',
+                coreColor: '#fff7ad',
+                trailColor: 'rgba(251, 146, 60, 0.48)',
+                source: 'enemy'
+            });
+            enemy.hasShot = true;
+        }
+
+        function flashDamage() {
+            const flash = document.getElementById('damage-flash');
+            flash.classList.remove('flash');
+            void flash.offsetWidth;
+            flash.classList.add('flash');
+            setTimeout(() => flash.classList.remove('flash'), 580);
+        }
+
+        function createParticles(x, y, color) {
+            const count = Math.min(12, Math.max(0, MAX_PARTICLES - particles.length));
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 200,
+                    vy: (Math.random() - 0.5) * 200,
+                    life: 1.0,
+                    color: color
+                });
+            }
+        }
+
+        function spawnDamageText(x, y, text = '-10') {
+            for (let i = 0; i < 4; i++) {
+                damageTexts.push({
+                    x: x + (Math.random() - 0.5) * 42,
+                    y: y + (Math.random() - 0.5) * 28,
+                    vy: -34 - Math.random() * 24,
+                    life: 1,
+                    text,
+                    color: '#ffef5f',
+                    stroke: '#7f1d1d'
+                });
+            }
+        }
+
+        function spawnBossHitText(x, y, damage = 1) {
+            damageTexts.push({
+                x: x + (Math.random() - 0.5) * 80,
+                y: y + (Math.random() - 0.5) * 54,
+                vy: -52 - Math.random() * 20,
+                life: 0.75,
+                text: `-${damage}`,
+                color: '#67e8f9',
+                stroke: '#082f49'
+            });
+        }
+
+        function takeDamage(x, y) {
+            hp = Math.max(0, hp - DAMAGE_AMOUNT);
+            crashSound.currentTime = 0;
+            crashSound.play().catch(e => { });
+            flashDamage();
+            spawnDamageText(x, y);
+            createParticles(x, y, '#ff0000');
+            if (hp <= 0) {
+                gameOver(false);
+            }
+        }
+
+        function startBossBattle() {
+            bossActive = true;
+            enemies = [];
+            bossBullets = [];
+            playerBullets = [];
+            particles = [];
+            bossBattleTime = 0;
+            bossPattern = 'pause';
+            bossPatternTimer = 1.15;
+            bossPatternIndex = -1;
+            bossLaserZones = [];
+            bossLaserDamageApplied = false;
+            bossFireTimer = 0.45;
+            playerFireTimer = 0.05;
+            bossAppearSound.currentTime = 0;
+            bossAppearSound.play().catch(e => { });
+            showBossWarning();
+        }
+
+        function showBossWarning() {
+            const warning = document.getElementById('boss-warning-effect');
+            if (!warning) return;
+            warning.classList.remove('show');
+            void warning.offsetWidth;
+            warning.classList.add('show');
+            setTimeout(() => warning.classList.remove('show'), 1900);
+        }
+
+        function firePlayerBullet() {
+            playerBullets.push({
+                x: dragon.x,
+                y: dragon.y - 0.05,
+                speed: PLAYER_BULLET_SPEED,
+                size: 4,
+                color: '#67e8f9'
+            });
+        }
+
+        function setNextBossPattern() {
+            const sequence = ['aimed', 'pause', 'spread', 'pause', 'sweep', 'pause', 'rain', 'pause', 'laserWarn', 'laserFire', 'pause', 'minions', 'pause'];
+            bossPatternIndex = (bossPatternIndex + 1) % sequence.length;
+            bossPattern = sequence[bossPatternIndex];
+            if (bossPattern === 'aimed') {
+                bossPatternTimer = 2.7;
+                bossFireTimer = 0.12;
+            } else if (bossPattern === 'spread') {
+                bossPatternTimer = 2.0;
+                bossFireTimer = 0.2;
+            } else if (bossPattern === 'sweep') {
+                bossPatternTimer = 2.2;
+                bossFireTimer = 0.1;
+            } else if (bossPattern === 'rain') {
+                bossPatternTimer = 2.3;
+                bossFireTimer = 0.14;
+            } else if (bossPattern === 'laserWarn') {
+                bossPatternTimer = 1.15;
+                bossLaserZones = pickLaserZones();
+                bossLaserDamageApplied = false;
+                bossBullets = [];
+            } else if (bossPattern === 'laserFire') {
+                bossPatternTimer = 0.62;
+                bossBullets = [];
+            } else if (bossPattern === 'minions') {
+                bossPatternTimer = 1.6;
+                spawnBossMinions();
+            } else {
+                bossPatternTimer = 1.65;
+                bossFireTimer = 0.7;
+            }
+        }
+
+        function pickLaserZones() {
+            const zones = [];
+            const candidates = Array.from({ length: NUM_LANES }, (_, i) => i);
+            candidates.sort(() => Math.random() - 0.5);
+            for (const lane of candidates) {
+                if (zones.length >= 3) break;
+                zones.push(lane);
+            }
+            return zones;
+        }
+
+        function spawnBossMinions() {
+            const count = 2 + Math.floor(Math.random() * 2);
+            for (let i = 0; i < count; i++) {
+                const offset = (i - (count - 1) / 2) * 0.16;
+                spawnEnemy(Math.max(0.08, Math.min(0.92, dragon.x + offset + (Math.random() - 0.5) * 0.08)), true);
+            }
+        }
+
+        function getBossMouthPosition() {
+            const boss = getBossPosition();
+            return {
+                x: boss.x,
+                y: boss.y + 0.24
+            };
+        }
+
+        function getBossFaceHitPosition() {
+            const boss = getBossPosition();
+            return {
+                x: boss.x,
+                y: boss.y + 0.18,
+                radius: boss.size * 0.12
+            };
+        }
+
+        function fireBossBullet(targetX = dragon.x, spreadOffset = 0) {
+            if (bossBullets.length >= MAX_BOSS_BULLETS) return;
+            const mouth = getBossMouthPosition();
+            const startX = mouth.x + spreadOffset * 0.025;
+            const clampedTargetX = Math.max(0.06, Math.min(0.94, targetX));
+            bossBullets.push({
+                x: startX,
+                y: mouth.y,
+                vx: (clampedTargetX - startX) * 0.3 + spreadOffset * 0.035,
+                vy: BOSS_BULLET_SPEED + Math.min(0.06, bossBattleTime * 0.0006),
+                size: 11,
+                color: '#ffef5f',
+                coreColor: '#fff7ad',
+                trailColor: 'rgba(239, 68, 68, 0.62)'
+            });
+        }
+
+        function updateBossPattern(safeDt) {
+            bossPatternTimer -= safeDt;
+            if (bossPatternTimer <= 0) {
+                setNextBossPattern();
+            }
+            if (bossPattern === 'pause') return;
+            if (bossPattern === 'laserWarn' || bossPattern === 'laserFire' || bossPattern === 'minions') {
+                if (bossPattern === 'laserWarn' || bossPattern === 'laserFire') bossBullets = [];
+                if (bossPattern === 'laserFire') applyBossLaserDamage();
+                return;
+            }
+
+            bossFireTimer -= safeDt;
+            while (bossFireTimer <= 0) {
+                if (bossPattern === 'aimed') {
+                    fireBossBullet(dragon.x + (Math.random() - 0.5) * 0.08, 0);
+                    bossFireTimer += BOSS_AIMED_SHOT_INTERVAL;
+                } else if (bossPattern === 'spread') {
+                    const spreadTargets = [dragon.x - 0.18, dragon.x, dragon.x + 0.18];
+                    spreadTargets.forEach((target, index) => fireBossBullet(target, index - 1));
+                    bossFireTimer += BOSS_SPREAD_SHOT_INTERVAL;
+                } else if (bossPattern === 'sweep') {
+                    const sweep = (Math.sin(bossBattleTime * 4.2) + 1) / 2;
+                    fireBossBullet(0.08 + sweep * 0.84, Math.sin(bossBattleTime * 4.2) * 0.8);
+                    bossFireTimer += 0.32;
+                } else if (bossPattern === 'rain') {
+                    const target = 0.1 + Math.random() * 0.8;
+                    fireBossBullet(target, (Math.random() - 0.5) * 2);
+                    bossFireTimer += 0.24;
+                }
+            }
+        }
+
+        function getBossPosition() {
+            return { x: 0.5, y: 0.24, size: Math.max(900, Math.min(1900, width * 1.62, height * 1.72)) };
+        }
+
+        function applyBossLaserDamage() {
+            if (bossLaserDamageApplied) return;
+            const playerLane = Math.max(0, Math.min(NUM_LANES - 1, Math.floor(dragon.x * NUM_LANES)));
+            if (bossLaserZones.includes(playerLane)) {
+                takeDamage(dragon.x * width, dragon.y * height);
+            }
+            bossLaserDamageApplied = true;
+        }
+
+        function updateHud() {
+            const hudTop = document.getElementById('hud-top');
+            if (hudTop) hudTop.style.display = gameState === 'PLAYING' ? 'flex' : 'none';
+            document.getElementById('timer-text').innerText = `HP ${hp}`;
+            const scoreText = document.getElementById('score-text');
+            if (scoreText) scoreText.innerText = Math.floor(score).toLocaleString();
+            document.getElementById('boss-progress').style.display = 'flex';
+            const progress = bossActive
+                ? Math.max(0, 100 - (bossHits / BOSS_HITS_TO_WIN) * 100)
+                : Math.min(100, (totalTimePlayed / BOSS_APPEAR_TIME) * 100);
+            document.getElementById('boss-progress-fill').style.width = `${progress}%`;
+            document.getElementById('boss-status').innerText = bossActive
+                ? `BOSS ${Math.max(0, BOSS_HITS_TO_WIN - bossHits)}`
+                : `KING ${Math.max(0, Math.ceil(BOSS_APPEAR_TIME - totalTimePlayed))}s`;
+        }
+
+        function startGameCheck() {
+            tryPlayBGM();
+            startSound.currentTime = 0;
+            startSound.play().catch(e => { });
+
+            if (!midiConnected && !keyboardControlEnabled) {
+                document.getElementById('modal-no-midi').classList.remove('hidden');
+            } else {
+                isAIEnabled = false;
+                startCountdown();
+            }
+        }
+
+        function startAutoPlay() {
+            document.getElementById('modal-no-midi').classList.add('hidden');
+            isAIEnabled = true;
+            startCountdown();
+        }
+
+        function startCountdown() {
+            initAudio();
+            document.getElementById('screen-intro').classList.add('hidden');
+            document.getElementById('screen-gameover').classList.add('hidden');
+            document.getElementById('how-to-play-modal').classList.add('hidden');
+            document.getElementById('screen-countdown').classList.remove('hidden');
+
+            let count = 3;
+            const countEl = document.getElementById('countdown-text');
+            countEl.innerText = count;
+
+            const beginPlay = () => {
+                document.getElementById('screen-countdown').classList.add('hidden');
+                startGame();
+            };
+
+            const tickCountdown = () => {
+                count--;
+                if (count > 0) {
+                    countEl.innerText = count;
+                    // Reset animation
+                    countEl.style.animation = 'none';
+                    countEl.offsetHeight; /* trigger reflow */
+                    countEl.style.animation = null;
+                    setTimeout(tickCountdown, 1000);
+                } else if (count === 0) {
+                    countEl.innerText = 'GO!';
+                    setTimeout(tickCountdown, 650);
+                } else {
+                    beginPlay();
+                }
+            };
+
+            setTimeout(tickCountdown, 1000);
+        }
+
+        function startGame() {
+            gameState = 'PLAYING';
+            rankingAttemptId = `drum-1-020-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            setHomeButtonVisible(true);
+            hp = STARTING_HP;
+            totalTimePlayed = 0;
+            score = 0;
+            movementStreak = 0;
+            lastMoveTime = -Infinity;
+            bossHits = 0;
+            bossActive = false;
+            bossDefeated = false;
+            playerFireTimer = 0;
+            bossFireTimer = 0;
+            bossBattleTime = 0;
+
+            dragon.lane = Math.floor(NUM_LANES / 2);
+            dragon.x = (dragon.lane + 0.5) / NUM_LANES;
+            dragon.targetX = dragon.x;
+            dragon.y = 0.76;
+            stationaryLane = dragon.lane;
+            stationaryLaneTime = 0;
+            enemies = [];
+            playerBullets = [];
+            bossBullets = [];
+            damageTexts = [];
+            particles = [];
+            bgScrollY = 0;
+            enemySpawnTimer = 0.7;
+            safeLane = dragon.lane;
+            dragonSprite.style.display = 'block';
+            dragonSprite.style.zIndex = '20';
+            bossSprite.style.display = 'none';
+            updateHud();
+        }
+
+        function resetGame() {
+            startCountdown();
+        }
+
+        function gameLoop(now) {
+            const dt = (now - lastTime) / 1000;
+            lastTime = now;
+            const safeDt = Math.min(Math.max(dt, 0), 0.033);
+
+            const rect = gameContainer.getBoundingClientRect();
+            const nextWidth = Math.max(1, Math.round(rect.width || canvas.clientWidth));
+            const nextHeight = Math.max(1, Math.round(rect.height || canvas.clientHeight));
+            if (nextWidth !== lastCanvasWidth || nextHeight !== lastCanvasHeight) {
+                resize();
+            }
+
+            if (gameState === 'PLAYING') {
+                update(safeDt);
+            } else if (gameState === 'INTRO' || gameState === 'GAMEOVER') {
+                updateIntro(safeDt);
+            }
+
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateIntro(safeDt) {
+            // Keep the intro alive with the same moving sky as the game.
+            bgScrollY += 1.5 * safeDt;
+
+            // Dragon stays small at bottom center.
+            dragonSprite.style.display = 'block';
+            dragon.lane = Math.floor(NUM_LANES / 2);
+            dragon.x = (dragon.lane + 0.5) / NUM_LANES;
+            dragon.targetX = dragon.x;
+            dragon.y = 0.82;
+
+            // Dragon Movement (smooth follow targetX)
+            dragon.x += (dragon.targetX - dragon.x) * (1 - Math.exp(-12 * safeDt));
+        }
+
+        function update(safeDt) {
+            totalTimePlayed += safeDt;
+            score += PASSIVE_SCORE_RATE * safeDt;
+
+            if (!bossActive && totalTimePlayed >= BOSS_APPEAR_TIME) {
+                startBossBattle();
+            }
+
+            gameSpeed = 1.0;
+
+            if (isAIEnabled) {
+                let targetLane = dragon.lane;
+                const dangerLanes = new Set();
+                for (const enemy of enemies) {
+                    if (!enemy.hit && enemy.y > dragon.y - 0.5 && enemy.y < dragon.y + 0.12) {
+                        dangerLanes.add(Math.max(0, Math.min(NUM_LANES - 1, Math.floor(enemy.x * NUM_LANES))));
+                    }
+                }
+                for (const bullet of bossBullets) {
+                    if (bullet.y > dragon.y - 0.28 && bullet.y < dragon.y + 0.12) {
+                        dangerLanes.add(Math.max(0, Math.min(NUM_LANES - 1, Math.floor(bullet.x * NUM_LANES))));
+                    }
+                }
+                if (dangerLanes.has(targetLane)) {
+                    const safeLanes = [];
+                    for (let lane = 0; lane < NUM_LANES; lane++) {
+                        if (!dangerLanes.has(lane)) safeLanes.push(lane);
+                    }
+                    if (safeLanes.length) {
+                        safeLanes.sort((a, b) => Math.abs(a - dragon.lane) - Math.abs(b - dragon.lane));
+                        targetLane = safeLanes[0];
+                    }
+                }
+                dragon.lane = targetLane;
+                dragon.targetX = (dragon.lane + 0.5) / NUM_LANES;
+            }
+
+            dragon.x += (dragon.targetX - dragon.x) * (1 - Math.exp(-14 * safeDt));
+            updateStationaryPressure(safeDt);
+
+            const fallSpeed = BASE_FALL_SPEED * gameSpeed;
+            if (!bossActive) {
+                bgScrollY += fallSpeed * safeDt;
+                enemySpawnTimer -= safeDt * gameSpeed;
+                if (enemySpawnTimer <= 0) {
+                    spawnEnemyWave();
+                    const difficulty = getDifficultyLevel();
+                    const surgeBonus = totalTimePlayed >= ENEMY_SURGE_TIME ? 0.24 : 0;
+                    enemySpawnTimer = Math.max(0.58, 1.65 - difficulty * 0.2 - surgeBonus);
+                }
+            }
+
+            const enemyFallSpeed = (BASE_ENEMY_SPEED + getDifficultyLevel() * 0.035) * gameSpeed;
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                enemy.y += enemyFallSpeed * safeDt;
+                if (enemy.stationaryPressure) {
+                    enemy.x = enemy.baseX;
+                } else {
+                    enemy.x += enemy.drift * safeDt + Math.sin(totalTimePlayed * 2.2 + enemy.wobble) * 0.004 * safeDt;
+                }
+                enemy.x = Math.max(0.06, Math.min(0.94, enemy.x));
+                enemy.lane = Math.max(0, Math.min(NUM_LANES - 1, Math.floor(enemy.x * NUM_LANES)));
+                if (enemy.canShoot && !enemy.hasShot) {
+                    enemy.shotTimer -= safeDt;
+                    if (enemy.shotTimer <= 0 && enemy.y > 0.08 && enemy.y < dragon.y - 0.24) {
+                        fireEnemyBullet(enemy);
+                    }
+                }
+                if (!enemy.hit && Math.abs(enemy.y - dragon.y) < 0.06) {
+                    const dx = Math.abs(enemy.x - dragon.x) * width;
+                    if (dx < enemy.size * 0.7) {
+                        enemy.hit = true;
+                        takeDamage(dragon.x * width, dragon.y * height);
+                    }
+                }
+                if (enemy.y > 1.2 || enemy.hit) {
+                    enemies.splice(i, 1);
+                }
+            }
+
+            if (bossActive) {
+                bossBattleTime += safeDt;
+                updateBossPattern(safeDt);
+
+                playerFireTimer -= safeDt;
+                while (playerFireTimer <= 0) {
+                    firePlayerBullet();
+                    playerFireTimer += PLAYER_FIRE_INTERVAL;
+                }
+            }
+
+            const boss = getBossPosition();
+            const bossFace = getBossFaceHitPosition();
+            for (let i = playerBullets.length - 1; i >= 0; i--) {
+                const bullet = playerBullets[i];
+                bullet.y -= bullet.speed * safeDt;
+                const bx = bullet.x * width;
+                const by = bullet.y * height;
+                const faceX = bossFace.x * width;
+                const faceY = bossFace.y * height;
+                if (bossActive && Math.hypot(bx - faceX, by - faceY) < bossFace.radius) {
+                    const damage = keyboardControlEnabled ? 30 : 1;
+                    bossHits = Math.min(BOSS_HITS_TO_WIN, bossHits + damage);
+                    spawnBossHitText(bx, by, damage);
+                    if (bossHits % 25 < damage) {
+                        createParticles(bx, by, '#67e8f9');
+                    }
+                    playerBullets.splice(i, 1);
+                    if (bossHits >= BOSS_HITS_TO_WIN) {
+                        bossDefeated = true;
+                        bossDeathSound.currentTime = 0;
+                        bossDeathSound.play().catch(e => { });
+                        gameOver(true);
+                        return;
+                    }
+                    continue;
+                }
+                if (bossActive && bullet.y <= bossFace.y - 0.03) {
+                    playerBullets.splice(i, 1);
+                    continue;
+                }
+                if (bullet.y < -0.08) playerBullets.splice(i, 1);
+            }
+
+            for (let i = bossBullets.length - 1; i >= 0; i--) {
+                const bullet = bossBullets[i];
+                bullet.x += bullet.vx * safeDt;
+                bullet.y += bullet.vy * safeDt;
+                const dx = Math.abs(bullet.x - dragon.x) * width;
+                const dy = Math.abs(bullet.y - dragon.y) * height;
+                if (dx < 34 && dy < 34) {
+                    takeDamage(dragon.x * width, dragon.y * height);
+                    bossBullets.splice(i, 1);
+                    if (gameState === 'GAMEOVER') return;
+                    continue;
+                }
+                if (bullet.y > 1.12 || bullet.x < -0.1 || bullet.x > 1.1) {
+                    bossBullets.splice(i, 1);
+                }
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx * safeDt;
+                p.y += p.vy * safeDt;
+                p.life -= safeDt * 2;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            for (let i = damageTexts.length - 1; i >= 0; i--) {
+                const t = damageTexts[i];
+                t.y += t.vy * safeDt;
+                t.life -= safeDt * 1.2;
+                if (t.life <= 0) damageTexts.splice(i, 1);
+            }
+
+            updateHud();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+            fCtx.clearRect(0, 0, width, height);
+
+            drawSkyBackground();
+
+            if (gameState === 'PLAYING' && !bossActive) {
+                drawSpeedLines();
+            }
+
+            // Draw enemy dragons
+            for (let enemy of enemies) {
+                const px = enemy.x * width;
+                const py = enemy.y * height;
+                const size = enemy.size;
+                const img = enemyImages[enemy.imageIndex] || enemyImages[0];
+                if (img && img.complete && img.naturalHeight !== 0) {
+                    fCtx.drawImage(img, px - size / 2, py - size / 2, size, size);
+                } else {
+                    fCtx.fillStyle = '#b91c1c';
+                    fCtx.beginPath();
+                    fCtx.arc(px, py, size / 2, 0, Math.PI * 2);
+                    fCtx.fill();
+                }
+            }
+
+            if (bossActive) {
+                drawBoss();
+                drawBossLasers();
+            } else {
+                bossSprite.style.display = 'none';
+            }
+
+            for (const bullet of playerBullets) {
+                fCtx.fillStyle = bullet.color;
+                fCtx.shadowColor = bullet.color;
+                fCtx.shadowBlur = 12;
+                fCtx.beginPath();
+                fCtx.arc(bullet.x * width, bullet.y * height, bullet.size, 0, Math.PI * 2);
+                fCtx.fill();
+            }
+            fCtx.shadowBlur = 0;
+
+            for (const bullet of bossBullets) {
+                const bx = bullet.x * width;
+                const by = bullet.y * height;
+                const tailX = bx - bullet.vx * width * 0.16;
+                const tailY = by - bullet.vy * height * 0.16;
+
+                fCtx.strokeStyle = bullet.trailColor || 'rgba(239, 68, 68, 0.62)';
+                fCtx.lineWidth = Math.max(5, bullet.size * 0.8);
+                fCtx.lineCap = 'round';
+                fCtx.beginPath();
+                fCtx.moveTo(tailX, tailY);
+                fCtx.lineTo(bx, by);
+                fCtx.stroke();
+
+                fCtx.fillStyle = bullet.color;
+                fCtx.shadowColor = '#facc15';
+                fCtx.shadowBlur = 18;
+                fCtx.beginPath();
+                fCtx.arc(bx, by, bullet.size, 0, Math.PI * 2);
+                fCtx.fill();
+
+                fCtx.fillStyle = bullet.coreColor || '#fff7ad';
+                fCtx.shadowBlur = 6;
+                fCtx.beginPath();
+                fCtx.arc(bx, by, bullet.size * 0.42, 0, Math.PI * 2);
+                fCtx.fill();
+            }
+            fCtx.shadowBlur = 0;
+
+            // Draw Particles (on front canvas)
+            for (let p of particles) {
+                fCtx.fillStyle = p.color;
+                fCtx.globalAlpha = p.life;
+                fCtx.beginPath();
+                fCtx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+                fCtx.fill();
+            }
+            fCtx.globalAlpha = 1.0;
+
+            for (const t of damageTexts) {
+                fCtx.globalAlpha = Math.max(0, t.life);
+                fCtx.font = '900 28px Jua, sans-serif';
+                fCtx.fillStyle = t.color || '#ffef5f';
+                fCtx.strokeStyle = t.stroke || '#7f1d1d';
+                fCtx.lineWidth = 5;
+                fCtx.strokeText(t.text, t.x, t.y);
+                fCtx.fillText(t.text, t.x, t.y);
+            }
+            fCtx.globalAlpha = 1.0;
+
+            // Draw Dragon
+            let dx = dragon.x * width;
+            let dy = dragon.y * height;
+
+            // Slight tilt based on velocity
+            const tilt = (dragon.targetX - dragon.x) * 45; // max tilt
+
+            const drawSize = gameState === 'INTRO'
+                ? Math.min(72, (width / NUM_LANES) * 0.52)
+                : Math.min(120, (width / NUM_LANES) * 0.9);
+            dragonSprite.style.width = drawSize + 'px';
+            dragonSprite.style.height = 'auto'; // keep aspect ratio
+            dragonSprite.style.zIndex = gameState === 'INTRO' ? '120' : '20';
+
+            dragonSprite.style.transform = `translate3d(${dx}px, ${dy}px, 0) translate(-50%, -50%) rotate(${tilt}deg)`;
+        }
+
+        function drawSkyBackground() {
+            const sky = ctx.createLinearGradient(0, 0, 0, height);
+            if (bossActive) {
+                sky.addColorStop(0, '#21020a');
+                sky.addColorStop(0.45, '#4a0614');
+                sky.addColorStop(1, '#06010a');
+            } else {
+                sky.addColorStop(0, '#7dd3fc');
+                sky.addColorStop(0.55, '#bae6fd');
+                sky.addColorStop(1, '#e0f2fe');
+            }
+            ctx.fillStyle = sky;
+            ctx.fillRect(0, 0, width, height);
+
+            if (bossActive) {
+                drawBossSpaceBackground();
+            } else {
+                for (const cloud of clouds) {
+                    const cloudWidth = Math.max(90, width * 0.12 * cloud.scale);
+                    const cloudHeight = cloudWidth * 0.38;
+                    const x = ((cloud.x + Math.sin(bgScrollY * 0.7 + cloud.drift) * 0.018) * (width + cloudWidth * 2)) - cloudWidth;
+                    let y = ((cloud.y + bgScrollY * 0.12 * cloud.speed) % 1.45) * (height + cloudHeight) - cloudHeight * 1.8;
+                    drawCloud(x, y, cloudWidth, cloudHeight, cloud.alpha);
+                }
+            }
+
+            const approach = bossActive
+                ? 1
+                : gameState === 'PLAYING'
+                    ? Math.min(1, totalTimePlayed / BOSS_APPEAR_TIME)
+                    : 0;
+            const darkAlpha = approach * 0.54;
+            if (darkAlpha > 0) {
+                const darkness = ctx.createLinearGradient(0, 0, 0, height);
+                darkness.addColorStop(0, `rgba(8, 13, 35, ${darkAlpha * 0.96})`);
+                darkness.addColorStop(0.55, `rgba(12, 20, 46, ${darkAlpha * 0.72})`);
+                darkness.addColorStop(1, `rgba(2, 6, 23, ${darkAlpha})`);
+                ctx.fillStyle = darkness;
+                ctx.fillRect(0, 0, width, height);
+            }
+        }
+
+        function drawBossSpaceBackground() {
+            const nebula = ctx.createRadialGradient(width * 0.5, height * 0.18, 0, width * 0.5, height * 0.18, Math.max(width, height) * 0.72);
+            nebula.addColorStop(0, 'rgba(239, 68, 68, 0.34)');
+            nebula.addColorStop(0.42, 'rgba(127, 29, 29, 0.28)');
+            nebula.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = nebula;
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 210, 210, 0.75)';
+            for (let i = 0; i < 52; i++) {
+                const x = ((i * 97 + Math.floor(bossBattleTime * 10) * 3) % Math.max(1, width));
+                const y = ((i * 53 + Math.floor(bossBattleTime * 7) * 2) % Math.max(1, height));
+                const r = 0.8 + (i % 3) * 0.45;
+                ctx.globalAlpha = 0.18 + (i % 5) * 0.08;
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function drawCloud(x, y, cloudWidth, cloudHeight, alpha) {
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
+            ctx.shadowBlur = 18;
+            ctx.beginPath();
+            ctx.ellipse(x, y + cloudHeight * 0.52, cloudWidth * 0.34, cloudHeight * 0.38, 0, 0, Math.PI * 2);
+            ctx.ellipse(x + cloudWidth * 0.24, y + cloudHeight * 0.38, cloudWidth * 0.3, cloudHeight * 0.48, 0, 0, Math.PI * 2);
+            ctx.ellipse(x + cloudWidth * 0.52, y + cloudHeight * 0.5, cloudWidth * 0.38, cloudHeight * 0.36, 0, 0, Math.PI * 2);
+            ctx.ellipse(x + cloudWidth * 0.08, y + cloudHeight * 0.72, cloudWidth * 0.5, cloudHeight * 0.28, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawBoss() {
+            const boss = getBossPosition();
+            const bx = boss.x * width;
+            const by = boss.y * height;
+            const pulse = 1 + Math.sin(performance.now() / 180) * 0.04;
+            const size = boss.size * pulse;
+
+            for (let i = 0; i < 42; i++) {
+                const angle = (i / 42) * Math.PI * 2 + performance.now() / 900;
+                const radius = size * (0.48 + (i % 4) * 0.045);
+                fCtx.fillStyle = i % 2 ? 'rgba(239, 68, 68, 0.78)' : 'rgba(251, 113, 133, 0.7)';
+                fCtx.beginPath();
+                fCtx.arc(bx + Math.cos(angle) * radius, by + Math.sin(angle) * radius, 4 + (i % 3), 0, Math.PI * 2);
+                fCtx.fill();
+            }
+
+            bossSprite.style.display = 'block';
+            bossSprite.style.width = `${size}px`;
+            bossSprite.style.transform = `translate3d(${bx}px, ${by}px, 0) translate(-50%, -50%)`;
+
+            if (!bossImg.complete || bossImg.naturalHeight === 0) {
+                fCtx.fillStyle = '#3b0764';
+                fCtx.strokeStyle = '#ef4444';
+                fCtx.lineWidth = 8;
+                fCtx.beginPath();
+                fCtx.arc(bx, by, size / 2, 0, Math.PI * 2);
+                fCtx.fill();
+                fCtx.stroke();
+                fCtx.fillStyle = '#fee2e2';
+                fCtx.font = '900 26px Jua, sans-serif';
+                fCtx.textAlign = 'center';
+                fCtx.fillText('DRAGON KING', bx, by + 8);
+                fCtx.textAlign = 'left';
+            }
+        }
+
+        function drawBossLasers() {
+            if (!bossLaserZones.length || (bossPattern !== 'laserWarn' && bossPattern !== 'laserFire')) return;
+            const laneWidth = width / NUM_LANES;
+            const blink = Math.sin(performance.now() / 95) > 0;
+            fCtx.save();
+            for (const lane of bossLaserZones) {
+                const x = lane * laneWidth;
+                if (bossPattern === 'laserWarn') {
+                    if (!blink) continue;
+                    fCtx.fillStyle = 'rgba(239, 68, 68, 0.22)';
+                    fCtx.strokeStyle = 'rgba(254, 202, 202, 0.78)';
+                    fCtx.lineWidth = 4;
+                    fCtx.fillRect(x + laneWidth * 0.08, 0, laneWidth * 0.84, height);
+                    fCtx.strokeRect(x + laneWidth * 0.08, 0, laneWidth * 0.84, height);
+                } else {
+                    const grad = fCtx.createLinearGradient(x, 0, x + laneWidth, 0);
+                    grad.addColorStop(0, 'rgba(127, 29, 29, 0.05)');
+                    grad.addColorStop(0.5, 'rgba(239, 68, 68, 0.82)');
+                    grad.addColorStop(1, 'rgba(127, 29, 29, 0.05)');
+                    fCtx.fillStyle = grad;
+                    fCtx.shadowColor = '#ef4444';
+                    fCtx.shadowBlur = 24;
+                    fCtx.fillRect(x + laneWidth * 0.12, 0, laneWidth * 0.76, height);
+                    fCtx.fillStyle = 'rgba(255, 255, 255, 0.36)';
+                    fCtx.fillRect(x + laneWidth * 0.45, 0, laneWidth * 0.1, height);
+                }
+            }
+            fCtx.restore();
+        }
+
+        function drawSpeedLines() {
+            const lineCount = 16;
+            const laneWidth = width / NUM_LANES;
+            ctx.save();
+            ctx.globalAlpha = 0.2;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+            ctx.lineWidth = Math.max(2, width * 0.002);
+            for (let i = 0; i < lineCount; i++) {
+                const lane = i % NUM_LANES;
+                const x = lane * laneWidth + laneWidth * (0.18 + ((i * 37) % 64) / 100);
+                const y = ((bgScrollY * height * 1.9) + i * height / lineCount) % height;
+                const len = 58;
+                ctx.beginPath();
+                ctx.moveTo(x, y - len);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function gameOver(isClear = false) {
+            if (gameState === 'GAMEOVER') return;
+            gameState = 'GAMEOVER';
+            updateHud();
+            setHomeButtonVisible(true);
+            bossSprite.style.display = 'none';
+            document.getElementById('screen-gameover').classList.remove('hidden');
+            const clearSeconds = Math.max(0, Math.floor(totalTimePlayed));
+            document.querySelector('#screen-gameover h1').innerText = isClear ? 'DRAGON KING CLEAR!' : 'DRAGON FALL';
+            document.getElementById('final-label').innerText = isClear ? '토벌 완료 시간' : '최종 생존 시간';
+            document.getElementById('final-time').innerText = clearSeconds;
+            document.getElementById('final-unit').innerText = '초';
+            const finalScore = Math.floor(score).toLocaleString();
+            document.getElementById('final-score').innerText = finalScore;
+            document.getElementById('final-rings').innerText = isClear
+                ? `드래곤 킹을 ${clearSeconds}초 만에 클리어했어요! 최종 점수: ${finalScore}점 · 남은 HP: ${hp}`
+                : `최종 점수: ${finalScore}점 · 보스 피해량: ${bossHits}/${BOSS_HITS_TO_WIN}`;
+            if (window.JueunRanking) {
+                window.JueunRanking.complete({
+                    gameTitle: '드래곤플라이',
+                    contentId: 'drum-1-020.html',
+                    score: Math.floor(score),
+                    scoreLabel: `${finalScore}점`,
+                    modeLabel: isClear ? '미션 클리어' : '게임 종료',
+                    attemptId: rankingAttemptId,
+                    onRetry: startCountdown
+                });
+            }
+            if (isClear) fireConfetti();
+        }
+
+        // Confetti Logic
+        const cCanvas = document.getElementById('confetti-canvas');
+        const cCtx = cCanvas.getContext('2d');
+        let cParticles = [];
+
+        function resizeConfetti() {
+            cCanvas.width = window.innerWidth;
+            cCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeConfetti);
+        resizeConfetti();
+
+        function fireConfetti() {
+            cParticles = [];
+            const colors = ['#ff2e63', '#ff9f1c', '#ffd700', '#00e676', '#2979ff', '#f50057', '#d500f9'];
+            for (let i = 0; i < 60; i++) {
+                cParticles.push({
+                    x: window.innerWidth / 2, y: window.innerHeight,
+                    w: Math.random() * 10 + 5, h: Math.random() * 10 + 5,
+                    dx: (Math.random() - 0.5) * 30,
+                    dy: (Math.random() - 1) * 30,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    life: 150
+                });
+            }
+        }
+
+        function animateConfetti() {
+            cCtx.clearRect(0, 0, cCanvas.width, cCanvas.height);
+            for (let i = cParticles.length - 1; i >= 0; i--) {
+                let p = cParticles[i];
+                p.x += p.dx; p.y += p.dy; p.dy += 0.8;
+                p.life--;
+                cCtx.fillStyle = p.color;
+                cCtx.fillRect(p.x, p.y, p.w, p.h);
+                if (p.life <= 0) cParticles.splice(i, 1);
+            }
+            requestAnimationFrame(animateConfetti);
+        }
+        animateConfetti();
+
+        // Init
+        initCloudBackground();
+        initMIDI();
+        setHomeButtonVisible(false);
+        lastTime = performance.now();
+        requestAnimationFrame(gameLoop);
+
+    </script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-07" defer></script>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-midi-status.js?v=20260618-04" data-instrument="drum" defer></script>
+</body>
+
+</html>

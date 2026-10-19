@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>마법의 음표 나무</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --gnb-height: 60px;
+            --app-bg: #ecfdf5;
+        }
+
+        body {
+            font-family: 'Jua', sans-serif;
+            background-color: var(--app-bg);
+            background-image: radial-gradient(#d1fae5 2px, transparent 2px);
+            background-size: 30px 30px;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        button { white-space: nowrap !important; }
+
+        #gnb {
+            position: fixed; top: 0; left: 0; width: 100%; height: var(--gnb-height);
+            background-color: #FEE500; z-index: 10000; display: flex; align-items: center;
+            justify-content: space-between; padding: 0 1rem; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        #game-container {
+            position: absolute; top: var(--gnb-height); left: 0; width: 100%;
+            height: calc(100vh - var(--gnb-height)); display: flex; justify-content: center;
+            align-items: center; overflow: hidden;
+        }
+
+        #scalable-wrapper {
+            width: 1280px; height: 720px; position: relative; transform-origin: center center;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        /* --- 강제로 항상 노출되는 3배 두꺼운 스크롤바 --- */
+        .cute-scrollbar::-webkit-scrollbar {
+            width: 64px !important;
+            background-color: #fef08a !important; 
+            border-left: 4px solid #cbd5e1 !important;
+            border-radius: 32px !important;
+            display: block !important;
+        }
+        .cute-scrollbar::-webkit-scrollbar-track {
+            background-color: #fef08a !important;
+            border-radius: 32px !important;
+            display: block !important;
+        }
+        .cute-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #ec4899 !important; 
+            border-radius: 32px !important;
+            border: 10px solid #fef08a !important;
+            cursor: pointer !important;
+            display: block !important;
+        }
+        .cute-scrollbar::-webkit-scrollbar-thumb:hover {
+            background-color: #db2777 !important; 
+        }
+        
+        .cute-scrollbar::-webkit-scrollbar-button {
+            display: none !important;
+        }
+        
+        .cute-scrollbar {
+            overflow-y: scroll !important; 
+            touch-action: pan-y;
+            scroll-behavior: smooth;
+        }
+
+        /* Animations */
+        .bounce-slow { animation: bounce-slow 2s infinite; }
+        .sway { animation: sway 3s infinite ease-in-out; }
+        .modal-fade { animation: fadeIn 0.3s ease-out; }
+        .pop-in { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .pulse-light { animation: pulseLight 2s infinite; }
+        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { 0% { opacity: 0; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1); } }
+        @keyframes bounce-slow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+        @keyframes pulseLight { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4); } 50% { box-shadow: 0 0 20px 10px rgba(255, 215, 0, 0.2); } }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-5px, 0, 0); }
+            20%, 80% { transform: translate3d(5px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-10px, 0, 0); }
+            40%, 60% { transform: translate3d(10px, 0, 0); }
+        }
+
+        /* Custom UI */
+        .comic-panel { border: 5px solid #334155; box-shadow: 8px 8px 0px #94a3b8; background: white; border-radius: 24px; }
+        .tree-row { transition: all 0.2s; cursor: pointer; border: 4px solid #334155; box-shadow: 4px 4px 0px #cbd5e1; }
+        .tree-row:hover { transform: translateY(-2px) scale(1.01); box-shadow: 6px 6px 0px #cbd5e1; filter: brightness(1.05); }
+        .tree-row:active { transform: translateY(2px) scale(0.99); box-shadow: 2px 2px 0px #cbd5e1; }
+        .tree-row.active-row { border-color: #f59e0b; box-shadow: 0 0 20px rgba(245, 158, 11, 0.5), 4px 4px 0px #f59e0b; transform: scale(1.02); z-index: 10; }
+        .nav-btn { transition: transform 0.1s; }
+        .nav-btn:active { transform: scale(0.9); }
+        .note-icon { fill: #1e293b; transition: transform 0.3s; }
+        .tree-row:hover .note-icon { transform: rotate(-10deg) scale(1.1); }
+
+        /* Quiz Drag & Drop Styles */
+        .drop-zone { border: 4px dashed #94a3b8; background-color: #f8fafc; transition: all 0.2s; cursor: pointer; }
+        .drop-zone:hover { background-color: #e2e8f0; border-color: #64748b; }
+        .drop-zone.active { border: 4px solid #10b981; background-color: #d1fae5; transform: scale(1.05); }
+        .draggable-item { cursor: grab; touch-action: none; transition: transform 0.1s; }
+        .draggable-item:active { cursor: grabbing; transform: scale(0.95); }
+        
+        /* transform 된 부모 영역을 기준으로 드래그 요소를 띄우기 위해 absolute로 변경 */
+        #drag-ghost { position: absolute; pointer-events: none; z-index: 9999; transform: translate(-50%, -50%) scale(1.2); opacity: 0.9; display: none; }
+
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+
+<body>
+    <nav id="gnb">
+        <div class="flex items-center gap-2">
+            <h1 class="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <i data-lucide="music" class="text-emerald-500 w-8 h-8"></i>
+                <span>마법의 음표 나무</span>
+            </h1>
+        </div>
+        <div class="flex gap-2">
+            <button id="btn-restart" class="hidden bg-indigo-500 text-white rounded-full px-4 py-1 text-sm font-bold shadow-sm hover:bg-indigo-600 nav-btn">다시하기</button>
+            <button id="btn-exit" class="bg-gray-600 text-white rounded-full px-4 py-1 text-sm font-bold shadow-sm hover:bg-gray-700 nav-btn">종료</button>
+        </div>
+    </nav>
+
+    <div id="game-container">
+        <div id="scalable-wrapper">
+            <canvas id="confetti" class="absolute inset-0 pointer-events-none z-[100] w-full h-full"></canvas>
+
+            <!-- A. Intro Screen -->
+            <div id="intro-screen" class="absolute inset-0 z-40 flex flex-col items-center justify-center p-8">
+                <div class="bg-white/90 backdrop-blur-sm p-12 rounded-[40px] comic-panel flex flex-col items-center pop-in max-w-3xl w-full">
+                    <div class="relative mb-6 bounce-slow">
+                        <div class="w-40 h-40 bg-emerald-100 rounded-full border-8 border-emerald-300 flex items-center justify-center">
+                            <svg class="w-24 h-24 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9 18V5l12-2v13"></path>
+                                <circle cx="6" cy="18" r="3"></circle>
+                                <circle cx="18" cy="16" r="3"></circle>
+                            </svg>
+                        </div>
+                    </div>
+                    <h1 class="text-6xl text-emerald-600 mb-6 drop-shadow-sm font-extrabold text-center">마법의 음표 나무</h1>
+                    
+                    <!-- 설명 박스와 스피커 버튼 -->
+                    <div class="bg-emerald-50 p-6 rounded-3xl mb-10 border-4 border-emerald-200 w-full relative">
+                        <button onclick="readIntroTTS()" class="absolute -top-6 -right-6 bg-yellow-400 p-4 rounded-full border-4 border-white shadow-lg hover:bg-yellow-500 transition-transform active:scale-95 nav-btn z-10" title="설명 듣기">
+                            <i data-lucide="volume-2" class="w-8 h-8 text-white"></i>
+                        </button>
+                        <p class="text-3xl text-gray-700 text-center leading-relaxed font-medium">
+                            음표 친구들이 나무에 주렁주렁 열렸어요!<br>
+                            버튼을 눌러 음표들의 비밀을 들어볼까요?
+                        </p>
+                    </div>
+
+                    <div class="flex gap-6">
+                        <button onclick="toggleHelp()" class="bg-yellow-400 text-white text-3xl px-8 py-5 rounded-full border-4 border-slate-800 shadow-[6px_6px_0px_#334155] hover:bg-yellow-500 transition flex items-center gap-3 nav-btn">
+                            <i data-lucide="help-circle" class="w-8 h-8"></i> 도움말
+                        </button>
+                        <button onclick="startGame()" class="bg-emerald-500 text-white text-3xl px-12 py-5 rounded-full border-4 border-slate-800 shadow-[6px_6px_0px_#334155] hover:bg-emerald-600 transition flex items-center gap-4 nav-btn pulse-light">
+                            시작하기! <i data-lucide="play" class="w-8 h-8 fill-current"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- B. Learn Screen (Tree) -->
+            <div id="learn-screen" class="w-full h-full hidden flex-col items-center p-4 md:p-6 relative">
+                <!-- Teacher & Speech Bubble -->
+                <div class="w-full max-w-5xl flex items-start justify-between mb-2 md:mb-4 shrink-0 h-24 md:h-28">
+                    <div class="flex items-center gap-4 h-full w-full">
+                        <div class="w-20 h-20 md:w-24 md:h-24 bg-white rounded-full border-4 border-emerald-500 flex items-center justify-center shadow-lg bounce-slow shrink-0 overflow-hidden z-20">
+                            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Music&backgroundColor=10b981" alt="로봇 선생님" class="w-16 h-16 md:w-20 md:h-20">
+                        </div>
+                        <div id="teacher-bubble" class="bg-white border-4 border-slate-700 rounded-3xl p-4 md:p-5 shadow-[6px_6px_0px_#cbd5e1] relative flex-1 h-full flex items-center overflow-y-auto scrollbar-hide z-20">
+                            <div class="absolute -left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white border-l-4 border-b-4 border-slate-700 rotate-45"></div>
+                            <p id="teacher-text" class="text-2xl font-bold text-gray-800 m-0 leading-snug break-keep">궁금한 음표 층을 클릭해봐!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tree Content (Scrollable Container) -->
+                <div class="flex-1 min-h-0 w-full max-w-5xl bg-white/80 backdrop-blur-md border-8 border-slate-700 rounded-[40px] shadow-2xl relative flex flex-col py-4 pl-4 pr-1">
+                    
+                    <!-- HTML 물리 스크롤 상단 화살표 버튼 -->
+                    <button onclick="scrollContent('learn-scroll-area', -250)" class="absolute top-4 right-[4px] z-[60] w-[64px] h-[64px] bg-[#ec4899] hover:bg-[#db2777] rounded-full border-[8px] border-[#fef08a] flex items-center justify-center cursor-pointer active:scale-95 transition-transform shadow-md">
+                        <svg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 24 24' fill='none' stroke='#ffffff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'><path d='M18 15l-6-6-6 6'/></svg>
+                    </button>
+                    
+                    <!-- HTML 물리 스크롤 하단 화살표 버튼 -->
+                    <button onclick="scrollContent('learn-scroll-area', 250)" class="absolute bottom-4 right-[4px] z-[60] w-[64px] h-[64px] bg-[#ec4899] hover:bg-[#db2777] rounded-full border-[8px] border-[#fef08a] flex items-center justify-center cursor-pointer active:scale-95 transition-transform shadow-md">
+                        <svg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 24 24' fill='none' stroke='#ffffff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>
+                    </button>
+
+                    <div id="learn-scroll-area" class="w-full h-full overflow-y-scroll cute-scrollbar relative z-50 pr-3 rounded-2xl">
+                        <div id="tree-container" class="w-full flex flex-col gap-3 pt-20 pb-20 min-h-full h-max relative z-10">
+                            <!-- Injected rows -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 shrink-0">
+                    <button onclick="showDifficultyModal()" class="bg-purple-500 text-white text-3xl px-12 py-4 rounded-full border-4 border-slate-800 shadow-[6px_6px_0px_#334155] hover:bg-purple-600 transition flex items-center gap-3 nav-btn pop-in">
+                        <i data-lucide="gamepad-2" class="w-8 h-8"></i> 퀴즈 풀러 가기!
+                    </button>
+                </div>
+            </div>
+
+            <!-- C. Quiz Screen -->
+            <div id="quiz-screen" class="w-full h-full hidden flex-col items-center p-2 md:p-4 relative">
+                <!-- Quiz Header (Teacher & Bubble) -->
+                <div class="w-full max-w-5xl flex items-start justify-between mb-2 md:mb-4 shrink-0 h-24 md:h-28">
+                    <div class="flex items-center gap-2 md:gap-4 h-full w-full">
+                        <div class="w-20 h-20 md:w-24 md:h-24 bg-white rounded-full border-4 border-emerald-500 flex items-center justify-center shadow-lg bounce-slow shrink-0 overflow-hidden">
+                            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Music&backgroundColor=10b981" alt="로봇 선생님" class="w-16 h-16 md:w-20 md:h-20">
+                        </div>
+                        <div id="quiz-teacher-bubble" class="bg-white border-4 border-slate-700 rounded-3xl p-3 md:p-5 shadow-[4px_4px_0px_#cbd5e1] md:shadow-[6px_6px_0px_#cbd5e1] relative flex-1 h-full flex items-center overflow-y-auto scrollbar-hide justify-between gap-2 md:gap-4">
+                            <div class="absolute -left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white border-l-4 border-b-4 border-slate-700 rotate-45"></div>
+                            <p id="quiz-question-text" class="text-xl md:text-2xl font-bold text-gray-800 m-0 leading-snug break-keep flex-1">문제 텍스트</p>
+                            
+                            <!-- 힌트 및 다시듣기 버튼 그룹 -->
+                            <div class="flex flex-col md:flex-row gap-2 shrink-0">
+                                <button onclick="showHint()" class="bg-blue-400 px-3 md:px-6 py-2 md:py-3 rounded-full border-2 md:border-4 border-slate-700 shadow-sm md:shadow-[4px_4px_0px_#cbd5e1] hover:bg-blue-500 transition nav-btn flex items-center justify-center gap-1 md:gap-2">
+                                    <i data-lucide="lightbulb" class="w-5 h-5 md:w-6 md:h-6 text-white"></i> <span class="text-white font-bold text-lg md:text-xl">힌트</span>
+                                </button>
+                                <button onclick="replayQuizTTS()" class="bg-yellow-400 px-3 md:px-6 py-2 md:py-3 rounded-full border-2 md:border-4 border-slate-700 shadow-sm md:shadow-[4px_4px_0px_#cbd5e1] hover:bg-yellow-500 transition nav-btn flex items-center justify-center gap-1 md:gap-2">
+                                    <i data-lucide="volume-2" class="w-5 h-5 md:w-6 md:h-6 text-white"></i> <span class="text-white font-bold text-lg md:text-xl">다시듣기</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quiz Board -->
+                <div id="quiz-board-outer" class="flex-1 min-h-0 w-full max-w-5xl bg-white/90 backdrop-blur-md border-8 border-slate-700 rounded-[30px] md:rounded-[40px] shadow-2xl relative flex flex-col py-4 pl-4 pr-1">
+                    
+                    <!-- HTML 물리 스크롤 상단 화살표 버튼 -->
+                    <button onclick="scrollContent('quiz-scroll-area', -250)" class="absolute top-4 right-[4px] z-[60] w-[64px] h-[64px] bg-[#ec4899] hover:bg-[#db2777] rounded-full border-[8px] border-[#fef08a] flex items-center justify-center cursor-pointer active:scale-95 transition-transform shadow-md">
+                        <svg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 24 24' fill='none' stroke='#ffffff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'><path d='M18 15l-6-6-6 6'/></svg>
+                    </button>
+                    
+                    <!-- HTML 물리 스크롤 하단 화살표 버튼 -->
+                    <button onclick="scrollContent('quiz-scroll-area', 250)" class="absolute bottom-4 right-[4px] z-[60] w-[64px] h-[64px] bg-[#ec4899] hover:bg-[#db2777] rounded-full border-[8px] border-[#fef08a] flex items-center justify-center cursor-pointer active:scale-95 transition-transform shadow-md">
+                        <svg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 24 24' fill='none' stroke='#ffffff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>
+                    </button>
+
+                    <div id="quiz-scroll-area" class="w-full h-full overflow-y-scroll cute-scrollbar relative z-50 pr-3 rounded-2xl">
+                        <div class="w-[96%] mx-auto flex flex-col items-center justify-start gap-6 md:gap-8 pt-20 pb-20 min-h-full h-max">
+                            
+                            <!-- Equation Zone -->
+                            <div id="equation-container" class="flex flex-wrap items-center justify-center gap-2 md:gap-4 w-full mt-auto">
+                                <!-- Drop zones injected dynamically -->
+                            </div>
+
+                            <!-- Draggable Options -->
+                            <div class="w-full bg-slate-100 rounded-2xl md:rounded-3xl p-4 md:p-5 border-4 border-slate-300 flex items-center justify-center relative mb-auto">
+                                <div class="absolute -top-4 md:-top-5 left-4 md:left-8 bg-slate-600 text-white px-3 md:px-4 py-1 rounded-full text-sm md:text-lg font-bold shadow-sm">음표 바구니 (끌어다 빈칸에 놓으세요!)</div>
+                                <div id="drag-options-container" class="flex flex-wrap items-center justify-center gap-3 md:gap-4 mt-2 relative w-full min-h-[80px]">
+                                    <!-- Items injected here -->
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- D. Quiz Difficulty Modal -->
+            <div id="difficulty-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                <div class="bg-white rounded-[40px] p-8 md:p-10 w-full max-w-2xl comic-panel relative pop-in flex flex-col items-center text-center">
+                    <div class="flex justify-between items-center mb-6 w-full">
+                        <h3 class="text-4xl md:text-5xl font-extrabold text-gray-800">퀴즈 난이도 선택</h3>
+                        <button onclick="document.getElementById('difficulty-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 nav-btn bg-gray-100 rounded-full p-2"><i data-lucide="x" class="w-8 h-8"></i></button>
+                    </div>
+                    <p class="text-xl md:text-2xl text-gray-600 mb-8">어떤 단계에 도전해 볼까요?</p>
+                    <div class="flex flex-col gap-4 w-full md:px-8">
+                        <button onclick="selectDifficulty('easy')" class="w-full bg-green-400 text-white text-2xl md:text-3xl font-bold px-6 py-4 md:py-5 rounded-full hover:bg-green-500 border-4 border-slate-800 shadow-[4px_4px_0px_#334155] nav-btn flex justify-between items-center">
+                            <span>🌱 1단계: 무한사용 (쉬움)</span>
+                        </button>
+                        <button onclick="selectDifficulty('medium')" class="w-full bg-blue-400 text-white text-2xl md:text-3xl font-bold px-6 py-4 md:py-5 rounded-full hover:bg-blue-500 border-4 border-slate-800 shadow-[4px_4px_0px_#334155] nav-btn flex justify-between items-center">
+                            <span>⭐ 2단계: 무한사용 (보통)</span>
+                        </button>
+                        <button onclick="selectDifficulty('hard')" class="w-full bg-red-400 text-white text-2xl md:text-3xl font-bold px-6 py-4 md:py-5 rounded-full hover:bg-red-500 border-4 border-slate-800 shadow-[4px_4px_0px_#334155] nav-btn flex justify-between items-center">
+                            <span>🔥 3단계: 1회용 더하기/빼기</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- E. Quiz Success Modal -->
+            <div id="quiz-success-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                <div class="bg-white rounded-[40px] p-8 md:p-12 w-full max-w-2xl comic-panel relative pop-in flex flex-col items-center text-center">
+                    <div class="w-32 h-32 md:w-40 md:h-40 bg-yellow-100 rounded-full border-8 border-yellow-400 flex items-center justify-center mb-6 bounce-slow">
+                        <span class="text-6xl md:text-7xl">🎉</span>
+                    </div>
+                    <h3 class="text-4xl md:text-5xl font-extrabold text-gray-800 mb-4">정답입니다!</h3>
+                    <p class="text-2xl md:text-3xl text-gray-600 mb-8">계산을 완벽하게 해냈어요!</p>
+                    <button onclick="nextQuiz()" class="bg-emerald-500 text-white text-2xl md:text-3xl font-bold px-12 md:px-16 py-4 rounded-full hover:bg-emerald-600 border-4 border-slate-800 shadow-[6px_6px_0px_#334155] nav-btn">다음 문제로</button>
+                </div>
+            </div>
+
+            <!-- Ghost Element for Dragging -->
+            <div id="drag-ghost" class="bg-white border-4 border-slate-700 rounded-xl md:rounded-2xl p-2 md:p-4 shadow-xl flex items-center justify-center">
+                <div id="ghost-content"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modals (Help, Exit, Restart) -->
+    <div id="help-modal" class="hidden fixed inset-0 bg-black/60 z-[20000] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-[40px] p-8 md:p-10 w-full max-w-2xl comic-panel relative modal-fade">
+            <div class="flex justify-between items-center mb-8 w-full">
+                <div class="flex items-center gap-4">
+                    <div class="bg-yellow-100 p-3 rounded-full border-4 border-yellow-400">
+                        <i data-lucide="info" class="w-8 h-8 md:w-10 md:h-10 text-yellow-600"></i>
+                    </div>
+                    <h3 class="text-4xl md:text-5xl font-extrabold text-gray-800">놀이 방법</h3>
+                </div>
+                <button onclick="toggleHelp()" class="text-gray-400 hover:text-gray-600 nav-btn bg-gray-100 rounded-full p-2"><i data-lucide="x" class="w-8 h-8"></i></button>
+            </div>
+            <div class="space-y-4 md:space-y-6 text-2xl md:text-3xl text-gray-700 font-bold px-2">
+                <p class="flex items-center gap-3 md:gap-4"><span class="text-3xl md:text-4xl text-emerald-500">👉</span> 피라미드 모양의 음표들을 클릭해 설명을 들어요.</p>
+                <p class="flex items-center gap-3 md:gap-4"><span class="text-3xl md:text-4xl text-emerald-500">👉</span> 퀴즈 풀기에서 빈칸에 알맞은 음표를 끌어다 놓아요.</p>
+                <p class="flex items-center gap-3 md:gap-4"><span class="text-3xl md:text-4xl text-emerald-500">👉</span> 3단계는 한 번 쓴 음표는 사라지고 빼기(-)도 등장해요!</p>
+            </div>
+            <div class="mt-8 md:mt-10 text-center">
+                <button onclick="toggleHelp()" class="bg-emerald-500 text-white text-2xl md:text-3xl font-bold px-12 md:px-16 py-4 rounded-full border-4 border-slate-800 shadow-[6px_6px_0px_#334155] nav-btn">알겠어요!</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-exit" class="hidden fixed inset-0 bg-black/60 z-[20000] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white comic-panel p-8 md:p-10 w-[90%] md:w-[80%] max-w-lg relative modal-fade text-center rounded-3xl">
+            <h3 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">정말 종료할까요?</h3>
+            <div class="flex justify-center gap-4 mt-8">
+                <button onclick="document.getElementById('modal-exit').classList.add('hidden')" class="bg-gray-200 text-gray-700 text-xl md:text-2xl font-bold px-6 md:px-8 py-3 md:py-4 rounded-full border-4 border-transparent nav-btn">아니요</button>
+                <button onclick="confirmExit()" class="bg-red-500 text-white text-xl md:text-2xl font-bold px-6 md:px-8 py-3 md:py-4 rounded-full border-4 border-slate-800 shadow-[4px_4px_0px_#334155] nav-btn">네, 종료해요</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="restart-modal" class="hidden fixed inset-0 bg-black/60 z-[20000] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white comic-panel p-8 md:p-10 w-[90%] md:w-[80%] max-w-lg relative modal-fade text-center rounded-3xl">
+            <h3 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">처음부터 다시 할까요?</h3>
+            <div class="flex justify-center gap-4 mt-8">
+                <button onclick="document.getElementById('restart-modal').classList.add('hidden')" class="bg-gray-200 text-gray-700 text-xl md:text-2xl font-bold px-6 md:px-8 py-3 md:py-4 rounded-full border-4 border-transparent nav-btn">아니요</button>
+                <button onclick="confirmRestart()" class="bg-indigo-500 text-white text-xl md:text-2xl font-bold px-6 md:px-8 py-3 md:py-4 rounded-full border-4 border-slate-800 shadow-[4px_4px_0px_#334155] nav-btn">네, 좋아요!</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GOOGLE_API_KEY = "AIzaSyAE0nnpOYZRfLkfM09O3NQjpWnN1kUqR3E";
+        
+        // SVGs
+        const svgWhole = `<ellipse cx="12" cy="16" rx="7" ry="5" fill="none" stroke="currentColor" stroke-width="3"/>`;
+        const svgHalf = `<ellipse cx="10" cy="16" rx="6" ry="4" fill="currentColor" transform="rotate(-20 10 16)" fill-opacity="0" stroke="currentColor" stroke-width="3"/><path d="M15 15V2" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>`;
+        const svgQuarter = `<ellipse cx="10" cy="16" rx="6" ry="4" fill="currentColor" transform="rotate(-20 10 16)"/><path d="M15 15V2" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>`;
+        const svgEighth = `<ellipse cx="10" cy="16" rx="6" ry="4" fill="currentColor" transform="rotate(-20 10 16)"/><path d="M15 15V2" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M15 2C15 2 20 4 20 10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>`;
+        const svgSixteenth = `<ellipse cx="10" cy="16" rx="6" ry="4" fill="currentColor" transform="rotate(-20 10 16)"/><path d="M15 15V2" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M15 2C15 2 20 4 20 10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M15 6C15 6 20 8 20 14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>`;
+        const svgThirtySecond = `<ellipse cx="10" cy="16" rx="6" ry="4" fill="currentColor" transform="rotate(-20 10 16)"/><path d="M15 15V2" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M15 2C15 2 20 4 20 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M15 5C15 5 20 7 20 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M15 8C15 8 20 10 20 15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`;
+
+        const notesData = [
+            { id: 'whole', name: '온음표', count: 1, val: 32, durationMs: 4000, repeats: 1, svg: svgWhole, bg: 'bg-red-50', text: 'text-red-600', desc: '나는 온음표야. 네 박자 동안 아주 길~게 소리를 내.' },
+            { id: 'half', name: '2분음표', count: 2, val: 16, durationMs: 2000, repeats: 1, svg: svgHalf, bg: 'bg-orange-50', text: 'text-orange-600', desc: '나는 2분음표야. 온음표를 반으로 자른 길이로, 두 박자 동안 소리를 내.' },
+            { id: 'quarter', name: '4분음표', count: 4, val: 8, durationMs: 1000, repeats: 1, svg: svgQuarter, bg: 'bg-yellow-50', text: 'text-yellow-600', desc: '나는 4분음표야! 한 박자 동안 소리를 내. 쿵! 쿵! 걷는 속도야.' },
+            { id: 'eighth', name: '8분음표', count: 8, val: 4, durationMs: 500, repeats: 2, svg: svgEighth, bg: 'bg-green-50', text: 'text-green-600', desc: '나는 8분음표야! 반 박자 동안 소리를 내. 깡총깡총 뛰는 것처럼 짧지!' },
+            { id: 'sixteenth', name: '16분음표', count: 16, val: 2, durationMs: 250, repeats: 5, svg: svgSixteenth, bg: 'bg-blue-50', text: 'text-blue-600', desc: '나는 16분음표야! 아주 짧게 소리를 내. 다다다다 달리는 속도란다!' },
+            { id: 'thirtysecond', name: '32분음표', count: 32, val: 1, durationMs: 125, repeats: 5, svg: svgThirtySecond, bg: 'bg-purple-50', text: 'text-purple-600', desc: '나는 32분음표야! 번개처럼 엄청나게 짧고 빠르게 휙! 하고 소리를 내!' }
+        ];
+
+        // Quiz Banks
+        const quizBanks = {
+            easy: [ 
+                { targetId: 'half', ops: ['+'], basket: ['whole', 'half', 'quarter', 'eighth'], text: '첫 번째 문제! 2분음표 1개를 만들려면 어떻게 더해야 할까요?', hint: '4분음표 2개를 더하면 2분음표가 된답니다!' },
+                { targetId: 'quarter', ops: ['+'], basket: ['half', 'quarter', 'eighth', 'sixteenth'], text: '두 번째 문제! 4분음표 1개를 만들려면 어떤 음표 2개가 필요할까요?', hint: '8분음표 2개를 더해보세요!' },
+                { targetId: 'whole', ops: ['+'], basket: ['whole', 'half', 'quarter'], text: '세 번째 문제! 온음표 1개를 만드려면 어떤 음표를 더할까요?', hint: '2분음표 2개를 더하면 온음표가 완성돼요.' },
+                { targetId: 'eighth', ops: ['+'], basket: ['quarter', 'eighth', 'sixteenth'], text: '네 번째 문제! 8분음표 1개는 어떤 음표 2개와 같을까요?', hint: '16분음표 2개를 더해보세요!' },
+                { targetId: 'half', ops: ['+', '+', '+'], basket: ['quarter', 'eighth', 'sixteenth'], text: '마지막 문제! 빈칸 4개를 모두 채워서 2분음표를 만들어보세요.', hint: '8분음표 4개를 더하면 2분음표와 길이가 같아요.' }
+            ],
+            medium: [ 
+                { targetId: 'quarter', ops: ['+', '+', '+'], basket: ['eighth', 'sixteenth', 'thirtysecond'], text: '첫 번째 문제! 빈칸 4개를 채워서 4분음표를 만들어보세요.', hint: '16분음표 4개를 더하면 4분음표가 됩니다!' },
+                { targetId: 'whole', ops: ['+', '+', '+'], basket: ['half', 'quarter', 'eighth'], text: '두 번째 문제! 빈칸 4개를 채워서 온음표를 만들어보세요.', hint: '4분음표 4개를 더하면 온음표 하나가 돼요.' },
+                { targetId: 'half', ops: ['+', '+'], basket: ['quarter', 'eighth', 'sixteenth'], text: '세 번째 문제! 3개의 음표를 더해서 2분음표를 만들어볼까요?', hint: '4분음표 1개와 8분음표 2개를 더해보세요.' },
+                { targetId: 'eighth', ops: ['+'], basket: ['sixteenth', 'thirtysecond'], text: '네 번째 문제! 8분음표 1개를 만들어주세요.', hint: '16분음표 2개를 더하세요.' },
+                { targetId: 'quarter', ops: ['+', '+'], basket: ['eighth', 'sixteenth', 'thirtysecond'], text: '다섯 번째 문제! 3개의 음표를 더해서 4분음표를 만들어보세요.', hint: '8분음표 1개와 16분음표 2개를 더해보세요.' },
+                { targetId: 'whole', ops: ['+'], basket: ['half', 'quarter'], text: '여섯 번째 문제! 온음표 1개를 만들어주세요.', hint: '2분음표 2개를 더해보세요.' },
+                { targetId: 'half', ops: ['+', '+', '+'], basket: ['eighth', 'sixteenth'], text: '일곱 번째 문제! 빈칸 4개를 채워서 2분음표를 만드세요.', hint: '8분음표 4개를 더해보세요.' },
+                { targetId: 'quarter', ops: ['+'], basket: ['eighth', 'sixteenth'], text: '여덟 번째 문제! 4분음표 1개를 만들어보세요.', hint: '8분음표 2개를 더해보세요.' },
+                { targetId: 'eighth', ops: ['+', '+', '+'], basket: ['sixteenth', 'thirtysecond'], text: '아홉 번째 문제! 빈칸 4개를 채워서 8분음표를 만드세요.', hint: '32분음표 4개를 더하면 8분음표가 된답니다.' },
+                { targetId: 'whole', ops: ['+', '+'], basket: ['half', 'quarter', 'eighth'], text: '마지막 문제! 3개의 음표를 더해서 온음표를 만드세요.', hint: '2분음표 1개와 4분음표 2개를 더해보세요!' }
+            ],
+            hard: [ 
+                { targetId: 'half', ops: ['-'], basket: ['whole', 'half', 'quarter', 'eighth'], text: '1단계! 온음표(32)와 2분음표(16)가 주어졌어요. 빼기를 통해 2분음표(16)를 만들어보세요!', hint: '온음표에서 2분음표를 빼면 2분음표가 남아요!' },
+                { targetId: 'quarter', ops: ['-'], basket: ['half', 'quarter', 'eighth', 'sixteenth'], text: '2단계! 빼기를 이용해서 4분음표(8)를 만들어볼까요?', hint: '2분음표(16)에서 4분음표(8)를 빼보세요.' },
+                { targetId: 'eighth', ops: ['-'], basket: ['quarter', 'eighth', 'sixteenth', 'sixteenth'], text: '3단계! 빼기를 이용해서 8분음표(4)를 만들어보세요.', hint: '4분음표(8)에서 8분음표(4)를 빼보세요.' },
+                { targetId: 'quarter', ops: ['+', '-'], basket: ['quarter', 'eighth', 'eighth', 'half'], text: '4단계! 더하기와 빼기가 같이 있어요! 4분음표(8)를 만들어볼까요?', hint: '4분음표와 8분음표를 더하고 다시 8분음표를 빼면 그대로 유지돼요!' },
+                { targetId: 'half', ops: ['+', '-'], basket: ['half', 'quarter', 'quarter', 'whole'], text: '5단계! 빈칸 3개를 모두 사용해 2분음표(16)를 만들어주세요.', hint: '2분음표에 4분음표를 더했다가 4분음표를 빼보세요.' },
+                { targetId: 'quarter', ops: ['-'], basket: ['half', 'quarter', 'quarter'], text: '6단계! 남은 바구니의 재료로 4분음표(8)를 만드세요.', hint: '2분음표에서 4분음표 하나를 빼면 4분음표가 나와요.' },
+                { targetId: 'eighth', ops: ['+', '-'], basket: ['quarter', 'eighth', 'quarter', 'half'], text: '7단계! 8분음표(4)를 만들어야 해요. 어떤 것을 더하고 뺄까요?', hint: '4분음표에서 4분음표를 빼면 사라지겠죠? 거기에 8분음표를 더해보세요.' },
+                { targetId: 'quarter', ops: ['+', '-'], basket: ['half', 'half', 'quarter', 'eighth'], text: '8단계! 4분음표(8)를 만들어야 해요. 빼기를 잘 활용하세요!', hint: '2분음표에서 2분음표를 빼면 0이 돼요. 남은 4분음표를 더해보세요.' },
+                { targetId: 'half', ops: ['-'], basket: ['whole', 'half', 'quarter'], text: '9단계! 빼기를 활용해서 2분음표(16)를 만드세요.', hint: '가장 큰 온음표에서 2분음표를 빼볼까요?' },
+                { targetId: 'whole', ops: ['+', '-'], basket: ['whole', 'half', 'half', 'quarter'], text: '마지막 단계! 3칸을 이용해 가장 큰 온음표(32)를 만드세요!', hint: '온음표에 2분음표를 더하고 다시 2분음표를 빼주세요.' }
+            ]
+        };
+
+        let currentLevel = 'easy';
+        let currentQuizList = [];
+        let ttsAudio = null;
+        let globalEffectAudio = new Audio();
+        let confettiReqId = null;
+        let currentQuizIndex = 0;
+        
+        // --- Web Audio API for Pleasant Note Sequence ---
+        let audioCtx = null;
+        let masterGain = null;
+        let toneTimeout = null;
+
+        function initAudio() {
+            if(!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if(!masterGain) {
+                masterGain = audioCtx.createGain();
+                masterGain.connect(audioCtx.destination);
+            }
+        }
+
+        // 반복 재생 및 부드러운 소리 처리 함수
+        function playPleasantSequence(durationMs, repeatCount, callback) {
+            initAudio();
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+
+            const now = audioCtx.currentTime;
+            
+            // 사용자 요청: 2, 5번 등 연속으로 나오는 소리 사이에 '한 박자' 정도의 충분한 쉼(gap)을 줌
+            const gapMs = 500; 
+            
+            // 사용자 요청: 소리가 다 끝난 후 바로 음성이 나오지 않고 '한 박자' 쉬고 시작
+            const postDelayMs = 1000; 
+            
+            // 전체 소요 시간 계산 (마지막 음표 이후에는 gapMs 대신 postDelayMs를 쉼)
+            const totalDurationMs = (repeatCount - 1) * (durationMs + gapMs) + durationMs + postDelayMs;
+
+            for(let i=0; i<repeatCount; i++) {
+                const start = now + i * ((durationMs + gapMs) / 1000);
+                const durSec = durationMs / 1000;
+                
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const noteGain = audioCtx.createGain();
+                
+                // 맑고 기분좋은 실로폰/전자피아노 스타일 조합
+                osc1.type = 'triangle';
+                osc2.type = 'sine';
+                osc1.frequency.setValueAtTime(523.25, start); // C4
+                osc2.frequency.setValueAtTime(1046.50, start); // C5 (한 옥타브 위)
+                
+                // 부드러운 시작과 점진적인 여음(Envelope) 처리
+                noteGain.gain.setValueAtTime(0, start);
+                noteGain.gain.linearRampToValueAtTime(0.3, start + Math.min(0.05, durSec * 0.2)); 
+                noteGain.gain.exponentialRampToValueAtTime(0.01, start + durSec - 0.01);
+                noteGain.gain.linearRampToValueAtTime(0, start + durSec);
+
+                osc1.connect(noteGain);
+                osc2.connect(noteGain);
+                noteGain.connect(masterGain);
+
+                osc1.start(start);
+                osc2.start(start);
+                osc1.stop(start + durSec);
+                osc2.stop(start + durSec);
+            }
+
+            toneTimeout = setTimeout(() => {
+                if(callback) callback();
+            }, totalDurationMs);
+
+            return totalDurationMs;
+        }
+
+        // --- Audio Engine ---
+        function stopAudio() {
+            if (ttsAudio) { ttsAudio.pause(); ttsAudio.currentTime = 0; ttsAudio = null; }
+            if (globalEffectAudio) { globalEffectAudio.pause(); globalEffectAudio.currentTime = 0; }
+            window.speechSynthesis.cancel();
+            
+            // 재생 중인 모든 예약된 소리들을 즉시 초기화/차단
+            if(masterGain) {
+                masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+                masterGain.disconnect();
+                masterGain = audioCtx.createGain();
+                masterGain.connect(audioCtx.destination);
+            }
+            if (toneTimeout) clearTimeout(toneTimeout);
+
+            // 게이지 바 애니메이션 즉시 초기화
+            document.querySelectorAll('.note-progress-bar').forEach(el => {
+                el.style.transition = 'none';
+                el.style.width = '0%';
+            });
+
+            document.querySelectorAll('.tree-row').forEach(row => row.classList.remove('active-row'));
+        }
+
+        function playEffectSound(url) {
+            globalEffectAudio.src = url;
+            globalEffectAudio.play().catch(()=>{});
+        }
+
+        async function speak(text, callback = null) {
+            if (!text) return;
+            try {
+                const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        input: { text: text },
+                        voice: { languageCode: 'ko-KR', name: 'ko-KR-Standard-A' },
+                        audioConfig: { audioEncoding: 'MP3', speakingRate: 1.1 }
+                    })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.audioContent) {
+                        const audioUrl = URL.createObjectURL(await fetch(`data:audio/mp3;base64,${data.audioContent}`).then(r => r.blob()));
+                        ttsAudio = new Audio(audioUrl);
+                        ttsAudio.play().catch(e => fallbackSpeak(text, callback));
+                        if(callback) ttsAudio.onended = callback;
+                        return;
+                    }
+                } else {
+                     fallbackSpeak(text, callback);
+                }
+            } catch (e) {
+                fallbackSpeak(text, callback);
+            }
+        }
+
+        // 로컬 환경 및 통신 에러 시 브라우저 내장 TTS로 안전하게 전환
+        function fallbackSpeak(text, callback) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ko-KR';
+            utterance.rate = 1.0;
+            
+            // 비동기로 로드되는 음성 목록 매칭 방어 코드
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length > 0) {
+                const koVoice = voices.find(v => v.lang === 'ko-KR' || v.name.includes('Korean') || v.name.includes('한국어'));
+                if (koVoice) utterance.voice = koVoice;
+            }
+
+            if(callback) utterance.onend = callback;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function popText(elementId, text, bubbleId) {
+            const el = document.getElementById(elementId);
+            const bubble = document.getElementById(bubbleId);
+            el.innerText = text;
+            bubble.classList.remove('pop-in');
+            void bubble.offsetWidth;
+            bubble.classList.add('pop-in');
+        }
+        
+        // --- HTML Scroll Actions ---
+        function scrollContent(elementId, amount) {
+            const el = document.getElementById(elementId);
+            if (el) {
+                el.scrollBy({ top: amount, behavior: 'smooth' });
+            }
+        }
+
+        // --- Intro TTS Action ---
+        function readIntroTTS() {
+            stopAudio();
+            speak("마법의 음표 나무! 음표 친구들이 나무에 주렁주렁 열렸어요! 버튼을 눌러 음표들의 비밀을 들어볼까요?");
+        }
+
+        // --- Core Flow ---
+        function startGame() {
+            stopAudio();
+            document.getElementById('intro-screen').classList.add('hidden');
+            document.getElementById('learn-screen').classList.remove('hidden');
+            document.getElementById('learn-screen').classList.add('flex');
+            document.getElementById('btn-restart').classList.remove('hidden');
+
+            renderTree();
+            const introMsg = '짜잔! 마법의 음표 나무가 나타났어요. 궁금한 층을 클릭해보세요!';
+            popText('teacher-text', introMsg, 'teacher-bubble');
+            speak(introMsg);
+            fireConfetti();
+        }
+
+        function renderTree() {
+            const container = document.getElementById('tree-container');
+            container.innerHTML = '';
+            notesData.forEach((note, index) => {
+                let iconSizeClass = 'w-10 h-10 md:w-14 md:h-14';
+                if(note.count === 2) iconSizeClass = 'w-8 h-8 md:w-10 md:h-10';
+                else if(note.count === 4) iconSizeClass = 'w-6 h-6 md:w-8 md:h-8';
+                else if(note.count === 8) iconSizeClass = 'w-4 h-4 md:w-6 md:h-6';
+                else if(note.count === 16) iconSizeClass = 'w-3 h-3 md:w-4 md:h-4'; 
+                else if(note.count === 32) iconSizeClass = 'w-2 h-2 md:w-3 md:h-3'; 
+
+                let iconsHTML = '';
+                for(let i=0; i<note.count; i++) {
+                    iconsHTML += `<svg class="note-icon ${iconSizeClass} shrink-0" viewBox="0 0 24 24">${note.svg}</svg>`;
+                }
+
+                // 진행 바를 담을 div (note-progress-bar) 추가
+                const rowHtml = `
+                    <div id="row-${index}" class="tree-row relative w-[92%] mx-auto ${note.bg} rounded-xl md:rounded-2xl p-1 md:p-2 flex items-center justify-between bg-opacity-90 backdrop-blur-sm overflow-hidden" onclick="playNoteInfo(${index})">
+                        
+                        <!-- 길이 측정 및 반복 애니메이션 바 -->
+                        <div id="progress-${index}" class="note-progress-bar absolute bottom-0 left-0 h-2 bg-pink-500 opacity-60 z-0"></div>
+
+                        <div class="w-[22%] md:w-[25%] shrink-0 flex items-center justify-center border-r-2 border-slate-300 z-10 relative">
+                            <span class="text-lg md:text-2xl font-extrabold ${note.text} whitespace-nowrap">${note.name}</span>
+                        </div>
+                        <div class="w-[56%] md:w-[50%] flex flex-wrap items-center justify-center px-1 md:px-2 py-0.5 gap-[2px] md:gap-1 min-w-0 z-10 relative">
+                            ${iconsHTML}
+                        </div>
+                        <div class="w-[22%] md:w-[25%] shrink-0 flex items-center justify-center border-l-2 border-slate-300 z-10 relative">
+                            <span class="text-lg md:text-3xl font-extrabold text-slate-700 bg-white px-2 py-0.5 rounded-full border-2 border-slate-300 whitespace-nowrap">${note.count}개</span>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', rowHtml);
+            });
+        }
+
+        // 소리와 설명을 제어하는 핵심 로직 (다중 반복 및 애니메이션 연동)
+        function playNoteInfo(index) {
+            stopAudio(); // 모든 소리와 애니메이션 초기화
+            const note = notesData[index];
+            const rowEl = document.getElementById(`row-${index}`);
+            const progressEl = document.getElementById(`progress-${index}`);
+            
+            rowEl.classList.add('active-row');
+            
+            // 1. 안내 문구 표시 (반복 횟수 포함)
+            let repeatText = note.repeats > 1 ? `${note.repeats}번 ` : '';
+            popText('teacher-text', `${note.name}의 길이를 ${repeatText}들어보세요!`, 'teacher-bubble');
+            
+            // 2. 애니메이션 세팅 및 강제 리셋
+            progressEl.style.transition = 'none';
+            progressEl.style.width = '0%';
+            void progressEl.offsetWidth; 
+            
+            // 3. 기분 좋은 소리 반복 재생 및 애니메이션 연동
+            const totalAnimMs = playPleasantSequence(note.durationMs, note.repeats, () => {
+                
+                // 4. 재생이 모두 끝나면 게이지바 초기화 및 텍스트 낭독
+                progressEl.style.transition = 'none';
+                progressEl.style.width = '0%';
+
+                popText('teacher-text', note.desc, 'teacher-bubble');
+                speak(note.desc, () => {
+                    rowEl.classList.remove('active-row');
+                });
+            });
+
+            // 전체 소요 시간(totalAnimMs)에 맞춰 한 번에 게이지 바가 차오름
+            progressEl.style.transition = `width ${totalAnimMs}ms linear`;
+            progressEl.style.width = '100%';
+        }
+
+        // --- Quiz System ---
+        function showDifficultyModal() {
+            stopAudio();
+            document.getElementById('difficulty-modal').classList.remove('hidden');
+            speak('어떤 단계에 도전해 볼까요? 난이도를 선택해 주세요.');
+        }
+
+        function selectDifficulty(level) {
+            stopAudio();
+            currentLevel = level;
+            document.getElementById('difficulty-modal').classList.add('hidden');
+            currentQuizList = quizBanks[level];
+            
+            document.getElementById('learn-screen').classList.add('hidden');
+            document.getElementById('learn-screen').classList.remove('flex');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            document.getElementById('quiz-screen').classList.add('flex');
+            
+            currentQuizIndex = 0;
+            loadQuiz();
+        }
+
+        function loadQuiz() {
+            if(currentQuizIndex >= currentQuizList.length) {
+                document.getElementById('quiz-screen').classList.add('hidden');
+                document.getElementById('intro-screen').classList.remove('hidden');
+                document.getElementById('intro-screen').querySelector('p').innerHTML = "선택한 단계의 모든 퀴즈를 맞췄어요!<br>정말 대단해요!";
+                speak("축하해요! 모든 퀴즈를 맞췄어요. 정말 대단해요!");
+                fireConfetti();
+                return;
+            }
+
+            const q = currentQuizList[currentQuizIndex];
+            const targetNote = notesData.find(n => n.id === q.targetId);
+            const numZones = q.ops.length + 1;
+
+            popText('quiz-question-text', q.text, 'quiz-teacher-bubble');
+
+            const eqContainer = document.getElementById('equation-container');
+            eqContainer.innerHTML = '';
+            
+            const zoneSize = numZones > 3 ? 'w-20 h-20 md:w-24 md:h-24' : 'w-24 h-24 md:w-32 md:h-32';
+            const plusSize = numZones > 3 ? 'text-3xl md:text-4xl' : 'text-5xl md:text-6xl';
+            const targetSize = numZones > 3 ? 'w-24 h-24 md:w-32 md:h-32' : 'w-32 h-32 md:w-40 md:h-40';
+            const svgSize = numZones > 3 ? 'w-10 h-10 md:w-16 md:h-16' : 'w-12 h-12 md:w-20 md:h-20';
+
+            for(let i = 0; i < numZones; i++) {
+                const dz = document.createElement('div');
+                dz.className = `drop-zone ${zoneSize} rounded-2xl md:rounded-3xl flex items-center justify-center relative shrink-0`;
+                dz.innerHTML = `<span class="text-slate-400 text-2xl md:text-3xl font-bold opacity-50">?</span>`;
+                
+                dz.onclick = () => clearDropZone(dz);
+                eqContainer.appendChild(dz);
+
+                if(i < q.ops.length) {
+                    const opText = q.ops[i];
+                    const opClass = opText === '-' ? 'text-red-500' : 'text-slate-700';
+                    const opEl = document.createElement('div');
+                    opEl.className = `${plusSize} ${opClass} font-extrabold mx-1 md:mx-2 shrink-0`;
+                    opEl.innerText = opText;
+                    eqContainer.appendChild(opEl);
+                }
+            }
+
+            const equals = document.createElement('div');
+            equals.className = `${plusSize} text-slate-700 font-extrabold mx-1 md:mx-4 shrink-0`;
+            equals.innerText = '=';
+            eqContainer.appendChild(equals);
+
+            const targetBox = document.createElement('div');
+            targetBox.className = `${targetSize} bg-emerald-100 border-4 border-emerald-400 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center shadow-inner shrink-0`;
+            targetBox.innerHTML = `
+                <div class="mb-1 md:mb-2"><svg class="${svgSize} text-emerald-700" viewBox="0 0 24 24">${targetNote.svg}</svg></div>
+                <span class="text-xl md:text-3xl font-bold text-emerald-700">${targetNote.name}</span>
+            `;
+            eqContainer.appendChild(targetBox);
+
+            // Render Basket
+            const optionsContainer = document.getElementById('drag-options-container');
+            optionsContainer.innerHTML = '';
+            
+            q.basket.forEach((noteId, idx) => {
+                const pieceNote = notesData.find(n => n.id === noteId);
+                const item = document.createElement('div');
+                item.className = 'draggable-item w-16 h-16 md:w-24 md:h-24 bg-white border-2 md:border-4 border-slate-500 rounded-xl md:rounded-2xl flex items-center justify-center shadow-md hover:bg-slate-50 relative shrink-0';
+                item.innerHTML = `<svg class="w-8 h-8 md:w-14 md:h-14 text-slate-800" viewBox="0 0 24 24">${pieceNote.svg}</svg>`;
+                item.setAttribute('data-note', pieceNote.id);
+                
+                if(currentLevel === 'hard') {
+                    item.id = `basket-item-${idx}`;
+                }
+                
+                item.addEventListener('touchstart', handleDragStart, {passive: false});
+                item.addEventListener('mousedown', handleDragStart);
+                optionsContainer.appendChild(item);
+            });
+
+            speak(q.text);
+        }
+
+        function clearDropZone(dz) {
+            if(!dz.classList.contains('active')) return;
+            
+            if(currentLevel === 'hard') {
+                const srcId = dz.getAttribute('data-source-basket-id');
+                if(srcId) {
+                    const basketItem = document.getElementById(srcId);
+                    if(basketItem) basketItem.style.display = 'flex';
+                }
+            }
+            
+            dz.innerHTML = `<span class="text-slate-400 text-2xl md:text-3xl font-bold opacity-50">?</span>`;
+            dz.classList.remove('active');
+            dz.removeAttribute('data-filled-note');
+            dz.removeAttribute('data-source-basket-id');
+            playEffectSound('https://cdn.pixabay.com/audio/2022/03/24/audio_3cbaf379ca.mp3'); 
+        }
+
+        function replayQuizTTS() {
+            stopAudio();
+            speak(currentQuizList[currentQuizIndex].text);
+        }
+
+        function showHint() {
+            stopAudio();
+            const hintText = currentQuizList[currentQuizIndex].hint;
+            popText('quiz-question-text', hintText, 'quiz-teacher-bubble');
+            speak(hintText);
+        }
+
+        // --- Custom Drag & Drop Logic ---
+        let dragSrcEl = null;
+        let draggedNoteId = null;
+        let ghostEl = document.getElementById('drag-ghost');
+        let isDragging = false;
+
+        function handleDragStart(e) {
+            e.preventDefault(); 
+            isDragging = true;
+            dragSrcEl = e.currentTarget;
+            draggedNoteId = dragSrcEl.getAttribute('data-note');
+            
+            document.getElementById('ghost-content').innerHTML = dragSrcEl.innerHTML;
+            ghostEl.style.display = 'flex';
+            
+            dragSrcEl.style.opacity = '0.3';
+            
+            moveGhost(e);
+            
+            document.addEventListener('touchmove', handleDragMove, {passive: false});
+            document.addEventListener('mousemove', handleDragMove);
+            document.addEventListener('touchend', handleDragEnd);
+            document.addEventListener('mouseup', handleDragEnd);
+        }
+
+        function handleDragMove(e) {
+            if(!isDragging) return;
+            e.preventDefault();
+            moveGhost(e);
+        }
+
+        // 마우스/터치 좌표를 화면 비율(Scale)에 맞춰 보정하는 로직으로 수정
+        function moveGhost(e) {
+            let clientX, clientY;
+            
+            if(e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX; clientY = e.touches[0].clientY;
+            } else if (e.changedTouches && e.changedTouches.length > 0) {
+                clientX = e.changedTouches[0].clientX; clientY = e.changedTouches[0].clientY;
+            } else {
+                clientX = e.clientX; clientY = e.clientY;
+            }
+            
+            const wrapper = document.getElementById('scalable-wrapper');
+            const rect = wrapper.getBoundingClientRect();
+            
+            // 현재 화면의 축소/확대 비율(Scale) 구하기
+            const scale = rect.width / 1280;
+            
+            // 전체 뷰포트 기준 마우스 좌표를, scale이 적용된 wrapper 내부 상대 좌표로 변환
+            const localX = (clientX - rect.left) / scale;
+            const localY = (clientY - rect.top) / scale;
+
+            ghostEl.style.left = localX + 'px';
+            ghostEl.style.top = localY + 'px';
+        }
+
+        function handleDragEnd(e) {
+            if(!isDragging) return;
+            isDragging = false;
+            ghostEl.style.display = 'none';
+            dragSrcEl.style.opacity = '1';
+
+            document.removeEventListener('touchmove', handleDragMove);
+            document.removeEventListener('mousemove', handleDragMove);
+            document.removeEventListener('touchend', handleDragEnd);
+            document.removeEventListener('mouseup', handleDragEnd);
+
+            let clientX, clientY;
+            if(e.changedTouches) {
+                clientX = e.changedTouches[0].clientX; clientY = e.changedTouches[0].clientY;
+            } else {
+                clientX = e.clientX; clientY = e.clientY;
+            }
+
+            let droppedOnValidZone = false;
+
+            document.querySelectorAll('.drop-zone').forEach(dz => {
+                const rect = dz.getBoundingClientRect();
+                if(clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+                    
+                    if (currentLevel === 'hard' && dz.classList.contains('active')) {
+                        const existingId = dz.getAttribute('data-source-basket-id');
+                        if (existingId) document.getElementById(existingId).style.display = 'flex';
+                    }
+
+                    dz.innerHTML = dragSrcEl.innerHTML;
+                    dz.classList.add('active');
+                    dz.setAttribute('data-filled-note', draggedNoteId);
+                    
+                    if (currentLevel === 'hard') {
+                        const basketId = dragSrcEl.id;
+                        dz.setAttribute('data-source-basket-id', basketId);
+                        dragSrcEl.style.display = 'none'; 
+                    }
+
+                    playEffectSound('https://cdn.pixabay.com/audio/2022/03/10/audio_e8f5245320.mp3');
+                    droppedOnValidZone = true;
+                }
+            });
+
+            if(droppedOnValidZone) checkQuizSuccess();
+        }
+
+        function checkQuizSuccess() {
+            const q = currentQuizList[currentQuizIndex];
+            const allZones = document.querySelectorAll('.drop-zone');
+            
+            const isAllFilled = Array.from(allZones).every(dz => dz.classList.contains('active'));
+            if(!isAllFilled) return;
+
+            const targetNote = notesData.find(n => n.id === q.targetId);
+            const targetVal = targetNote.val;
+
+            let sum = 0;
+
+            for(let i=0; i < allZones.length; i++) {
+                const dz = allZones[i];
+                const noteId = dz.getAttribute('data-filled-note');
+                const val = notesData.find(n => n.id === noteId).val;
+
+                if (i === 0) {
+                    sum = val;
+                } else {
+                    const op = q.ops[i-1];
+                    if (op === '+') sum += val;
+                    else if (op === '-') sum -= val;
+                }
+            }
+
+            if(sum === targetVal) {
+                playEffectSound('https://cdn.pixabay.com/audio/2025/04/23/audio_5a1eca1fdf.mp3');
+                setTimeout(() => {
+                    document.getElementById('quiz-success-modal').classList.remove('hidden');
+                    speak('정답입니다! 완벽해요!');
+                    fireConfetti();
+                }, 400);
+            } else {
+                playEffectSound('https://cdn.pixabay.com/audio/2021/08/09/audio_ec2624b77c.mp3');
+                const board = document.getElementById('quiz-board-outer');
+                if(board) board.classList.add('shake');
+                
+                setTimeout(() => {
+                    if(board) board.classList.remove('shake');
+                    allZones.forEach(dz => clearDropZone(dz));
+                }, 500);
+            }
+        }
+
+        function nextQuiz() {
+            stopAudio();
+            document.getElementById('quiz-success-modal').classList.add('hidden');
+            currentQuizIndex++;
+            loadQuiz();
+        }
+
+        // --- Utils & Modals ---
+        function resizeGame() {
+            const container = document.getElementById('game-container');
+            const wrapper = document.getElementById('scalable-wrapper');
+            const cw = container.clientWidth;
+            const ch = container.clientHeight;
+            const scale = Math.min(cw / 1280, ch / 720);
+            wrapper.style.transform = `scale(${scale})`;
+        }
+        window.addEventListener('resize', resizeGame);
+        resizeGame();
+
+        function toggleHelp() {
+            const m = document.getElementById('help-modal');
+            if(m.classList.contains('hidden')) {
+                stopAudio();
+                m.classList.remove('hidden');
+                speak("놀이 방법! 첫째, 피라미드 모양의 음표들을 클릭해 설명을 들어요. 둘째, 퀴즈 풀기에서 빈칸에 알맞은 음표를 끌어다 놓아요. 셋째, 3단계는 한 번 쓴 음표는 사라지고 빼기 기능도 등장해요! 모두 알겠으면 알겠어요 버튼을 눌러주세요.");
+            } else {
+                m.classList.add('hidden');
+                stopAudio();
+            }
+        }
+
+        document.getElementById('btn-restart').onclick = () => {
+            stopAudio();
+            document.getElementById('restart-modal').classList.remove('hidden');
+            speak('처음부터 다시 할까요?');
+        };
+
+        function confirmRestart() { location.reload(); }
+
+        document.getElementById('btn-exit').onclick = () => {
+            stopAudio();
+            document.getElementById('modal-exit').classList.remove('hidden');
+            speak('정말 종료할까요?');
+        };
+
+        function confirmExit() { if (window.history.length > 1) window.history.back(); else window.close(); }
+
+        // Confetti
+        const canvas = document.getElementById("confetti");
+        const ctx = canvas.getContext("2d");
+        let particles = [];
+        resizeCanvas();
+        function resizeCanvas() { canvas.width = 1280; canvas.height = 720; }
+        
+        function fireConfetti() {
+            particles = [];
+            for (let i = 0; i < 80; i++) {
+                particles.push({
+                    x: 640, y: 360, dx: (Math.random() - 0.5) * 30, dy: (Math.random() - 0.5) * 30,
+                    size: Math.random() * 12 + 6, color: ['#10b981', '#fbbf24', '#f87171', '#60a5fa', '#a78bfa'][Math.floor(Math.random() * 5)], life: 150
+                });
+            }
+            if (!confettiReqId) animateConfetti();
+        }
+        function animateConfetti() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (particles.length === 0) { confettiReqId = null; return; }
+            particles.forEach((p, i) => {
+                p.x += p.dx; p.y += p.dy; p.dy += 0.5; p.life--;
+                ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size/2, 0, Math.PI * 2); ctx.fill();
+                if (p.life <= 0) particles.splice(i, 1);
+            });
+            confettiReqId = requestAnimationFrame(animateConfetti);
+        }
+
+        lucide.createIcons();
+    </script>
+    <script src="../../js/web-learning-game-shell.js" defer></script>
+
+    <script src="../../js/web-learning-play-tracker.js?v=20260616-03" defer></script>
+    <script src="../../js/web-learning-ranking.js?v=20260618-07" defer></script>
+</body>
+
+</html>
